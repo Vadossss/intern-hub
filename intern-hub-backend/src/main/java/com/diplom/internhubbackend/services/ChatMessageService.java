@@ -1,41 +1,68 @@
 package com.diplom.internhubbackend.services;
 
+import com.diplom.internhubbackend.exception.ResourceNotFoundException;
 import com.diplom.internhubbackend.models.ChatMessage;
 import com.diplom.internhubbackend.repositories.ChatMessageRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.mongodb.core.MongoOperations;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Update;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
 public class ChatMessageService {
-    private final ChatMessageRepository chatMessageRepository;
+    @Autowired 
+    private ChatMessageRepository repository;
+    @Autowired 
+    private ChatRoomService chatRoomService;
+    @Autowired
+    private MongoOperations mongoOperations;
 
-    public ChatMessageService(ChatMessageRepository chatMessageRepository) {
-        this.chatMessageRepository = chatMessageRepository;
+    public ChatMessage save(ChatMessage chatMessage) {
+        chatMessage.setStatus(ChatMessage.MessageStatus.RECEIVED);
+        repository.save(chatMessage);
+        return chatMessage;
     }
 
-    // Сохранение нового сообщения
-    public ChatMessage saveMessage(ChatMessage message) {
-        message.setStatus(ChatMessage.MessageStatus.DELIVERED); // при отправке
-        return chatMessageRepository.save(message);
+    public long countNewMessages(String senderId, String recipientId) {
+        return repository.countBySenderIdAndRecipientIdAndStatus(
+                senderId, recipientId, ChatMessage.MessageStatus.RECEIVED);
     }
 
-    // Получить все сообщения в чате
-    public List<ChatMessage> getMessagesByChatId(String chatId) {
-        return chatMessageRepository.findByChatId(chatId);
+    public List<ChatMessage> findChatMessages(String senderId, String recipientId) {
+        var chatId = chatRoomService.getChatId(senderId, recipientId, false);
+
+        var messages =
+                chatId.map(cId -> repository.findByChatId(cId)).orElse(new ArrayList<>());
+
+        if(messages.size() > 0) {
+            updateStatuses(senderId, recipientId, ChatMessage.MessageStatus.DELIVERED);
+        }
+
+        return messages;
     }
 
-    // Подсчет непрочитанных сообщений
-    public long countUnreadMessages(String senderId, String recepientId) {
-        return chatMessageRepository.countBySenderIdAndRecipientIdAndStatus(
-                senderId, recepientId, ChatMessage.MessageStatus.RECEIVED);
+    public ChatMessage findById(String id) {
+        return repository
+                .findById(id)
+                .map(chatMessage -> {
+                    chatMessage.setStatus(ChatMessage.MessageStatus.DELIVERED);
+                    return repository.save(chatMessage);
+                })
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("can't find message (" + id + ")"));
     }
 
-    // Обновление статуса сообщения
-    public void markMessageAsRead(Long messageId) {
-        chatMessageRepository.findById(messageId).ifPresent(message -> {
-            message.setStatus(ChatMessage.MessageStatus.RECEIVED);
-            chatMessageRepository.save(message);
-        });
+    public void updateStatuses(String senderId, String recipientId, ChatMessage.MessageStatus status) {
+        Query query = new Query(
+                Criteria
+                        .where("senderId").is(senderId)
+                        .and("recipientId").is(recipientId));
+        Update update = Update.update("status", status);
+        mongoOperations.updateMulti(query, update, ChatMessage.class);
     }
 }
