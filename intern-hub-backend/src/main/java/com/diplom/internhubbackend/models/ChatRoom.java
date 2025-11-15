@@ -1,23 +1,18 @@
 package com.diplom.internhubbackend.models;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
+import org.springframework.data.mongodb.core.mapping.Document;
 
-@Entity
-@Table(name = "chat_rooms")
-
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
+@Document(collection = "chat_room")
 public class ChatRoom {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-
-    private int id;
-    private String chatID;
-    @Getter
-    @Setter
+    private String id;
+    private String chatId;
     private String senderId;
-    @Getter
-    @Setter
     private String recipientId;
-
 }
