@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 
 @Controller
 public class ChatController {
+
     @Autowired private SimpMessagingTemplate messagingTemplate;
     @Autowired private ChatMessageService chatMessageService;
     @Autowired private ChatRoomService chatRoomService;
@@ -22,10 +23,10 @@ public class ChatController {
     @MessageMapping("/chat")
     public void processMessage(@Payload ChatMessage chatMessage) {
         var chatId = chatRoomService
-                .getChatRoomById(chatMessage.getId());
-        chatMessage.setChatId(String.valueOf(chatId.get()));
+                .getChatId(chatMessage.getSenderId(), chatMessage.getRecipientId(), true);
+        chatMessage.setChatId(chatId.get());
 
-        ChatMessage saved = chatMessageService.saveMessage(chatMessage);
+        ChatMessage saved = chatMessageService.save(chatMessage);
         messagingTemplate.convertAndSendToUser(
                 chatMessage.getRecipientId(),"/queue/messages",
                 new ChatNotification(
@@ -40,14 +41,20 @@ public class ChatController {
             @PathVariable String recipientId) {
 
         return ResponseEntity
-                .ok(chatMessageService.countUnreadMessages(senderId, recipientId));
+                .ok(chatMessageService.countNewMessages(senderId, recipientId));
     }
 
-
+    @GetMapping("/messages/{senderId}/{recipientId}")
+    public ResponseEntity<?> findChatMessages ( @PathVariable String senderId,
+                                                @PathVariable String recipientId) {
+        return ResponseEntity
+                .ok(chatMessageService.findChatMessages(senderId, recipientId));
+    }
 
     @GetMapping("/messages/{id}")
     public ResponseEntity<?> findMessage ( @PathVariable String id) {
         return ResponseEntity
-                .ok(chatMessageService.getMessagesByChatId(id));
+                .ok(chatMessageService.findById(id));
     }
 }
+
