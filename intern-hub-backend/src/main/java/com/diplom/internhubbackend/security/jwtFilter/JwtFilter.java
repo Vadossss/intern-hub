@@ -1,13 +1,12 @@
 package com.diplom.internhubbackend.security.jwtFilter;
 
-import com.diplom.internhubbackend.security.jwt.JwtHelper;
+import com.diplom.internhubbackend.security.jwt.JwtUtil;
 import com.diplom.internhubbackend.services.CustomUserDetailsService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -24,11 +23,11 @@ import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 @Slf4j
 public class JwtFilter extends OncePerRequestFilter {
     private final CustomUserDetailsService customUserDetailsService;
-    private final JwtHelper jwtHelper;
+    private final JwtUtil jwtUtil;
 
-    public JwtFilter(CustomUserDetailsService customUserDetailsService, JwtHelper jwtHelper) {
+    public JwtFilter(CustomUserDetailsService customUserDetailsService, JwtUtil jwtUtil) {
         this.customUserDetailsService = customUserDetailsService;
-        this.jwtHelper = jwtHelper;
+        this.jwtUtil = jwtUtil;
     }
 
     @Override
@@ -36,16 +35,24 @@ public class JwtFilter extends OncePerRequestFilter {
         final String authorizationHeader = request.getHeader(AUTHORIZATION);
         String jwt = null;
         String username = null;
+
+        String path = request.getRequestURI();
+
+        if (path.startsWith("/swagger-ui") || path.startsWith("/v3/api-docs")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         if (Objects.nonNull(authorizationHeader) &&
                 authorizationHeader.startsWith("Bearer ")) {
             jwt = authorizationHeader.substring(7);
-            username = jwtHelper.extractUsername(jwt);
+            username = jwtUtil.extractUsername(jwt);
         }
 
         if (Objects.nonNull(username) &&
                 SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = this.customUserDetailsService.loadUserByUsername(username);
-            boolean isTokenValidated = jwtHelper.validateToken(jwt, userDetails);
+            boolean isTokenValidated = jwtUtil.validateToken(jwt);
             if (isTokenValidated) {
                 UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken =
                         new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
