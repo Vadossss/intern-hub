@@ -14,6 +14,7 @@ import java.util.Set;
 @Setter
 public class NewVacancyDto {
     private String title;
+    private String stack;
     private String description;
     private Salary salary;
     private String charge;
