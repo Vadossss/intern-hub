@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/internship")
+@RequestMapping("/vacancy")
 public class VacancyController {
 
     private final VacancyService vacancyService;
@@ -39,7 +39,7 @@ public class VacancyController {
         return ResponseEntity.ok(vacancyMapper.toDto(vacancyService.getVacancy(id)));
     }
 
-    @GetMapping("/search")
+    @GetMapping
     @Operation(summary = "Расширенный поиск вакансий с использованием RediSearch")
     public ResponseEntity<PageResponse<VacancyCache>> searchVacancies(
             @RequestParam(required = false) VacancySource source,
