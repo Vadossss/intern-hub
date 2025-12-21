@@ -22,6 +22,9 @@ public class Vacancy {
     private Integer id;
 
     private String title;
+    @ManyToOne
+    @JoinColumn(name = "stack_id")
+    private Stack stack;
     private String city;
 
     private Integer salaryFrom;
@@ -64,10 +67,11 @@ public class Vacancy {
     @CreatedDate
     private LocalDateTime createdAt;
 
-    public Vacancy(String title, Integer salaryFrom, Integer salaryTo, String city, Currency currency, String description,
+    public Vacancy(String title, Stack stack, Integer salaryFrom, Integer salaryTo, String city, Currency currency, String description,
                    String requirements, String conditions, String link, String charge, Employment employment,
                    Experience experience, WorkFormat workFormat, Set<KeySkill> skills, LocalDateTime createdAt) {
         this.title = title;
+        this.stack = stack;
         this.salaryFrom = salaryFrom;
         this.salaryTo = salaryTo;
         this.city = city;
