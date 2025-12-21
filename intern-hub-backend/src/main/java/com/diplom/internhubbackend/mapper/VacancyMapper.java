@@ -21,13 +21,15 @@ public class VacancyMapper {
     private final EmploymentRepository employmentRepository;
     private final WorkFormatRepository workFormatRepository;
     private final CurrencyRepository currencyRepository;
+    private final StackRepository stackRepository;
 
-    public VacancyMapper(KeySkillRepository keySkillRepository, ExperienceRepository experienceRepository, EmploymentRepository employmentRepository, WorkFormatRepository workFormatRepository, CurrencyRepository currencyRepository) {
+    public VacancyMapper(KeySkillRepository keySkillRepository, ExperienceRepository experienceRepository, EmploymentRepository employmentRepository, WorkFormatRepository workFormatRepository, CurrencyRepository currencyRepository, StackRepository stackRepository) {
         this.keySkillRepository = keySkillRepository;
         this.experienceRepository = experienceRepository;
         this.employmentRepository = employmentRepository;
         this.workFormatRepository = workFormatRepository;
         this.currencyRepository = currencyRepository;
+        this.stackRepository = stackRepository;
     }
 
     public VacancyResponseDto toDto(Vacancy vacancy) {
@@ -47,6 +49,7 @@ public class VacancyMapper {
         dto.setRequirements(vacancy.getRequirements());
         dto.setConditions(vacancy.getConditions());
         dto.setEmployer(vacancy.getEmployer());
+        dto.setStack(vacancy.getStack());
 
         dto.setSkills(
                 vacancy.getSkills().stream()
@@ -69,8 +72,9 @@ public class VacancyMapper {
         Employment employment = employmentRepository.findById(vacancyDto.getEmployment()).orElse(null);
         Currency currency = currencyRepository.findById(vacancyDto.getSalary().getCurrency()).orElse(null);
         WorkFormat workFormat = workFormatRepository.findById(vacancyDto.getWorkFormat()).orElse(null);
+        Stack stack = stackRepository.findById(vacancyDto.getStack()).orElse(null);
 
-        return new Vacancy(vacancyDto.getTitle(), vacancyDto.getSalary().getFrom(), vacancyDto.getSalary().getTo(),
+        return new Vacancy(vacancyDto.getTitle(), stack, vacancyDto.getSalary().getFrom(), vacancyDto.getSalary().getTo(),
                 vacancyDto.getCity(), currency, vacancyDto.getDescription(), vacancyDto.getRequirements(),
                 vacancyDto.getConditions(), vacancyDto.getLink(), vacancyDto.getCharge(), employment,
                 experience, workFormat, keySkills, LocalDateTime.now());
