@@ -1,5 +1,6 @@
 package com.diplom.internhubbackend.services;
 
+import com.diplom.internhubbackend.models.Stack;
 import com.diplom.internhubbackend.models.VacancyCache;
 import com.diplom.internhubbackend.models.dto.FilterParams;
 import com.diplom.internhubbackend.models.enums.PositionsEnum;
@@ -82,13 +83,13 @@ public class VacanciesCacheService {
         }
     }
 
-    public void save(String id, VacancySource source, PositionsEnum position,
+    public void save(String id, VacancySource source, Stack stack,
                      String name, String schedule, String employment,
                      String city, String salary) {
         VacancyCache internship = new VacancyCache();
         internship.setId(id);
         internship.setSource(source);
-        internship.setPosition(position != null ? position.getFullName() : "");
+        internship.setPosition(stack != null ? stack.getName() : "");
         internship.setName(name != null ? name : "");
         internship.setSchedule(schedule != null ? schedule : "");
         internship.setEmploymentForm(employment != null ? employment : "");
