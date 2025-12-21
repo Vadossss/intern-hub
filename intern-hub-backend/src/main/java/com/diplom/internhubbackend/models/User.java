@@ -1,7 +1,10 @@
 package com.diplom.internhubbackend.models;
 
+import com.diplom.internhubbackend.models.enums.UserRole;
+import com.diplom.internhubbackend.models.enums.VerificationStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -13,6 +16,7 @@ import java.util.Date;
 @Table(name = "users")
 @Getter
 @Setter
+@NoArgsConstructor
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
