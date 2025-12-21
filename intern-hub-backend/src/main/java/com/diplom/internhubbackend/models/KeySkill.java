@@ -17,6 +17,6 @@ public class KeySkill {
 
     private String name;
 
-    @ManyToMany(mappedBy = "skills")
-    private Set<Internship> internships;
+    @ManyToMany(mappedBy = "skills", fetch = FetchType.EAGER)
+    private Set<Vacancy> vacancies;
 }
