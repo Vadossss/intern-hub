@@ -5,6 +5,7 @@ import com.diplom.internhubbackend.models.JwtPair;
 import com.diplom.internhubbackend.models.User;
 import com.diplom.internhubbackend.models.dto.TokensCookieDto;
 import com.diplom.internhubbackend.models.dto.UserRegisterDto;
+import com.diplom.internhubbackend.models.enums.UserRole;
 import com.diplom.internhubbackend.repositories.UserRepository;
 import com.diplom.internhubbackend.security.config.CustomUserDetails;
 import com.diplom.internhubbackend.security.jwt.JwtUtil;
@@ -40,6 +41,7 @@ public class AuthService {
         }
 
         user.setPassword(passwordEncoder.encode(user.getPassword()));
+        user.setRole(UserRole.STUDENT);
 
         userRepository.save(user);
         CustomUserDetails customUserDetails = customUserDetailsService.loadUserByUsername(user.getEmail());
