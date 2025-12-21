@@ -36,17 +36,44 @@ public class JwtFilter extends OncePerRequestFilter {
         String jwt = null;
         String username = null;
 
-        String path = request.getRequestURI();
+//        String path = request.getRequestURI();
+//
+//        if (path.startsWith("/swagger-ui") || path.startsWith("/v3/api-docs")) {
+//            filterChain.doFilter(request, response);
+//            return;
+//        }
 
-        if (path.startsWith("/swagger-ui") || path.startsWith("/v3/api-docs")) {
-            filterChain.doFilter(request, response);
-            return;
+
+        if (request.getCookies() != null) {
+            for (var cookie : request.getCookies()) {
+                if ("accessToken".equals(cookie.getName())) {
+                    jwt = cookie.getValue();
+                    break;
+                }
+            }
         }
 
         if (Objects.nonNull(authorizationHeader) &&
                 authorizationHeader.startsWith("Bearer ")) {
             jwt = authorizationHeader.substring(7);
-            username = jwtUtil.extractUsername(jwt);
+//            username = jwtUtil.extractUsername(jwt);
+        }
+
+        if (jwt != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            try {
+                if (jwtUtil.validateToken(jwt)) {  // сначала проверяем валидность
+                    username = jwtUtil.extractUsername(jwt); // потом извлекаем username
+                    UserDetails userDetails = customUserDetailsService.loadUserByUsername(username);
+
+                    UsernamePasswordAuthenticationToken authToken =
+                            new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                }
+            } catch (Exception ex) {
+                log.warn("JWT validation failed: {}", ex.getMessage());
+                // SecurityContext останется пустым → Spring Security вернёт 403
+            }
         }
 
         if (Objects.nonNull(username) &&
