@@ -1,4 +1,4 @@
-package com.diplom.internhubbackend.models;
+package com.diplom.internhubbackend.models.enums;
 
 public enum UserRole {
     STUDENT,
