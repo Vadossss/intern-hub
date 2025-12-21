@@ -4,6 +4,7 @@ import com.diplom.internhubbackend.models.User;
 import com.diplom.internhubbackend.repositories.UserRepository;
 import com.diplom.internhubbackend.security.config.CustomUserDetails;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
@@ -18,6 +19,9 @@ public class CustomUserDetailsService implements UserDetailsService {
         this.userRepository = userRepository;
     }
 
+    public User getCurrentUser() {
+        return userRepository.findByEmail(SecurityContextHolder.getContext().getAuthentication().getName()).orElse(null);
+    }
 
     @Override
     public CustomUserDetails loadUserByUsername(String email)
