@@ -52,7 +52,7 @@ public class JwtUtil {
     }
 
     private Jws<Claims> extractClaims(String bearerToken) {
-        return Jwts.parserBuilder().setSigningKey(jwtProperties.getSecretKey())
+        return Jwts.parserBuilder().setSigningKey(jwtProperties.getSecret())
                 .build().parseClaimsJws(bearerToken);
     }
 
@@ -76,7 +76,7 @@ public class JwtUtil {
 
     public String createToken(Map<String, Object> claims, String subject) {
         Date expiryDate = Date.from(Instant.ofEpochMilli(System.currentTimeMillis() + jwtProperties.getValidity()));
-        Key hmacKey = new SecretKeySpec(Base64.getDecoder().decode(jwtProperties.getSecretKey()),
+        Key hmacKey = new SecretKeySpec(Base64.getDecoder().decode(jwtProperties.getSecret()),
                 SignatureAlgorithm.HS256.getJcaName());
         return Jwts.builder()
                 .setClaims(claims)
@@ -91,8 +91,8 @@ public class JwtUtil {
         return Jwts.builder()
                 .setSubject(user.getUsername())
                 .setIssuedAt(new Date())
-                .setExpiration(getExpiryDate(refreshTokenExpirationTime))
-                .signWith(SignatureAlgorithm.HS512, jwtSecret)
+                .setExpiration(getExpiryDate(jwtProperties.getRefreshTokenExpirationTime()))
+                .signWith(SignatureAlgorithm.HS512, jwtProperties.getSecret())
                 .compact();
     }
 
@@ -100,15 +100,16 @@ public class JwtUtil {
         return Jwts.builder()
                 .setSubject(user.getUsername())
                 .setIssuedAt(new Date())
-                .setExpiration(getExpiryDate(accessTokenExpirationTime))
-                .signWith(SignatureAlgorithm.HS512, jwtSecret)
+                .setExpiration(getExpiryDate(jwtProperties.getAccessTokenExpirationTime()))
+                .signWith(SignatureAlgorithm.HS512, jwtProperties.getSecret())
                 .compact();
     }
 
     public CustomUserDetails parseJwtToken(final String token) {
         CustomUserDetails customUserDetails = null;
         if (StringUtils.isNotEmpty(token) && validateToken(token)) {
-            String email = Jwts.parserBuilder().setSigningKey(jwtSecret).build().parseClaimsJws(token).getBody().getSubject();
+            String email = Jwts.parserBuilder().setSigningKey(jwtProperties.getSecret()).
+                    build().parseClaimsJws(token).getBody().getSubject();
             customUserDetails = customUserDetailsService.loadUserByUsername(email);
         }
         return customUserDetails;
@@ -116,7 +117,7 @@ public class JwtUtil {
 
     public boolean validateToken(final String authToken) {
         try {
-            Jwts.parser().setSigningKey(jwtSecret).parseClaimsJws(authToken);
+            Jwts.parser().setSigningKey(jwtProperties.getSecret()).parseClaimsJws(authToken);
             return true;
         } catch (UnsupportedJwtException | MalformedJwtException | IllegalArgumentException ex) {
             throw new BadCredentialsException("Invalid JWT token: ", ex);
