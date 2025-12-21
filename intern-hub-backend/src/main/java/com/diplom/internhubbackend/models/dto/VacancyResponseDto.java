@@ -10,6 +10,7 @@ import java.util.Set;
 public class VacancyResponseDto {
     private Integer id;
     private String title;
+    private Stack stack;
     private String description;
     private String city;
     private Integer salaryFrom;
