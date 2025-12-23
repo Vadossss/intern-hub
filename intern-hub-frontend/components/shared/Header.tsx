@@ -1,11 +1,16 @@
+"use client";
+
 import { Briefcase, User } from "lucide-react";
 import { Button } from "../ui/button";
+import Link from "next/link";
+import { useAuth } from "@/lib/auth/context";
 
 interface Props {
   className?: string;
 }
 
 export const Header: React.FC<Props> = ({ className }) => {
+  const { isAuthenticated } = useAuth();
   return (
     <header className="bg-white shadow-sm border-b border-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -42,15 +47,29 @@ export const Header: React.FC<Props> = ({ className }) => {
             </a>
           </nav>
           <div className="flex items-center space-x-4">
-            <Button variant="ghost" size="sm" className="hidden sm:flex">
+            {/* <Button variant="ghost" size="sm" className="hidden sm:flex">
               <User className="w-4 h-4 mr-2" />
               Для студентов
             </Button>
             <Button variant="outline" size="sm" className="hidden sm:flex">
               <Briefcase className="w-4 h-4 mr-2" />
               Для работодателей
-            </Button>
-            <Button size="sm">Войти</Button>
+            </Button> */}
+            {!isAuthenticated ? (
+              <Link
+                href={"/auth"}
+                className="border rounded-md p-1 px-2 hover:bg-gray-100 ease-in-out duration-250"
+              >
+                Войти
+              </Link>
+            ) : (
+              <Link
+                href={"/profile"}
+                className="border rounded-md p-1 px-2 hover:bg-gray-100 ease-in-out duration-250"
+              >
+                Профиль
+              </Link>
+            )}
           </div>
         </div>
       </div>
