@@ -26,7 +26,7 @@ public class VacanciesCacheService {
     private static final String SEARCH_INDEX = "vacancyIdx";
 
     private final VacancyRepository vacancyRepository;
-    private final VacanciesCacheService cacheService;
+//    private final VacanciesCacheService cacheService;
 
     @PostConstruct
     public void init() {
@@ -479,24 +479,24 @@ public class VacanciesCacheService {
 //        return repository.findAll();
 //    }
 
-    public void cacheFromDB(Stack stack) {
-        List<Vacancy> vacancies = vacancyRepository.findByStack(stack);
-        for (Vacancy vacancy : vacancies) {
-            VacancyCache vacancyCache = new VacancyCache();
-            vacancyCache.setId("ih_" + vacancy.getId());
-            vacancyCache.setSource(VacancySource.INTERNHUB);
-            vacancyCache.setName(vacancy.getTitle());
-            vacancyCache.setCity(vacancy.getCity());
-            vacancyCache.setSchedule(vacancy.getWorkFormat().getName());
-            vacancyCache.setEmploymentForm(vacancy.getEmployment().getName());
-
-            vacancyCache.setSalary(vacancy.getSalaryFrom() != null ? vacancy.getSalaryTo() != null ?
-                    vacancy.getSalaryFrom() + "-" + vacancy.getSalaryTo() + " " + vacancy.getCurrency().getAbbr() :
-                    vacancy.getSalaryFrom().toString() + " " + vacancy.getCurrency().getAbbr() : "Не указано");
-
-            cacheService.save(vacancyCache.getId(), vacancyCache.getSource(), stack, vacancyCache.getName(),
-                    vacancyCache.getSchedule(), vacancyCache.getEmploymentForm(), vacancyCache.getCity(),
-                    vacancyCache.getSalary());
-        }
-    }
+//    public void cacheFromDB(Stack stack) {
+//        List<Vacancy> vacancies = vacancyRepository.findByStack(stack);
+//        for (Vacancy vacancy : vacancies) {
+//            VacancyCache vacancyCache = new VacancyCache();
+//            vacancyCache.setId("ih_" + vacancy.getId());
+//            vacancyCache.setSource(VacancySource.INTERNHUB);
+//            vacancyCache.setName(vacancy.getTitle());
+//            vacancyCache.setCity(vacancy.getCity());
+//            vacancyCache.setSchedule(vacancy.getWorkFormat().getName());
+//            vacancyCache.setEmploymentForm(vacancy.getEmployment().getName());
+//
+//            vacancyCache.setSalary(vacancy.getSalaryFrom() != null ? vacancy.getSalaryTo() != null ?
+//                    vacancy.getSalaryFrom() + "-" + vacancy.getSalaryTo() + " " + vacancy.getCurrency().getAbbr() :
+//                    vacancy.getSalaryFrom().toString() + " " + vacancy.getCurrency().getAbbr() : "Не указано");
+//
+//            cacheService.save(vacancyCache.getId(), vacancyCache.getSource(), stack, vacancyCache.getName(),
+//                    vacancyCache.getSchedule(), vacancyCache.getEmploymentForm(), vacancyCache.getCity(),
+//                    vacancyCache.getSalary());
+//        }
+//    }
 }
