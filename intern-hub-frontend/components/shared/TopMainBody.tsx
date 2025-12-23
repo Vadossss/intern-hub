@@ -29,16 +29,16 @@ export const TopMainBody: React.FC<Props> = ({ className }) => {
           <div className="">
             <h1 className="text-3xl font-bold lg:text-5xl text-gray-900 mb-5">
               Найди свою первую
-              <span className="text-blue-600"> стажировку</span>
+              <span className="text-blue-600"> работу</span>
             </h1>
-            <p className="text-gray-700 text-lg mb-8">
+            {/* <p className="text-gray-700 text-lg mb-8">
               Присоединяйся к ведущим компаниям России и получи опыт работы в
               своей области. Более 500+ активных стажировок ждут тебя.
-            </p>
+            </p> */}
 
-            <div className="bg-white shadow-md rounded-xl p-5">
+            {/* <div className="bg-white shadow-md rounded-xl p-5">
               <SearchInput />
-            </div>
+            </div> */}
 
             <div className="grid grid-cols-3 gap-5 sm:gap-8 mt-8">
               <div className="text-center bg-white rounded-xl shadow-md p-3">
@@ -74,9 +74,9 @@ export const TopMainBody: React.FC<Props> = ({ className }) => {
               alt="MainBody"
             />
           </div>
-          <div>
+          {/* <div>
             <TextEditor />
-            {/* <ReactEditorJS
+            <ReactEditorJS
               tools={EDITOR_JS_TOOLS}
               onInitialize={handleInitialize}
             />
@@ -85,8 +85,8 @@ export const TopMainBody: React.FC<Props> = ({ className }) => {
               className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
               Сохранить
-            </button> */}
-          </div>
+            </button>
+          </div> */}
         </div>
       </div>
     </section>
