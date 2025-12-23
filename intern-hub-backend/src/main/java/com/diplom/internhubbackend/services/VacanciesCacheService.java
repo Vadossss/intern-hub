@@ -1,11 +1,11 @@
 package com.diplom.internhubbackend.services;
 
 import com.diplom.internhubbackend.models.Stack;
+import com.diplom.internhubbackend.models.Vacancy;
 import com.diplom.internhubbackend.models.VacancyCache;
 import com.diplom.internhubbackend.models.dto.FilterParams;
-import com.diplom.internhubbackend.models.enums.PositionsEnum;
 import com.diplom.internhubbackend.models.enums.VacancySource;
-import com.diplom.internhubbackend.repositories.VacanciesCacheRepository;
+import com.diplom.internhubbackend.repositories.VacancyRepository;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,11 +20,13 @@ import java.util.stream.Collectors;
 @Slf4j
 @RequiredArgsConstructor
 public class VacanciesCacheService {
-    private final VacanciesCacheRepository repository;
     private final RedisTemplate<String, VacancyCache> redisTemplate;
 
     private static final String INTERNSHIP_HASH = "vacancy";
     private static final String SEARCH_INDEX = "vacancyIdx";
+
+    private final VacancyRepository vacancyRepository;
+    private final VacanciesCacheService cacheService;
 
     @PostConstruct
     public void init() {
@@ -176,6 +178,7 @@ public class VacanciesCacheService {
             int limit = params.getSize() != null ? params.getSize() : 50;
             int offset = params.getPage() != null ? params.getPage() * limit : 0;
 
+
             List<Object> result = redisTemplate.execute((RedisCallback<List<Object>>) connection ->
                     (List<Object>) connection.execute(
                             "FT.SEARCH",
@@ -184,7 +187,18 @@ public class VacanciesCacheService {
                             "LIMIT".getBytes(),
                             String.valueOf(offset).getBytes(),
                             String.valueOf(limit).getBytes()
-                    ));
+                    )
+            );
+
+//            List<Object> result = redisTemplate.execute((RedisCallback<List<Object>>) connection ->
+//                    (List<Object>) connection.execute(
+//                            "FT.SEARCH",
+//                            SEARCH_INDEX.getBytes(),
+//                            query.getBytes(),
+//                            "LIMIT".getBytes(),
+//                            String.valueOf(offset).getBytes(),
+//                            String.valueOf(limit).getBytes()
+//                    ));
 
             if (result == null || result.size() < 2) {
                 return Collections.emptyList();
@@ -464,4 +478,25 @@ public class VacanciesCacheService {
 //    public Iterable<InternshipCache> getAll() {
 //        return repository.findAll();
 //    }
+
+    public void cacheFromDB(Stack stack) {
+        List<Vacancy> vacancies = vacancyRepository.findByStack(stack);
+        for (Vacancy vacancy : vacancies) {
+            VacancyCache vacancyCache = new VacancyCache();
+            vacancyCache.setId("ih_" + vacancy.getId());
+            vacancyCache.setSource(VacancySource.INTERNHUB);
+            vacancyCache.setName(vacancy.getTitle());
+            vacancyCache.setCity(vacancy.getCity());
+            vacancyCache.setSchedule(vacancy.getWorkFormat().getName());
+            vacancyCache.setEmploymentForm(vacancy.getEmployment().getName());
+
+            vacancyCache.setSalary(vacancy.getSalaryFrom() != null ? vacancy.getSalaryTo() != null ?
+                    vacancy.getSalaryFrom() + "-" + vacancy.getSalaryTo() + " " + vacancy.getCurrency().getAbbr() :
+                    vacancy.getSalaryFrom().toString() + " " + vacancy.getCurrency().getAbbr() : "Не указано");
+
+            cacheService.save(vacancyCache.getId(), vacancyCache.getSource(), stack, vacancyCache.getName(),
+                    vacancyCache.getSchedule(), vacancyCache.getEmploymentForm(), vacancyCache.getCity(),
+                    vacancyCache.getSalary());
+        }
+    }
 }
