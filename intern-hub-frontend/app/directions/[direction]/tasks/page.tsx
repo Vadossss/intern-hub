@@ -1,0 +1,63 @@
+"use client";
+
+import { useParams } from "next/navigation";
+import { Direction } from "@/components/shared/DirectionSelector";
+import { TasksSection } from "@/components/shared/TasksSection";
+// import { mockTasks } from "@/components/shared/mockData";
+import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+
+const directionNames: Record<Direction, string> = {
+  java: "Java",
+  javascript: "JavaScript",
+  python: "Python",
+  csharp: "C#",
+  go: "Go",
+  rust: "Rust",
+  php: "PHP",
+  kotlin: "Kotlin",
+};
+
+export default function TasksPage() {
+  const params = useParams();
+  const direction = params.direction as Direction;
+
+  if (!direction || !directionNames[direction]) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Направление не найдено</h1>
+          <Link href="/">
+            <Button>Вернуться на главную</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen">
+      <div className="bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 py-8 border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <Link href={`/directions/${direction}`}>
+            <Button variant="ghost" className="mb-4">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Назад к разделам
+            </Button>
+          </Link>
+          <h1 className="text-4xl font-bold text-gray-900">
+            Текстовые задания - {directionNames[direction]}
+          </h1>
+          <p className="text-lg text-gray-600 mt-2">
+            Практические задания для отработки навыков
+          </p>
+        </div>
+      </div>
+
+      {/* <div className="py-12 bg-white">
+        <TasksSection tasks={mockTasks} selectedDirection={direction} />
+      </div> */}
+    </div>
+  );
+}
