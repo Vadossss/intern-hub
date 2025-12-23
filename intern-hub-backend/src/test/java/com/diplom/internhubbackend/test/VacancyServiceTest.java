@@ -2,7 +2,6 @@ package com.diplom.internhubbackend.test;
 
 import com.diplom.internhubbackend.models.*;
 import com.diplom.internhubbackend.models.enums.VacancySource;
-import com.diplom.internhubbackend.repositories.StackRepository;
 import com.diplom.internhubbackend.repositories.VacancyRepository;
 import com.diplom.internhubbackend.services.CustomUserDetailsService;
 import com.diplom.internhubbackend.services.VacanciesCacheService;
