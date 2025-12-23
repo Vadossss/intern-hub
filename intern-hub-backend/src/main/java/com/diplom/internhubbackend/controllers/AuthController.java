@@ -57,6 +57,11 @@ public class AuthController {
                 .body(tokensCookieDto.getAccessTokenCookie().getValue());
     }
 
+    @GetMapping("/validateToken")
+    public ResponseEntity<Object> validateToken(HttpServletRequest request) {
+        return ResponseEntity.ok().body(authService.validateToken(request));
+    }
+
     @PostMapping("/updateRefreshToken")
     public ResponseEntity<Object> updateRefreshToken(HttpServletRequest request) {
         TokensCookieDto tokensCookieDto = authService.updateRefreshToken(request);
