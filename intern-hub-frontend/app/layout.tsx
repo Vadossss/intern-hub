@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Geist, Nunito } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/shared/Header";
+import { AuthProvider } from "@/lib/auth/AuthProvider";
 
 const nunito = Nunito({
   subsets: ["cyrillic"],
@@ -32,9 +33,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${nunito.className} ${geistSans.variable} antialiased`}>
-        <Header />
-        {children}
+      <body
+        className={`${nunito.className} ${geistSans.variable} antialiased bg-gradient-to-br from-violet-50 via-purple-50 to-indigo-50`}
+      >
+        <AuthProvider>
+          <Header />
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );
