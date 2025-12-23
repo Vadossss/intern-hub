@@ -39,9 +39,8 @@ public class VacancyService {
 
     public ResponseEntity<Object> createVacancy(Vacancy vacancy) {
         vacancy.setEmployer(customUserDetailsService.getCurrentUser());
-        log.info("Vacancy: {}", customUserDetailsService.getCurrentUser().getId());
         vacancyRepository.save(vacancy);
-        return ResponseEntity.ok().body("Successfully created internship");
+        return ResponseEntity.ok().body("Successfully created vacancy");
     }
 
     @Scheduled(fixedDelay = 1000 * 60 * 30)
@@ -62,7 +61,7 @@ public class VacancyService {
         }
     }
 
-    private void cacheFromDB(Stack stack) {
+    public void cacheFromDB(Stack stack) {
         List<Vacancy> vacancies = vacancyRepository.findByStack(stack);
         for (Vacancy vacancy : vacancies) {
             VacancyCache vacancyCache = new VacancyCache();
