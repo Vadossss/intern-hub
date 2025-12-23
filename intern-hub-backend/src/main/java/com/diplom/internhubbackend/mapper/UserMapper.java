@@ -12,6 +12,6 @@ public class UserMapper {
     }
 
     private static User createUser(final UserRegisterDto userDto) {
-        return new User(userDto.getEmail(), userDto.getPhoneNumber(), userDto.getPassword());
+        return new User(userDto.getEmail(), userDto.getPassword());
     }
 }
