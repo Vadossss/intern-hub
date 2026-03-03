@@ -1,6 +1,5 @@
 package com.diplom.internhubbackend.models;
 
-import com.diplom.internhubbackend.models.enums.UserRole;
 import com.diplom.internhubbackend.models.enums.VerificationStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -29,7 +28,11 @@ public class User {
     private String password;
     private String city;
 
-    private UserRole role;
+    @ManyToOne
+    @JoinColumn(name = "role_id")
+    private Role role;
+
+//    private UserRole role;
 
     private Boolean verified;
     private VerificationStatus verificationStatus;
