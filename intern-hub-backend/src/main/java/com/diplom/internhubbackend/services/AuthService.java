@@ -2,10 +2,12 @@ package com.diplom.internhubbackend.services;
 
 import com.diplom.internhubbackend.exception.*;
 import com.diplom.internhubbackend.models.JwtPair;
+import com.diplom.internhubbackend.models.Role;
 import com.diplom.internhubbackend.models.User;
 import com.diplom.internhubbackend.models.dto.TokensCookieDto;
 import com.diplom.internhubbackend.models.dto.UserRegisterDto;
 import com.diplom.internhubbackend.models.enums.UserRole;
+import com.diplom.internhubbackend.repositories.RoleRepository;
 import com.diplom.internhubbackend.repositories.UserRepository;
 import com.diplom.internhubbackend.security.config.CustomUserDetails;
 import com.diplom.internhubbackend.security.jwt.JwtUtil;
@@ -24,12 +26,14 @@ public class AuthService {
     private final JwtUtil jwtUtil;
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     private final CustomUserDetailsService customUserDetailsService;
+    private final RoleRepository roleRepository;
 
-    public AuthService(UserRepository userRepository, AuthUtilService authUtilService, JwtUtil jwtUtil, CustomUserDetailsService customUserDetailsService) {
+    public AuthService(UserRepository userRepository, AuthUtilService authUtilService, JwtUtil jwtUtil, CustomUserDetailsService customUserDetailsService, RoleRepository roleRepository) {
         this.userRepository = userRepository;
         this.authUtilService = authUtilService;
         this.jwtUtil = jwtUtil;
         this.customUserDetailsService = customUserDetailsService;
+        this.roleRepository = roleRepository;
     }
 
     public TokensCookieDto registerUser(User user) {
@@ -43,7 +47,10 @@ public class AuthService {
 //        }
 
         user.setPassword(passwordEncoder.encode(user.getPassword()));
-        user.setRole(UserRole.STUDENT);
+        Role role = roleRepository.findById(UserRole.ROLE_USER.name())
+                .orElseThrow(() -> new RuntimeException("Role not found"));
+
+        user.setRole(role);
 
         userRepository.save(user);
         CustomUserDetails customUserDetails = customUserDetailsService.loadUserByUsername(user.getEmail());
