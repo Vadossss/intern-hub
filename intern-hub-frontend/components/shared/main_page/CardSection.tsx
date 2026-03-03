@@ -20,7 +20,7 @@ interface SectionProps {
   id: string;
   title: string;
   description: string;
-  icon: any;
+  icon: string;
   href: (dir: string | null) => string;
   color: string;
   iconColor: string;

@@ -1,10 +1,28 @@
 "use client";
 
-import { VacancieCard } from "@/components/shared/VacancieCard";
+import {
+  VacancieCard,
+  Area,
+  Salary,
+  Employer,
+  KeySkill,
+  WorkFormat,
+} from "@/components/shared/VacancieCard";
 import { useEffect, useState } from "react";
 
+interface Vacancy {
+  id: string;
+  name: string;
+  area: Area;
+  salary: Salary;
+  employer: Employer;
+  key_skills: KeySkill[];
+  work_format: WorkFormat;
+  alternate_url: string;
+}
+
 export default function JobPage() {
-  const [vacancies, setVacancies] = useState([]);
+  const [vacancies, setVacancies] = useState<Vacancy[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {

@@ -11,36 +11,36 @@ import { Badge } from "../ui/badge";
 import { BriefcaseBusiness, Wallet } from "lucide-react";
 import Link from "next/link";
 
-type Area = {
+export type Area = {
   id: number;
   name: string;
   url: string;
 };
 
-type Salary = {
+export type Salary = {
   from: number;
   to: number;
   currency: string;
 };
 
-type Employer = {
+export type LogoUrl = {
+  original: string;
+  logo90: string;
+  logo240: string;
+};
+
+export type Employer = {
   name: string;
   alternate_url: string;
   logo_urls: LogoUrl;
   vacancies_url: string;
 };
 
-type KeySkill = {
+export type KeySkill = {
   name: string;
 };
 
-type LogoUrl = {
-  original: string;
-  logo90: string;
-  logo240: string;
-};
-
-type WorkFormat = {
+export type WorkFormat = {
   id: "ON_SITE" | "REMOTE" | "HYBRID" | "FIELD_WORK" | "FLY_IN_FLY_OUT";
 };
 

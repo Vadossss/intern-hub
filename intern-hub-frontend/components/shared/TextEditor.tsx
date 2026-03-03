@@ -64,7 +64,7 @@ function MenuBar({ editor }: { editor: Editor }) {
   );
 }
 
-export default () => {
+export default function TextEditor() {
   const editor = useEditor({
     extensions,
     content: `
@@ -83,4 +83,4 @@ export default () => {
       </div>
     </div>
   );
-};
+}
