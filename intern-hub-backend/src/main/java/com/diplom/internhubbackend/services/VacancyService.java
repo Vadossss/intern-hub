@@ -71,6 +71,7 @@ public class VacancyService {
             vacancyCache.setCity(vacancy.getCity());
             vacancyCache.setSchedule(vacancy.getWorkFormat().getName());
             vacancyCache.setEmploymentForm(vacancy.getEmployment().getName());
+            vacancyCache.setPosition(stack.getName());
 
             vacancyCache.setSalary(vacancy.getSalaryFrom() != null ? vacancy.getSalaryTo() != null ?
                     vacancy.getSalaryFrom() + "-" + vacancy.getSalaryTo() + " " + vacancy.getCurrency().getAbbr() :
@@ -79,6 +80,7 @@ public class VacancyService {
             cacheService.save(vacancyCache.getId(), vacancyCache.getSource(), stack, vacancyCache.getName(),
                     vacancyCache.getSchedule(), vacancyCache.getEmploymentForm(), vacancyCache.getCity(),
                     vacancyCache.getSalary());
+            cacheService.save(vacancyCache);
         }
     }
 
@@ -106,32 +108,34 @@ public class VacancyService {
 
                 for (JsonNode item : items) {
 
-                    VacancyCache internship = new VacancyCache();
-                    internship.setId("hh_" + item.path("id").asText(""));
-                    internship.setSource(VacancySource.HH);
-                    internship.setName(item.path("name").asText(""));
-                    internship.setCity(item.path("area").path("name").asText(""));
-                    internship.setSchedule(item.path("schedule").path("name").asText(""));
-                    internship.setEmploymentForm(item.path("employment").path("name").asText(""));
+                    VacancyCache vacancyCache = new VacancyCache();
+                    vacancyCache.setId("hh_" + item.path("id").asText(""));
+                    vacancyCache.setSource(VacancySource.HH);
+                    vacancyCache.setName(item.path("name").asText(""));
+                    vacancyCache.setCity(item.path("area").path("name").asText(""));
+                    vacancyCache.setSchedule(item.path("schedule").path("name").asText(""));
+                    vacancyCache.setEmploymentForm(item.path("employment").path("name").asText(""));
+                    vacancyCache.setPosition(stack.getName());
 
                     JsonNode salary = item.path("salary");
-                    internship.setSalary(
+                    vacancyCache.setSalary(
                             salary.isNull()
                                     ? "Не указана"
                                     : salary.path("to").isNull()
                                     ? salary.path("from").asText("") + " " + salary.path("currency").asText("")
                                     : salary.path("from").asText("") + " - " + salary.path("to").asText("") + " " + salary.path("currency").asText("")
                     );
+                    cacheService.save(vacancyCache);
 
                     cacheService.save(
-                            internship.getId(),
-                            internship.getSource(),
+                            vacancyCache.getId(),
+                            vacancyCache.getSource(),
                             stack,
-                            internship.getName(),
-                            internship.getSchedule(),
-                            internship.getEmploymentForm(),
-                            internship.getCity(),
-                            internship.getSalary()
+                            vacancyCache.getName(),
+                            vacancyCache.getSchedule(),
+                            vacancyCache.getEmploymentForm(),
+                            vacancyCache.getCity(),
+                            vacancyCache.getSalary()
                     );
                 }
 
@@ -169,33 +173,36 @@ public class VacancyService {
 
                 for (JsonNode item : items) {
 
-                    VacancyCache internship = new VacancyCache();
-                    internship.setId("sj_" + item.path("id").asText(""));
-                    internship.setSource(VacancySource.SUPERJOB);
-                    internship.setName(item.path("profession").asText(""));
-                    internship.setCity(item.path("town").path("title").asText(""));
-                    internship.setSchedule(item.path("type_of_work").path("title").asText(""));
-                    internship.setEmploymentForm(item.path("place_of_work").path("title").asText(""));
+                    VacancyCache vacancyCache = new VacancyCache();
+                    vacancyCache.setId("sj_" + item.path("id").asText(""));
+                    vacancyCache.setSource(VacancySource.SUPERJOB);
+                    vacancyCache.setName(item.path("profession").asText(""));
+                    vacancyCache.setCity(item.path("town").path("title").asText(""));
+                    vacancyCache.setSchedule(item.path("type_of_work").path("title").asText(""));
+                    vacancyCache.setEmploymentForm(item.path("place_of_work").path("title").asText(""));
+                    vacancyCache.setPosition(stack.getName());
 
                     int from = item.path("payment_from").asInt(0);
                     int to = item.path("payment_to").asInt(0);
                     String currency = item.path("currency").asText("");
 
-                    internship.setSalary(
+                    vacancyCache.setSalary(
                             (from == 0 && to == 0)
                                     ? "Не указана"
                                     : from + " - " + to + " " + currency
                     );
 
+                    cacheService.save(vacancyCache);
+
                     cacheService.save(
-                            internship.getId(),
-                            internship.getSource(),
+                            vacancyCache.getId(),
+                            vacancyCache.getSource(),
                             stack,
-                            internship.getName(),
-                            internship.getSchedule(),
-                            internship.getEmploymentForm(),
-                            internship.getCity(),
-                            internship.getSalary()
+                            vacancyCache.getName(),
+                            vacancyCache.getSchedule(),
+                            vacancyCache.getEmploymentForm(),
+                            vacancyCache.getCity(),
+                            vacancyCache.getSalary()
                     );
                 }
 

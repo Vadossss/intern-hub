@@ -2,18 +2,25 @@ package com.diplom.internhubbackend.controllers;
 
 import com.diplom.internhubbackend.mapper.VacancyMapper;
 import com.diplom.internhubbackend.models.VacancyCache;
+import com.diplom.internhubbackend.models.dto.CityResponseDto;
 import com.diplom.internhubbackend.models.dto.FilterParams;
 import com.diplom.internhubbackend.models.dto.NewVacancyDto;
 import com.diplom.internhubbackend.models.dto.PageResponse;
 import com.diplom.internhubbackend.models.enums.VacancySource;
+import com.diplom.internhubbackend.services.CustomUserDetailsService;
 import com.diplom.internhubbackend.services.VacancyService;
 import com.diplom.internhubbackend.services.VacanciesCacheService;
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.annotation.security.DeclareRoles;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.annotation.Secured;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/vacancy")
 public class VacancyController {
@@ -21,16 +28,20 @@ public class VacancyController {
     private final VacancyService vacancyService;
     private final VacanciesCacheService vacanciesCacheService;
     private final VacancyMapper vacancyMapper;
+    private final CustomUserDetailsService customUserDetailsService;
 
     public VacancyController(VacancyService vacancyService, VacanciesCacheService vacanciesCacheService,
-                             VacancyMapper vacancyMapper) {
+                             VacancyMapper vacancyMapper, CustomUserDetailsService customUserDetailsService) {
         this.vacancyService = vacancyService;
         this.vacanciesCacheService = vacanciesCacheService;
         this.vacancyMapper = vacancyMapper;
+        this.customUserDetailsService = customUserDetailsService;
     }
 
+    @PreAuthorize("hasAuthority('ROLE_EMPLOYER')")
     @PostMapping("/createVacancy")
     public ResponseEntity<Object> createInternship(@RequestBody NewVacancyDto vacancyRequest) {
+        log.info(customUserDetailsService.getCurrentUser().getRole().getId());
         return vacancyService.createVacancy(vacancyMapper.fromDto(vacancyRequest));
     }
 
@@ -72,6 +83,7 @@ public class VacancyController {
         filterParams.setSortDirection(sortDirection);
 
         List<VacancyCache> results = vacanciesCacheService.searchWithRediSearch(filterParams);
+        log.info("Вакансий: " + results.size());
 
         int fromIndex = filterParams.getPage() != null ? filterParams.getPage() * filterParams.getSize() : 0;
         int pageSize = filterParams.getSize() != null ? filterParams.getSize() : results.size();
