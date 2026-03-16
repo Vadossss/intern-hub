@@ -1,5 +1,6 @@
 package com.diplom.internhubbackend.services;
 
+import com.diplom.internhubbackend.exception.UserNotFoundException;
 import com.diplom.internhubbackend.models.Role;
 import com.diplom.internhubbackend.models.User;
 import com.diplom.internhubbackend.dto.hh.HhEmployerEntity;
@@ -8,6 +9,7 @@ import com.diplom.internhubbackend.repositories.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -37,5 +39,10 @@ public class UserService {
             }
             return null;
         }));
+    }
+
+    @Cacheable(value = "user", key = "#id")
+    public User getUserById(Integer id) {
+        return userRepository.findById(id).orElseThrow(() -> new UserNotFoundException("User not found"));
     }
 }
