@@ -10,6 +10,7 @@ public class CacheConfig {
     @Bean
     public CacheManager cacheManager() {
         return new ConcurrentMapCacheManager("role", "stacks", "workFormat",
-                "keySkills", "experience", "employment", "vacancySource", "currency", "vacancy");
+                "keySkills", "experience", "employment", "vacancySource", "currency",
+                "vacancy", "user");
     }
 }
