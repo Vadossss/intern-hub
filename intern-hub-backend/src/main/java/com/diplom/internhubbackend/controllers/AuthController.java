@@ -1,16 +1,17 @@
 package com.diplom.internhubbackend.controllers;
 
 import com.diplom.internhubbackend.mapper.UserMapper;
-import com.diplom.internhubbackend.models.dto.TokensCookieDto;
-import com.diplom.internhubbackend.models.dto.UserRegisterDto;
+import com.diplom.internhubbackend.dto.TokensCookieDto;
+import com.diplom.internhubbackend.dto.UserRegisterDto;
 import com.diplom.internhubbackend.services.AuthService;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Encoders;
 import io.jsonwebtoken.security.Keys;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.hibernate.service.spi.ServiceException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.security.Key;
 
+@Slf4j
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
@@ -57,14 +59,12 @@ public class AuthController {
                 .body(tokensCookieDto.getAccessTokenCookie().getValue());
     }
 
-    @GetMapping("/validateToken")
-    public ResponseEntity<Object> validateToken(HttpServletRequest request) {
-        return ResponseEntity.ok().body(authService.validateToken(request));
-    }
-
     @PostMapping("/updateRefreshToken")
-    public ResponseEntity<Object> updateRefreshToken(HttpServletRequest request) {
-        TokensCookieDto tokensCookieDto = authService.updateRefreshToken(request);
+    public ResponseEntity<Object> updateRefreshToken(
+            @Parameter(hidden = true)
+            @CookieValue("refreshToken") String refreshToken
+    ) {
+        TokensCookieDto tokensCookieDto = authService.updateRefreshToken(refreshToken);
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, tokensCookieDto.getAccessTokenCookie().toString())
                 .header(HttpHeaders.SET_COOKIE, tokensCookieDto.getRefreshTokenCookie().toString())
