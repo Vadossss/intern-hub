@@ -21,7 +21,7 @@ import java.security.Key;
 
 @Slf4j
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/api/auth")
 public class AuthController {
     private final AuthService authService;
     private final UserMapper userMapper;

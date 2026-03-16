@@ -7,18 +7,16 @@ import com.diplom.internhubbackend.services.ApplicationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
+@RequestMapping("/api/vacancies")
 public class ApplicationController {
 
     private final ApplicationService applicationService;
 
-    @PostMapping("/api/vacancies/{publicVacancyId}/apply")
+    @PostMapping("/{publicVacancyId}/apply")
     @ResponseStatus(HttpStatus.CREATED)
     public ApplicationDto apply(
             @AuthenticationPrincipal CustomUserDetails customUserDetails,
