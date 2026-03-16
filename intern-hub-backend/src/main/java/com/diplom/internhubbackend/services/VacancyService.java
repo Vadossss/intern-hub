@@ -1,217 +1,271 @@
 package com.diplom.internhubbackend.services;
 
+import com.diplom.internhubbackend.dto.NewVacancyDto;
+import com.diplom.internhubbackend.exception.TokenGenerationException;
+import com.diplom.internhubbackend.exception.VacancyNotFoundException;
+import com.diplom.internhubbackend.mapper.ApplicationMapper;
+import com.diplom.internhubbackend.mapper.VacancyMapper;
 import com.diplom.internhubbackend.models.*;
-import com.diplom.internhubbackend.models.enums.VacancySource;
-import com.diplom.internhubbackend.repositories.StackRepository;
+import com.diplom.internhubbackend.models.VacancySource;
+import com.diplom.internhubbackend.dto.FilterParams;
+import com.diplom.internhubbackend.dto.VacancyResponseDto;
+import com.diplom.internhubbackend.dto.hh.HhItemVacancy;
+import com.diplom.internhubbackend.dto.hh.HhVacancyListResponse;
+import com.diplom.internhubbackend.dto.hh.HhKeySkill;
 import com.diplom.internhubbackend.repositories.VacancyRepository;
-import com.diplom.internhubbackend.repositories.KeySkillRepository;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.diplom.internhubbackend.repositories.ApplicationRepository;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.TypedQuery;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.util.retry.Retry;
 
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class VacancyService {
+
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    private final WebClient webClient;
+
     private final VacancyRepository vacancyRepository;
     private final RestClient defaultRestClient = RestClient.create();
-    private final VacanciesCacheService cacheService;
-    private final CustomUserDetailsService customUserDetailsService;
-    private final StackRepository stackRepository;
+    private final KeySkillService keySkillService;
+    private final HhAggregationService hhAggregationService;
+    private final VacancySourceService vacancySourceService;
+    private final VacancyMapper vacancyMapper;
+    private final ApplicationRepository applicationRepository;
+    private final ApplicationMapper applicationMapper;
 
-    public VacancyService(VacancyRepository vacancyRepository, VacanciesCacheService cacheService,
-                          CustomUserDetailsService customUserDetailsService, StackRepository stackRepository) {
-        this.vacancyRepository = vacancyRepository;
-        this.cacheService = cacheService;
-        this.customUserDetailsService = customUserDetailsService;
-        this.stackRepository = stackRepository;
+
+    @Transactional(readOnly = true)
+    @Cacheable(value = "vacancy", key = "#publicId")
+    public Vacancy getVacancy(String publicId) {
+        Vacancy vacancy = vacancyRepository.findByPublicId(publicId.toLowerCase()).orElseThrow(() ->
+                new VacancyNotFoundException("Vacancy not found"));
+
+        if (vacancy.getDescription() == null) {
+            VacancySource vacancySource = vacancySourceService
+                    .getVacancySourceByCode(vacancy.getSource().getCode());
+            if (vacancySource != null) {
+
+                HhVacancy hhVacancy = webClient.get()
+                        .uri("/vacancies/{id}", vacancy.getExternalId())
+                        .retrieve()
+                        .bodyToMono(HhVacancy.class)
+                        .block();
+                if (hhVacancy == null) {
+                    return vacancy;
+                }
+                vacancy.setDescription(hhVacancy.description());
+
+                vacancy.setSkills(keySkillService.parseAndSaveKeySkills(hhVacancy.keySkills));
+
+                vacancyRepository.save(vacancy);
+
+                return vacancy;
+            }
+            return vacancy;
+        }
+        return vacancy;
     }
 
-    public Vacancy getVacancy(Integer id) {
-        return vacancyRepository.findById(id).orElse(null);
+    public Page<VacancyResponseDto> getVacanciesByParams(FilterParams params) {
+
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        CriteriaQuery<Vacancy> query = cb.createQuery(Vacancy.class);
+        Root<Vacancy> root = query.from(Vacancy.class);
+
+        List<Predicate> predicates = new ArrayList<>();
+
+        if (params.getSource() != null && !params.getSource().isEmpty()) {
+            predicates.add(root.get("source").in(params.getSource()));
+        }
+
+        if (params.getCity() != null) {
+            predicates.add(cb.equal(root.get("city"), params.getCity()));
+        }
+
+        if (params.getStatus() != null) {
+            predicates.add(cb.equal(root.get("status"), params.getStatus()));
+        }
+
+        if (params.getStack() != null) {
+            predicates.add(cb.equal(root.get("stack"), params.getStack()));
+        }
+
+        if (params.getSalaryMin() != null) {
+            predicates.add(cb.greaterThanOrEqualTo(root.get("salaryFrom"), params.getSalaryMin()));
+        }
+
+        if (params.getSalaryMax() != null) {
+            predicates.add(cb.lessThanOrEqualTo(root.get("salaryTo"), params.getSalaryMax()));
+        }
+
+        query.where(cb.and(predicates.toArray(new Predicate[0])));
+
+        // сортировка
+//        if ("asc".equalsIgnoreCase(params.getSortDirection())) {
+//            query.orderBy(cb.asc(root.get(params.getSortBy())));
+//        } else {
+//            query.orderBy(cb.desc(root.get(params.getSortBy())));
+//        }
+
+
+        query.where(cb.and(predicates.toArray(new Predicate[0])));
+        query.orderBy(cb.asc(root.get("title"))); // сортировка по существующему полю
+
+        TypedQuery<Vacancy> typedQuery = entityManager.createQuery(query);
+        typedQuery.setFirstResult(params.getPage() * params.getSize());
+        typedQuery.setMaxResults(params.getSize());
+        List<Vacancy> content = typedQuery.getResultList();
+
+        List<VacancyResponseDto> vacancies = vacancyMapper.toDto(content);
+
+        CriteriaQuery<Long> countQuery = cb.createQuery(Long.class);
+        Root<Vacancy> countRoot = countQuery.from(Vacancy.class);
+
+        List<Predicate> countPredicates = new ArrayList<>();
+        if (params.getCity() != null) {
+            countPredicates.add(cb.equal(countRoot.get("city"), params.getCity()));
+        }
+
+        if (params.getSource() != null && !params.getSource().isEmpty()) {
+            countPredicates.add(countRoot.get("source").in(params.getSource()));
+        }
+
+        if (params.getCity() != null) {
+            countPredicates.add(cb.equal(countRoot.get("city"), params.getCity()));
+        }
+
+        if (params.getStatus() != null) {
+            countPredicates.add(cb.equal(countRoot.get("status"), params.getStatus()));
+        }
+
+        if (params.getStack() != null) {
+            countPredicates.add(cb.equal(countRoot.get("stack"), params.getStack()));
+        }
+
+        if (params.getSalaryMin() != null) {
+            countPredicates.add(cb.greaterThanOrEqualTo(countRoot.get("salaryFrom"), params.getSalaryMin()));
+        }
+
+        if (params.getSalaryMax() != null) {
+            countPredicates.add(cb.lessThanOrEqualTo(countRoot.get("salaryTo"), params.getSalaryMax()));
+        }
+
+        countQuery.select(cb.count(countRoot));
+        countQuery.where(cb.and(countPredicates.toArray(new Predicate[0])));
+
+        Long total = entityManager.createQuery(countQuery).getSingleResult();
+
+        return new PageImpl<>(vacancies, PageRequest.of(params.getPage(), params.getSize()), total);
     }
 
-    public ResponseEntity<Object> createVacancy(Vacancy vacancy) {
-        vacancy.setEmployer(customUserDetailsService.getCurrentUser());
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record HhVacancy(
+            String id,
+            String description,
+            @JsonProperty("key_skills") List<HhKeySkill> keySkills
+    ) {
+    }
+
+    public Vacancy getActiveVacancy(String publicId) {
+        return vacancyRepository.findActiveVacancyByPublicId(publicId).orElse(null);
+    }
+
+    public ResponseEntity<Object> createVacancy(User user, NewVacancyDto newVacancy){
+        Vacancy vacancy = vacancyMapper.fromDto(newVacancy);
+        vacancy.setEmployer(user);
+
+        Vacancy finalVacancy = vacancy;
+        vacancy.setContacts(newVacancy.getContactsList().stream().map(contact ->
+                VacancyContact
+                        .builder()
+                        .vacancy(finalVacancy)
+                        .method(contact.chosenContactMethod())
+                        .value(contact.contactValue())
+                        .hint(contact.hint())
+                        .build()
+        ).collect(Collectors.toList()));
+
+        vacancy = vacancyRepository.save(vacancy);
+        vacancy.setPublicId(vacancy.getSource().getCode().toLowerCase() + "_" + vacancy.getId());
+
+
         vacancyRepository.save(vacancy);
         return ResponseEntity.ok().body("Successfully created vacancy");
     }
 
-    @Scheduled(fixedDelay = 1000 * 60 * 30)
-//    @Async
-    public void cacheAllInternshipsParallel() {
-        List<Stack> stacks = stackRepository.findAll();
-        for (Stack stack : stacks) {
-            CompletableFuture<Void> hhFuture =
-                    CompletableFuture.runAsync(() -> cacheFromHh(stack));
+    public void fetchAndSave(Stack stack) {
 
-            CompletableFuture<Void> sjFuture =
-                    CompletableFuture.runAsync(() -> cacheFromSuperJob(stack));
+        VacancySource vacancySource = vacancySourceService.getVacancySourceByCode("HH");
 
-            CompletableFuture<Void> ihFuture =
-                    CompletableFuture.runAsync(() -> cacheFromDB(stack));
+        if (vacancySource != null && vacancySource.isActive()) {
 
-            CompletableFuture.allOf(hhFuture, sjFuture, ihFuture).join();
-        }
-    }
+            int page = 0;
 
-    public void cacheFromDB(Stack stack) {
-        List<Vacancy> vacancies = vacancyRepository.findByStack(stack);
-        for (Vacancy vacancy : vacancies) {
-            VacancyCache vacancyCache = new VacancyCache();
-            vacancyCache.setId("ih_" + vacancy.getId());
-            vacancyCache.setSource(VacancySource.INTERNHUB);
-            vacancyCache.setName(vacancy.getTitle());
-            vacancyCache.setCity(vacancy.getCity());
-            vacancyCache.setSchedule(vacancy.getWorkFormat().getName());
-            vacancyCache.setEmploymentForm(vacancy.getEmployment().getName());
-            vacancyCache.setPosition(stack.getName());
+            while (true) {
+                try {
+                    int finalPage = page;
+                    HhVacancyListResponse response = webClient.get()
+                            .uri(uriBuilder -> uriBuilder
+                                    .path("/vacancies")
+                                    .queryParam("text", stack.getSearchQuery())
+                                    .queryParam("vacancy_search_fields", "name")
+                                    .queryParam("per_page", "100")
+                                    .queryParam("page", finalPage)
+                                    .build())
+                            .retrieve()
+                            .bodyToMono(HhVacancyListResponse.class)
+                            .timeout(Duration.ofSeconds(10))
+                            .retryWhen(Retry.fixedDelay(3, Duration.ofSeconds(2)))
+                            .block();
 
-            vacancyCache.setSalary(vacancy.getSalaryFrom() != null ? vacancy.getSalaryTo() != null ?
-                    vacancy.getSalaryFrom() + "-" + vacancy.getSalaryTo() + " " + vacancy.getCurrency().getAbbr() :
-                    vacancy.getSalaryFrom().toString() + " " + vacancy.getCurrency().getAbbr() : "Не указано");
+                    if (response == null || response.items() == null || response.items().isEmpty()) {
+                        break;
+                    }
 
-            cacheService.save(vacancyCache.getId(), vacancyCache.getSource(), stack, vacancyCache.getName(),
-                    vacancyCache.getSchedule(), vacancyCache.getEmploymentForm(), vacancyCache.getCity(),
-                    vacancyCache.getSalary());
-            cacheService.save(vacancyCache);
-        }
-    }
+                    log.info("Сохранено {} вакансий", response.items().size());
 
-    private void cacheFromHh(Stack stack) {
+                    for (HhItemVacancy item : response.items()) {
+                        try {
+                            hhAggregationService.saveVacancy(item, vacancySource, stack).join();
+                        } catch (Exception e) {
+                            log.error("Ошибка при получении вакансии", e);
+                        }
+                    }
 
-        ObjectMapper mapper = new ObjectMapper();
-        int page = 0;
-
-        while (true) {
-
-            String response = defaultRestClient.get()
-                    .uri(String.format(
-                            "https://api.hh.ru/vacancies?text=%s&vacancy_search_fields=name&per_page=100&page=%d",
-                            stack.getSearchQuery(), page
-                    ))
-                    .retrieve()
-                    .body(String.class);
-
-            try {
-                JsonNode root = mapper.readTree(response);
-                JsonNode items = root.path("items");
-                int pages = root.path("pages").asInt(0);
-
-                if (!items.isArray() || items.size() == 0) break;
-
-                for (JsonNode item : items) {
-
-                    VacancyCache vacancyCache = new VacancyCache();
-                    vacancyCache.setId("hh_" + item.path("id").asText(""));
-                    vacancyCache.setSource(VacancySource.HH);
-                    vacancyCache.setName(item.path("name").asText(""));
-                    vacancyCache.setCity(item.path("area").path("name").asText(""));
-                    vacancyCache.setSchedule(item.path("schedule").path("name").asText(""));
-                    vacancyCache.setEmploymentForm(item.path("employment").path("name").asText(""));
-                    vacancyCache.setPosition(stack.getName());
-
-                    JsonNode salary = item.path("salary");
-                    vacancyCache.setSalary(
-                            salary.isNull()
-                                    ? "Не указана"
-                                    : salary.path("to").isNull()
-                                    ? salary.path("from").asText("") + " " + salary.path("currency").asText("")
-                                    : salary.path("from").asText("") + " - " + salary.path("to").asText("") + " " + salary.path("currency").asText("")
-                    );
-                    cacheService.save(vacancyCache);
-
-                    cacheService.save(
-                            vacancyCache.getId(),
-                            vacancyCache.getSource(),
-                            stack,
-                            vacancyCache.getName(),
-                            vacancyCache.getSchedule(),
-                            vacancyCache.getEmploymentForm(),
-                            vacancyCache.getCity(),
-                            vacancyCache.getSalary()
-                    );
+                    page++;
+                    if (page >= response.pages()) break;
+                } catch (Exception e) {
+                    throw new TokenGenerationException("Ошибка при получении токена: " + e);
                 }
-
-                page++;
-                if (page >= pages) break;
-
-            } catch (Exception e) {
-                throw new RuntimeException("Ошибка HH", e);
             }
         }
     }
 
-    private void cacheFromSuperJob(Stack stack) {
-
-        ObjectMapper mapper = new ObjectMapper();
-        int page = 0;
-
-        while (true) {
-
-            String response = defaultRestClient.get()
-                    .uri(String.format(
-                            "https://api.superjob.ru/2.0/vacancies/?keyword=%s&page=%d&count=100",
-                            stack.getName(), page
-                    ))
-                    .header("X-Api-App-Id", "v3.r.139494775.f8cc382c6607a8dc9c09242364d405c3fe433e64.4727dc0e17e4b7b6442cb4b384574c035e970d50")
-                    .retrieve()
-                    .body(String.class);
-
-            try {
-                JsonNode root = mapper.readTree(response);
-                JsonNode items = root.path("objects");
-                boolean hasMore = root.path("more").asBoolean(false);
-
-                if (!items.isArray() || items.size() == 0) break;
-
-                for (JsonNode item : items) {
-
-                    VacancyCache vacancyCache = new VacancyCache();
-                    vacancyCache.setId("sj_" + item.path("id").asText(""));
-                    vacancyCache.setSource(VacancySource.SUPERJOB);
-                    vacancyCache.setName(item.path("profession").asText(""));
-                    vacancyCache.setCity(item.path("town").path("title").asText(""));
-                    vacancyCache.setSchedule(item.path("type_of_work").path("title").asText(""));
-                    vacancyCache.setEmploymentForm(item.path("place_of_work").path("title").asText(""));
-                    vacancyCache.setPosition(stack.getName());
-
-                    int from = item.path("payment_from").asInt(0);
-                    int to = item.path("payment_to").asInt(0);
-                    String currency = item.path("currency").asText("");
-
-                    vacancyCache.setSalary(
-                            (from == 0 && to == 0)
-                                    ? "Не указана"
-                                    : from + " - " + to + " " + currency
-                    );
-
-                    cacheService.save(vacancyCache);
-
-                    cacheService.save(
-                            vacancyCache.getId(),
-                            vacancyCache.getSource(),
-                            stack,
-                            vacancyCache.getName(),
-                            vacancyCache.getSchedule(),
-                            vacancyCache.getEmploymentForm(),
-                            vacancyCache.getCity(),
-                            vacancyCache.getSalary()
-                    );
-                }
-
-                if (!hasMore) break;
-                page++;
-
-            } catch (Exception e) {
-                throw new RuntimeException("Ошибка SuperJob", e);
-            }
-        }
-    }
 }
