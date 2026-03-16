@@ -36,14 +36,6 @@ public class JwtFilter extends OncePerRequestFilter {
         String jwt = null;
         String username = null;
 
-//        String path = request.getRequestURI();
-//
-//        if (path.startsWith("/swagger-ui") || path.startsWith("/v3/api-docs")) {
-//            filterChain.doFilter(request, response);
-//            return;
-//        }
-
-
         if (request.getCookies() != null) {
             for (var cookie : request.getCookies()) {
                 if ("accessToken".equals(cookie.getName())) {
@@ -56,30 +48,35 @@ public class JwtFilter extends OncePerRequestFilter {
         if (Objects.nonNull(authorizationHeader) &&
                 authorizationHeader.startsWith("Bearer ")) {
             jwt = authorizationHeader.substring(7);
-//            username = jwtUtil.extractUsername(jwt);
+            username = jwtUtil.extractUsername(jwt);
         }
 
-        if (jwt != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+
+            UserDetails userDetails = customUserDetailsService.loadUserByUsername(username);
+
+
             try {
-                if (jwtUtil.validateToken(jwt)) {  // сначала проверяем валидность
-                    username = jwtUtil.extractUsername(jwt); // потом извлекаем username
-                    UserDetails userDetails = customUserDetailsService.loadUserByUsername(username);
+                if (jwtUtil.validateToken(jwt, userDetails)) {
 
                     UsernamePasswordAuthenticationToken authToken =
-                            new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                            new UsernamePasswordAuthenticationToken(
+                                    userDetails,
+                                    null,
+                                    userDetails.getAuthorities()
+                            );
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
             } catch (Exception ex) {
                 log.warn("JWT validation failed: {}", ex.getMessage());
-                // SecurityContext останется пустым → Spring Security вернёт 403
             }
         }
 
         if (Objects.nonNull(username) &&
                 SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = this.customUserDetailsService.loadUserByUsername(username);
-            boolean isTokenValidated = jwtUtil.validateToken(jwt);
+            boolean isTokenValidated = jwtUtil.validateToken(jwt, userDetails);
             if (isTokenValidated) {
                 UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken =
                         new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
@@ -87,9 +84,6 @@ public class JwtFilter extends OncePerRequestFilter {
                 SecurityContextHolder.getContext().setAuthentication(usernamePasswordAuthenticationToken);
             }
         }
-//        else {
-//            throw new BadCredentialsException("Bearer token not set correctly");
-//        }
         filterChain.doFilter(request, response);
     }
 }
