@@ -9,6 +9,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
     public class GlobalExceptionHandler {
 
+    @ExceptionHandler(VacancyNotFoundException.class)
+    public ResponseEntity<Object> handleVacancyExists(VacancyNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
+    }
+
     @ExceptionHandler(EmailAlreadyExistsException.class)
     public ResponseEntity<Object> handleEmailExists(EmailAlreadyExistsException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ex.getMessage());
@@ -26,7 +31,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
     @ExceptionHandler(RefreshTokenException.class)
     public ResponseEntity<Object> handleRefreshTokenException(RefreshTokenException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ex.getMessage());
     }
 
     @ExceptionHandler(TokenGenerationException.class)
@@ -36,9 +41,9 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
                 .body(ex.getMessage());
     }
 
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<Object> handleGeneral(Exception ex) {
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body("Internal error: " + ex.getMessage());
-    }
+//    @ExceptionHandler(Exception.class)
+//    public ResponseEntity<Object> handleGeneral(Exception ex) {
+//        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+//                .body("Internal error: " + ex.getMessage());
+//    }
 }
