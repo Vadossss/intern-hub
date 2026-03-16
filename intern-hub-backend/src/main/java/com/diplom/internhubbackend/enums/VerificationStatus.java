@@ -1,4 +1,4 @@
-package com.diplom.internhubbackend.models.enums;
+package com.diplom.internhubbackend.enums;
 
 public enum VerificationStatus {
     CONFIRMED,
