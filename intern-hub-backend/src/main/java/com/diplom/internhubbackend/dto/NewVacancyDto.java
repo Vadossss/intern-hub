@@ -1,13 +1,9 @@
-package com.diplom.internhubbackend.models.dto;
+package com.diplom.internhubbackend.dto;
 
-import com.diplom.internhubbackend.models.Currency;
-import com.diplom.internhubbackend.models.Employment;
-import com.diplom.internhubbackend.models.Experience;
-import com.diplom.internhubbackend.models.enums.CurrencyEnum;
-import com.diplom.internhubbackend.models.enums.WorkFormatEnum;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.List;
 import java.util.Set;
 
 @Getter
@@ -17,21 +13,19 @@ public class NewVacancyDto {
     private String stack;
     private String description;
     private Salary salary;
-    private String charge;
     private String city;
-    private String requirements;
-    private String conditions;
     private String link;
     private String employment;
     private String experience;
     private String workFormat;
     private Set<Integer> skills;
+    private List<VacancyContactDto> contactsList;
 
     @Getter
     @Setter
     public static class Salary {
-        private Integer from;
-        private Integer to;
+        private Long from;
+        private Long to;
         private String currency;
     }
 }

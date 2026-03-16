@@ -1,4 +1,4 @@
-package com.diplom.internhubbackend.models.dto;
+package com.diplom.internhubbackend.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

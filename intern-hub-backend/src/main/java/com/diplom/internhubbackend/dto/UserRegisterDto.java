@@ -1,4 +1,4 @@
-package com.diplom.internhubbackend.models.dto;
+package com.diplom.internhubbackend.dto;
 
 import lombok.Getter;
 import lombok.Setter;
