@@ -16,12 +16,13 @@ public class ApplicationController {
 
     private final ApplicationService applicationService;
 
-    @PostMapping("/{publicVacancyId}/apply")
+    @PostMapping("/{vacancy_id}/apply")
     @ResponseStatus(HttpStatus.CREATED)
     public ApplicationDto apply(
             @AuthenticationPrincipal CustomUserDetails customUserDetails,
-            @PathVariable String publicVacancyId,
-            ApplyRequestDto applyRequestDto) {
+            @PathVariable(name = "vacancy_id") String publicVacancyId,
+            ApplyRequestDto applyRequestDto
+    ) {
         return applicationService.apply(customUserDetails.getUser(), publicVacancyId, applyRequestDto);
     }
 }

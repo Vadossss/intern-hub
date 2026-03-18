@@ -14,7 +14,7 @@ public class KeySkillController {
         this.keySkillService = keySkillService;
     }
 
-    @PostMapping("/addListSkill")
+    @PostMapping("/add-list-skill")
     public ResponseEntity<Object> addListSkill(@RequestBody KeySkillRequest request) {
         return keySkillService.addListKeySkills(request);
     }

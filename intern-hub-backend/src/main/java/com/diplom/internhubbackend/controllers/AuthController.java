@@ -59,7 +59,7 @@ public class AuthController {
                 .body(tokensCookieDto.getAccessTokenCookie().getValue());
     }
 
-    @PostMapping("/updateRefreshToken")
+    @PostMapping("/update-refresh-token")
     public ResponseEntity<Object> updateRefreshToken(
             @Parameter(hidden = true)
             @CookieValue("refreshToken") String refreshToken
