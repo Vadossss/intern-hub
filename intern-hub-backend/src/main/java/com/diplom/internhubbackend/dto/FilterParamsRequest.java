@@ -3,6 +3,7 @@ package com.diplom.internhubbackend.dto;
 import com.diplom.internhubbackend.enums.PositionsEnum;
 import com.diplom.internhubbackend.enums.VacancySourceCode;
 import com.diplom.internhubbackend.enums.VacancyStatus;
+import com.diplom.internhubbackend.enums.WorkFormatEnum;
 import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -24,6 +25,9 @@ public class FilterParamsRequest {
     @Parameter(description = "Город")
     private String city;
 
+    @Parameter(description = "Название компании")
+    private String companyName;
+
     @Parameter(description = "График работы")
     private String schedule;
 
@@ -43,7 +47,7 @@ public class FilterParamsRequest {
     private String searchText;
 
     @Parameter(description = "Формат работы")
-    private List<String> workFormats;
+    private List<WorkFormatEnum> workFormats;
 
     @Parameter(description = "Номер страницы (начиная с 0)")
     private Integer page = 0;
