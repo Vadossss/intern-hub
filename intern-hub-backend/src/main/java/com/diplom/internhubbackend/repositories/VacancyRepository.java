@@ -1,6 +1,7 @@
 package com.diplom.internhubbackend.repositories;
 
 import com.diplom.internhubbackend.models.Stack;
+import com.diplom.internhubbackend.models.User;
 import com.diplom.internhubbackend.models.Vacancy;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -22,6 +23,9 @@ public interface VacancyRepository extends JpaRepository<Vacancy, Integer> {
 
     @Query("SELECT v FROM Vacancy v JOIN v.source as s WHERE s.code = :sourceCode AND v.externalId = :externalId")
     Optional<Vacancy> findBySourceCodeAndExternalId(String externalId, String sourceCode);
+
+    @Query("SELECT v FROM Vacancy v JOIN FavoriteVacancy fv on fv.vacancy = v WHERE fv.user = :user")
+    Optional<List<Vacancy>> findAllFavoriteVacancies(User user);
 
     @Modifying
     @Query("""
