@@ -1,9 +1,9 @@
 package com.diplom.internhubbackend.services;
 
 import com.diplom.internhubbackend.dto.NewVacancyDto;
+import com.diplom.internhubbackend.enums.VacancyStatus;
 import com.diplom.internhubbackend.exception.TokenGenerationException;
 import com.diplom.internhubbackend.exception.VacancyNotFoundException;
-import com.diplom.internhubbackend.mapper.ApplicationMapper;
 import com.diplom.internhubbackend.mapper.VacancyMapper;
 import com.diplom.internhubbackend.models.*;
 import com.diplom.internhubbackend.models.VacancySource;
@@ -13,16 +13,12 @@ import com.diplom.internhubbackend.dto.hh.HhItemVacancy;
 import com.diplom.internhubbackend.dto.hh.HhVacancyListResponse;
 import com.diplom.internhubbackend.dto.hh.HhKeySkill;
 import com.diplom.internhubbackend.repositories.VacancyRepository;
-import com.diplom.internhubbackend.repositories.ApplicationRepository;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.TypedQuery;
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.CriteriaQuery;
-import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
@@ -30,6 +26,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
@@ -50,15 +47,12 @@ public class VacancyService {
     private EntityManager entityManager;
 
     private final WebClient webClient;
-
     private final VacancyRepository vacancyRepository;
     private final RestClient defaultRestClient = RestClient.create();
     private final KeySkillService keySkillService;
     private final HhAggregationService hhAggregationService;
     private final VacancySourceService vacancySourceService;
     private final VacancyMapper vacancyMapper;
-    private final ApplicationRepository applicationRepository;
-    private final ApplicationMapper applicationMapper;
 
 
     @Transactional(readOnly = true)
@@ -93,12 +87,87 @@ public class VacancyService {
         return vacancy;
     }
 
+    public Page<VacancyResponseDto> getFavoritesVacancies(User user, int page, int pageSize) {
+        List<Vacancy> vacancies = vacancyRepository.findAllFavoriteVacancies(user).orElse(null);
+
+        if (vacancies == null) {
+            return new PageImpl<>(new ArrayList<>());
+        }
+
+        List<VacancyResponseDto> vacanciesDto = vacancyMapper.toDto(vacancies);
+
+        if (vacanciesDto == null) {
+            return new PageImpl<>(new ArrayList<>());
+        }
+
+        vacanciesDto.forEach(v -> log.info(String.valueOf(v.getId())));
+
+        int startIndex = pageSize * page;
+
+        List<VacancyResponseDto>result = vacanciesDto
+                .subList(startIndex, Math.min(startIndex + pageSize, vacanciesDto.size()));
+
+        return new PageImpl<>(result, PageRequest.of(page, pageSize), vacancies.size());
+    }
+
     public Page<VacancyResponseDto> getVacanciesByParams(FilterParams params) {
 
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+
         CriteriaQuery<Vacancy> query = cb.createQuery(Vacancy.class);
         Root<Vacancy> root = query.from(Vacancy.class);
+        Join<Vacancy, User> companyJoin = root.join("employer", JoinType.LEFT);
 
+        List<Predicate> predicates = buildPredicates(params, cb, root, companyJoin);
+        query.where(cb.and(predicates.toArray(new Predicate[0])));
+
+        applySorting(params, cb, query, root);
+
+        TypedQuery<Vacancy> typedQuery = entityManager.createQuery(query);
+        typedQuery.setFirstResult(params.getPage() * params.getSize());
+        typedQuery.setMaxResults(params.getSize());
+
+        List<Vacancy> content = typedQuery.getResultList();
+        List<VacancyResponseDto> vacancies = vacancyMapper.toDto(content);
+
+
+        CriteriaQuery<Long> countQuery = cb.createQuery(Long.class);
+        Root<Vacancy> countRoot = countQuery.from(Vacancy.class);
+        Join<Vacancy, User> countCompanyJoin = countRoot.join("employer", JoinType.LEFT);
+
+        List<Predicate> countPredicates = buildPredicates(params, cb, countRoot, countCompanyJoin);
+
+        countQuery.select(cb.count(countRoot));
+        countQuery.where(cb.and(countPredicates.toArray(new Predicate[0])));
+
+        Long total = entityManager.createQuery(countQuery).getSingleResult();
+
+        return new PageImpl<>(vacancies, PageRequest.of(params.getPage(), params.getSize()), total);
+    }
+
+    private void applySorting(
+            FilterParams params,
+            CriteriaBuilder cb,
+            CriteriaQuery<Vacancy> query,
+            Root<Vacancy> root
+    ) {
+        if (params.getSortBy() == null) {
+            return;
+        }
+
+        if ("asc".equalsIgnoreCase(params.getSortDirection())) {
+            query.orderBy(cb.asc(root.get(params.getSortBy())));
+        } else {
+            query.orderBy(cb.desc(root.get(params.getSortBy())));
+        }
+    }
+
+    private List<Predicate> buildPredicates(
+            FilterParams params,
+            CriteriaBuilder cb,
+            Root<Vacancy> root,
+            Join<Vacancy, User> companyJoin
+    ) {
         List<Predicate> predicates = new ArrayList<>();
 
         if (params.getSource() != null && !params.getSource().isEmpty()) {
@@ -113,6 +182,19 @@ public class VacancyService {
             predicates.add(cb.equal(root.get("status"), params.getStatus()));
         }
 
+        if (params.getWorkFormats() != null && !params.getWorkFormats().isEmpty()) {
+            predicates.add(root.get("workFormat").in(params.getWorkFormats()));
+        }
+
+        if (params.getCompanyName() != null) {
+            predicates.add(
+                    cb.equal(
+                            cb.lower(companyJoin.get("companyName")),
+                            params.getCompanyName().toLowerCase()
+                    )
+            );
+        }
+
         if (params.getStack() != null) {
             predicates.add(cb.equal(root.get("stack"), params.getStack()));
         }
@@ -125,64 +207,7 @@ public class VacancyService {
             predicates.add(cb.lessThanOrEqualTo(root.get("salaryTo"), params.getSalaryMax()));
         }
 
-        query.where(cb.and(predicates.toArray(new Predicate[0])));
-
-        // сортировка
-//        if ("asc".equalsIgnoreCase(params.getSortDirection())) {
-//            query.orderBy(cb.asc(root.get(params.getSortBy())));
-//        } else {
-//            query.orderBy(cb.desc(root.get(params.getSortBy())));
-//        }
-
-
-        query.where(cb.and(predicates.toArray(new Predicate[0])));
-        query.orderBy(cb.asc(root.get("title"))); // сортировка по существующему полю
-
-        TypedQuery<Vacancy> typedQuery = entityManager.createQuery(query);
-        typedQuery.setFirstResult(params.getPage() * params.getSize());
-        typedQuery.setMaxResults(params.getSize());
-        List<Vacancy> content = typedQuery.getResultList();
-
-        List<VacancyResponseDto> vacancies = vacancyMapper.toDto(content);
-
-        CriteriaQuery<Long> countQuery = cb.createQuery(Long.class);
-        Root<Vacancy> countRoot = countQuery.from(Vacancy.class);
-
-        List<Predicate> countPredicates = new ArrayList<>();
-        if (params.getCity() != null) {
-            countPredicates.add(cb.equal(countRoot.get("city"), params.getCity()));
-        }
-
-        if (params.getSource() != null && !params.getSource().isEmpty()) {
-            countPredicates.add(countRoot.get("source").in(params.getSource()));
-        }
-
-        if (params.getCity() != null) {
-            countPredicates.add(cb.equal(countRoot.get("city"), params.getCity()));
-        }
-
-        if (params.getStatus() != null) {
-            countPredicates.add(cb.equal(countRoot.get("status"), params.getStatus()));
-        }
-
-        if (params.getStack() != null) {
-            countPredicates.add(cb.equal(countRoot.get("stack"), params.getStack()));
-        }
-
-        if (params.getSalaryMin() != null) {
-            countPredicates.add(cb.greaterThanOrEqualTo(countRoot.get("salaryFrom"), params.getSalaryMin()));
-        }
-
-        if (params.getSalaryMax() != null) {
-            countPredicates.add(cb.lessThanOrEqualTo(countRoot.get("salaryTo"), params.getSalaryMax()));
-        }
-
-        countQuery.select(cb.count(countRoot));
-        countQuery.where(cb.and(countPredicates.toArray(new Predicate[0])));
-
-        Long total = entityManager.createQuery(countQuery).getSingleResult();
-
-        return new PageImpl<>(vacancies, PageRequest.of(params.getPage(), params.getSize()), total);
+        return predicates;
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -193,8 +218,33 @@ public class VacancyService {
     ) {
     }
 
+    @Transactional
+    public void archiveVacancy(User user, String publicId) {
+
+        Vacancy vacancy = vacancyRepository.findActiveVacancyByPublicId(publicId).orElseThrow(() ->
+                new VacancyNotFoundException("Vacancy not found"));
+
+        if (!vacancy.getEmployer().getId().equals(user.getId())) {
+            throw new AccessDeniedException("User is not the owner of the vacancy");
+        }
+
+        vacancy.setStatus(VacancyStatus.ARCHIVED);
+    }
+
     public Vacancy getActiveVacancy(String publicId) {
         return vacancyRepository.findActiveVacancyByPublicId(publicId).orElse(null);
+    }
+
+    @Transactional
+    public void deleteVacancy(User user, String publicId) {
+        Vacancy vacancy = vacancyRepository.findByPublicId(publicId).orElseThrow(() ->
+                new VacancyNotFoundException("Vacancy not found"));
+
+        if (!vacancy.getEmployer().getId().equals(user.getId())) {
+            throw new AccessDeniedException("User is not the owner of the vacancy");
+        }
+
+        vacancyRepository.delete(vacancy);
     }
 
     public ResponseEntity<Object> createVacancy(User user, NewVacancyDto newVacancy){
