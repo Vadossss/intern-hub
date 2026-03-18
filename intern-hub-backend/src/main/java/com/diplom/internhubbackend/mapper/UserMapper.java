@@ -23,12 +23,15 @@ public class UserMapper {
                 .verified(user.getVerified())
                 .verificationStatus(user.getVerificationStatus())
                 .verifiedAt(user.getVerifiedAt())
-                .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
                 .build();
     }
 
     private static User createUser(final UserRegisterDto userDto) {
-        return new User(userDto.getEmail(), userDto.getPassword());
+        return User
+                .builder()
+                .email(userDto.getEmail())
+                .password(userDto.getPassword())
+                .build();
     }
 }
