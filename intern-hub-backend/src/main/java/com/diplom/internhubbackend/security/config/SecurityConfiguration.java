@@ -39,7 +39,7 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**", "/public/**", "/swagger-ui/**", "/api/skill/**",
                                 "/v3/api-docs/**", "/api/vacancies", "/api/vacancies/{vacancy_id}", "/api/stacks",
-                                "/api-docs/**").permitAll()
+                                "/api-docs/**", "/learn/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(sess -> sess.sessionCreationPolicy(
