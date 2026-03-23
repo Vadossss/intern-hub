@@ -55,7 +55,7 @@ public class VacancyService {
     private final VacancyMapper vacancyMapper;
 
 
-    @Transactional(readOnly = true)
+    @Transactional()
     @Cacheable(value = "vacancy", key = "#publicId")
     public Vacancy getVacancy(String publicId) {
         Vacancy vacancy = vacancyRepository.findByPublicId(publicId.toLowerCase()).orElseThrow(() ->
@@ -96,13 +96,12 @@ public class VacancyService {
 
         List<VacancyResponseDto> vacanciesDto = vacancyMapper.toDto(vacancies);
 
-        if (vacanciesDto == null) {
+        int startIndex = pageSize * page;
+
+        if (vacanciesDto == null || vacanciesDto.size() <= startIndex) {
             return new PageImpl<>(new ArrayList<>());
         }
 
-        vacanciesDto.forEach(v -> log.info(String.valueOf(v.getId())));
-
-        int startIndex = pageSize * page;
 
         List<VacancyResponseDto>result = vacanciesDto
                 .subList(startIndex, Math.min(startIndex + pageSize, vacanciesDto.size()));
@@ -129,7 +128,6 @@ public class VacancyService {
 
         List<Vacancy> content = typedQuery.getResultList();
         List<VacancyResponseDto> vacancies = vacancyMapper.toDto(content);
-
 
         CriteriaQuery<Long> countQuery = cb.createQuery(Long.class);
         Root<Vacancy> countRoot = countQuery.from(Vacancy.class);
@@ -186,6 +184,14 @@ public class VacancyService {
             predicates.add(root.get("workFormat").in(params.getWorkFormats()));
         }
 
+        if (params.getEmployment() != null && !params.getEmployment().isEmpty()) {
+            predicates.add(root.get("employment").in(params.getEmployment()));
+        }
+
+        if (params.getExperience() != null && !params.getExperience().isEmpty()) {
+            predicates.add(root.get("experience").in(params.getExperience()));
+        }
+
         if (params.getCompanyName() != null) {
             predicates.add(
                     cb.equal(
@@ -226,6 +232,11 @@ public class VacancyService {
 
         if (!vacancy.getEmployer().getId().equals(user.getId())) {
             throw new AccessDeniedException("User is not the owner of the vacancy");
+        }
+
+        if (vacancy.getStatus().equals(VacancyStatus.REJECTED) ||
+                vacancy.getStatus().equals(VacancyStatus.REVISION_REQUIRED)) {
+            throw new VacancyNotFoundException("Vacancy can not be archived");
         }
 
         vacancy.setStatus(VacancyStatus.ARCHIVED);
