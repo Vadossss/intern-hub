@@ -1,5 +1,10 @@
 package com.diplom.internhubbackend.enums;
 
 public enum VacancyStatus {
-    ACTIVE, MODERATED, ARCHIVED
+    DRAFT,
+    PENDING,
+    APPROVED,
+    REJECTED,
+    REVISION_REQUIRED,
+    ARCHIVED
 }
