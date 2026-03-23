@@ -1,9 +1,7 @@
 package com.diplom.internhubbackend.dto;
 
-import com.diplom.internhubbackend.models.Stack;
-import com.diplom.internhubbackend.models.VacancySource;
+import com.diplom.internhubbackend.models.*;
 import com.diplom.internhubbackend.enums.VacancyStatus;
-import com.diplom.internhubbackend.models.WorkFormat;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import lombok.AllArgsConstructor;
@@ -29,7 +27,9 @@ public class FilterParams {
 
     private String schedule;
 
-    private String employment;
+    private List<Employment> employment;
+
+    private List<Experience> experience;
 
     private Long salaryMin;
 

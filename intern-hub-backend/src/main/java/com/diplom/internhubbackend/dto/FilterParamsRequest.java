@@ -1,9 +1,6 @@
 package com.diplom.internhubbackend.dto;
 
-import com.diplom.internhubbackend.enums.PositionsEnum;
-import com.diplom.internhubbackend.enums.VacancySourceCode;
-import com.diplom.internhubbackend.enums.VacancyStatus;
-import com.diplom.internhubbackend.enums.WorkFormatEnum;
+import com.diplom.internhubbackend.enums.*;
 import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -32,7 +29,10 @@ public class FilterParamsRequest {
     private String schedule;
 
     @Parameter(description = "Тип занятости")
-    private String employment;
+    private List<EmploymentEnum> employment;
+
+    @Parameter(description = "Опыт работы")
+    private List<ExperienceEnum> experience;
 
     @Parameter(description = "Минимальная зарплата")
     private Long salaryMin;

@@ -1,13 +1,9 @@
 package com.diplom.internhubbackend.mapper;
 
-import com.diplom.internhubbackend.models.Stack;
-import com.diplom.internhubbackend.models.VacancySource;
+import com.diplom.internhubbackend.models.*;
 import com.diplom.internhubbackend.dto.FilterParamsRequest;
 import com.diplom.internhubbackend.dto.FilterParams;
-import com.diplom.internhubbackend.models.WorkFormat;
-import com.diplom.internhubbackend.services.StackService;
-import com.diplom.internhubbackend.services.VacancySourceService;
-import com.diplom.internhubbackend.services.WorkFormatService;
+import com.diplom.internhubbackend.services.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -23,6 +19,8 @@ public class FilterParamsMapper {
     private final VacancySourceService vacancySourceService;
     private final StackService stackService;
     private final WorkFormatService workFormatService;
+    private final EmploymentService employmentService;
+    private final ExperienceService experienceService;
 
     public FilterParams toDto(FilterParamsRequest filterParams) {
 
@@ -42,11 +40,31 @@ public class FilterParamsMapper {
 
         List<WorkFormat> workFormat = filterParams.getWorkFormats() == null || filterParams.getWorkFormats().isEmpty() ?
                 null :
-                workFormatService.
-                        getAllWorkFormatById(filterParams.getWorkFormats()
+                workFormatService
+                        .getAllWorkFormatById(filterParams.getWorkFormats()
                                 .stream()
                                 .map(Enum::name)
                                 .collect(Collectors.toList()));
+
+        List<Employment> employment = filterParams.getEmployment() == null || filterParams.getEmployment().isEmpty() ?
+                null :
+                employmentService
+                        .getAllEmploymentsById(filterParams.getEmployment()
+                                .stream()
+                                .map(Enum::name)
+                                .collect(Collectors.toList())
+                        );
+
+
+        List<Experience> experience = filterParams.getExperience() == null || filterParams.getExperience().isEmpty() ?
+                null :
+                experienceService
+                        .getAllExperiencesById(filterParams.getExperience()
+                                .stream()
+                                .map(Enum::name)
+                                .collect(Collectors.toList())
+                        );
+
 
 
         return FilterParams.builder()
@@ -54,8 +72,8 @@ public class FilterParamsMapper {
                 .stack(stack)
                 .city(filterParams.getCity())
                 .companyName(filterParams.getCompanyName())
-                .schedule(filterParams.getSchedule())
-                .employment(filterParams.getEmployment())
+                .employment(employment)
+                .experience(experience)
                 .salaryMin(filterParams.getSalaryMin())
                 .salaryMax(filterParams.getSalaryMax())
                 .status(filterParams.getStatus())
