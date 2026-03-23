@@ -1,12 +1,9 @@
 package com.diplom.internhubbackend.controllers;
 
 import com.diplom.internhubbackend.dto.*;
-import com.diplom.internhubbackend.enums.WorkFormatEnum;
+import com.diplom.internhubbackend.enums.*;
 import com.diplom.internhubbackend.mapper.FilterParamsMapper;
 import com.diplom.internhubbackend.mapper.VacancyMapper;
-import com.diplom.internhubbackend.enums.PositionsEnum;
-import com.diplom.internhubbackend.enums.VacancySourceCode;
-import com.diplom.internhubbackend.enums.VacancyStatus;
 import com.diplom.internhubbackend.security.config.CustomUserDetails;
 import com.diplom.internhubbackend.services.VacancyService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -40,7 +37,6 @@ public class VacancyController {
     ) {
         return vacancyService.createVacancy(customUserDetails.getUser(), vacancyRequest);
     }
-
 
     @Operation(summary = "Удаление вакансии")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -94,15 +90,15 @@ public class VacancyController {
     public ResponseEntity<PageResponse<VacancyResponseDto>> searchVacancies(
             @RequestParam(required = false) List<VacancySourceCode> source,
             @RequestParam(required = false) PositionsEnum position,
-            @RequestParam(required = false) String city,
-            @RequestParam(required = false) String schedule,
-            @RequestParam(required = false) String employment,
-            @RequestParam(required = false) Long salaryMin,
             @RequestParam(required = false) String companyName,
+            @RequestParam(required = false) String city,
+            @RequestParam(required = false) Long salaryMin,
             @RequestParam(required = false) Long salaryMax,
-            @RequestParam(required = false) VacancyStatus status,
             @RequestParam(required = false) String searchText,
+            @RequestParam(required = false) VacancyStatus status,
             @RequestParam(required = false) List<WorkFormatEnum> workFormats,
+            @RequestParam(required = false) List<EmploymentEnum> employment,
+            @RequestParam(required = false) List<ExperienceEnum> experience,
             @RequestParam(required = false, defaultValue = "0") Integer page,
             @RequestParam(required = false, defaultValue = "20") Integer size,
             @RequestParam(required = false, defaultValue = "title") String sortBy,
@@ -113,7 +109,6 @@ public class VacancyController {
         filterParams.setPosition(position);
         filterParams.setCity(city);
         filterParams.setCompanyName(companyName);
-        filterParams.setSchedule(schedule);
         filterParams.setEmployment(employment);
         filterParams.setSalaryMin(salaryMin);
         filterParams.setSalaryMax(salaryMax);
