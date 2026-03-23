@@ -58,7 +58,7 @@ public class Vacancy {
     @Enumerated(EnumType.STRING)
     @Builder.Default
     @Column(nullable = false)
-    private VacancyStatus status = VacancyStatus.ACTIVE;
+    private VacancyStatus status = VacancyStatus.PENDING;
 
     @ManyToOne
     @JoinColumn(name = "employer_id")
