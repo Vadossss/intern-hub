@@ -1,5 +1,6 @@
 package com.diplom.internhubbackend.repositories;
 
+import com.diplom.internhubbackend.enums.VacancyStatus;
 import com.diplom.internhubbackend.models.Stack;
 import com.diplom.internhubbackend.models.User;
 import com.diplom.internhubbackend.models.Vacancy;
@@ -41,4 +42,20 @@ public interface VacancyRepository extends JpaRepository<Vacancy, Integer> {
         and v.isAggregated = true and v.expiresAt < :dateTime
         """)
     int deleteOldVacancies(LocalDateTime dateTime);
+
+    @Modifying
+    @Query("""
+        UPDATE Vacancy v SET v.status = 'APPROVED'
+        WHERE v.publicId = :vacancyId and v.status = 'PENDING'
+        """)
+    Optional<Void> approve(String vacancyId);
+
+    @Modifying
+    @Query("""
+        UPDATE Vacancy v SET v.status = 'REJECTED'
+        WHERE v.publicId = :vacancyId and (v.status = 'PENDING' or v.status = 'APPROVED')
+        """)
+    Optional<Void> reject(String vacancyId);
+
+    List<Vacancy> findAllByStatus(VacancyStatus status);
 }
