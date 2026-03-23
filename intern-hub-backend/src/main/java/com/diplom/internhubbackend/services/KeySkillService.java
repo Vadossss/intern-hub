@@ -4,6 +4,7 @@ import com.diplom.internhubbackend.models.KeySkill;
 import com.diplom.internhubbackend.models.KeySkillRequest;
 import com.diplom.internhubbackend.dto.hh.HhKeySkill;
 import com.diplom.internhubbackend.repositories.KeySkillRepository;
+import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.ResponseEntity;
@@ -40,6 +41,7 @@ public class KeySkillService {
         return ResponseEntity.ok().body("Success adding key skills");
     }
 
+    @Transactional
     public Set<KeySkill> parseAndSaveKeySkills(List<HhKeySkill> keySkills) {
         Set<String> names = keySkills.stream()
                 .map(HhKeySkill::name)

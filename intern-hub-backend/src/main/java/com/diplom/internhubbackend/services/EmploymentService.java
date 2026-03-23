@@ -7,6 +7,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -17,5 +19,10 @@ public class EmploymentService {
     @Cacheable(value = "employment", key = "#employmentId")
     public Employment getEmploymentById(String employmentId) {
         return employmentRepository.findById(employmentId).orElse(null);
+    }
+
+    @Cacheable(value = "employment")
+    public List<Employment> getAllEmploymentsById(List<String> employmentIds) {
+        return employmentRepository.findAllById(employmentIds);
     }
 }
