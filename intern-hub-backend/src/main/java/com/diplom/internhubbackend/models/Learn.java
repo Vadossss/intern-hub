@@ -1,13 +1,17 @@
 package com.diplom.internhubbackend.models;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
 @Table(name="learn")
 @Getter
 @Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class Learn {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -24,31 +28,4 @@ public class Learn {
         this.content = content;
     }
 
-    public Learn() {
-
-    }
-
-    public Integer getId() {
-        return id;
-    }
-
-    public void setId(Integer id) {
-        this.id = id;
-    }
-
-    public String getHeading() {
-        return heading;
-    }
-
-    public void setHeading(String heading) {
-        this.heading = heading;
-    }
-
-    public String getContent() {
-        return content;
-    }
-
-    public void setContent(String content) {
-        this.content = content;
-    }
 }
