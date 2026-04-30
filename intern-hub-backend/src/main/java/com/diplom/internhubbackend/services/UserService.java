@@ -41,8 +41,8 @@ public class UserService {
         }));
     }
 
-    @Cacheable(value = "user", key = "#id")
-    public User getUserById(Integer id) {
-        return userRepository.findById(id).orElseThrow(() -> new UserNotFoundException("User not found"));
+    @Cacheable(value = "user", key = "#userId")
+    public User getUserById(Integer userId) {
+        return userRepository.findById(userId).orElseThrow(() -> new UserNotFoundException("User not found"));
     }
 }

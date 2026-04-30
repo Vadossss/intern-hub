@@ -1,5 +1,6 @@
 package com.diplom.internhubbackend.models;
 
+import com.diplom.internhubbackend.enums.AccountStatus;
 import com.diplom.internhubbackend.enums.VerificationStatus;
 import jakarta.persistence.*;
 import lombok.*;
@@ -41,6 +42,15 @@ public class User {
     private String companyName;
 
     private Boolean isAggregated;
+
+    @Enumerated(EnumType.STRING)
+    private AccountStatus status =  AccountStatus.ACTIVE;
+
+    private String blockReason;
+
+    private LocalDateTime blockedAt;
+
+    private LocalDateTime blockedUntil;
 
     private Boolean verified;
     private VerificationStatus verificationStatus;

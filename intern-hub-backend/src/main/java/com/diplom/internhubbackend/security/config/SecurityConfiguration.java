@@ -38,7 +38,7 @@ public class SecurityConfiguration {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**", "/public/**", "/swagger-ui/**", "/api/skill/**",
-                                "/v3/api-docs/**", "/api/vacancies", "/api/vacancies/{vacancy_id}", "/api/stacks",
+                                "/v3/api-docs/**", "/api/vacancies", "/api/vacancies/{vacancy_id}", "/api/stack",
                                 "/api-docs/**", "api/learn/**","api/question/**").permitAll()
                         .anyRequest().authenticated()
                 )
@@ -54,7 +54,7 @@ public class SecurityConfiguration {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowCredentials(true);
         configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000"));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

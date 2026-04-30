@@ -5,6 +5,7 @@ import com.diplom.internhubbackend.models.Role;
 import com.diplom.internhubbackend.models.User;
 import com.diplom.internhubbackend.dto.TokensCookieDto;
 import com.diplom.internhubbackend.dto.UserRegisterDto;
+import com.diplom.internhubbackend.enums.AccountStatus;
 import com.diplom.internhubbackend.enums.UserRole;
 import com.diplom.internhubbackend.repositories.UserRepository;
 import jakarta.transaction.Transactional;
@@ -14,6 +15,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -22,6 +25,7 @@ public class AuthService {
     private final AuthUtilService authUtilService;
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     private final UserRoleService userRoleService;
+    private final RefreshTokenService refreshTokenService;
 
     @Transactional
     public TokensCookieDto registerUser(User user) {
@@ -53,6 +57,7 @@ public class AuthService {
 
         User user = userRepository.findByEmail(email).
                 orElseThrow(() -> new UserNotFoundException("User not found"));
+        ensureUserCanAuthenticate(user);
 
         if (!authUtilService.passwordMatches(userRegisterDto.getPassword(), user.getPassword())) {
             throw new PasswordIncorrectException("Incorrect password");
@@ -71,6 +76,12 @@ public class AuthService {
     }
 
     @Transactional
+    public TokensCookieDto logout(String refreshToken) {
+        refreshTokenService.revokeRefreshToken(refreshToken);
+        return authUtilService.buildLogoutResponse();
+    }
+
+    @Transactional
     public boolean existsByEmail(final String email) {
         return userRepository.existsByEmail(email);
     }
@@ -83,5 +94,15 @@ public class AuthService {
     public User findByEmail(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
+    }
+
+    private void ensureUserCanAuthenticate(User user) {
+        if (user.getStatus() != AccountStatus.BLOCKED) {
+            return;
+        }
+
+        if (user.getBlockedUntil() == null || user.getBlockedUntil().isAfter(LocalDateTime.now())) {
+            throw new UserBlockedException("User account is blocked");
+        }
     }
 }

@@ -7,9 +7,11 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -43,13 +45,16 @@ public class JwtFilter extends OncePerRequestFilter {
             log.debug("Invalid JWT: {}", e.getMessage());
         }
 
-        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-
-            UserDetails userDetails = customUserDetailsService.loadUserByUsername(username);
-
+        if (Objects.nonNull(username) && SecurityContextHolder.getContext().getAuthentication() == null) {
             try {
-                if (jwtUtil.validateToken(jwt, userDetails)) {
+                UserDetails userDetails = customUserDetailsService.loadUserByUsername(username);
 
+                if (!userDetails.isAccountNonLocked()) {
+                    response.sendError(HttpServletResponse.SC_FORBIDDEN, "User account is blocked");
+                    return;
+                }
+
+                if (jwtUtil.validateToken(jwt, userDetails)) {
                     UsernamePasswordAuthenticationToken authToken =
                             new UsernamePasswordAuthenticationToken(
                                     userDetails,
@@ -59,22 +64,16 @@ public class JwtFilter extends OncePerRequestFilter {
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
+            } catch (UsernameNotFoundException ex) {
+                log.debug("JWT user not found: {}", ex.getMessage());
+            } catch (LockedException ex) {
+                response.sendError(HttpServletResponse.SC_FORBIDDEN, "User account is blocked");
+                return;
             } catch (Exception ex) {
                 log.warn("JWT validation failed: {}", ex.getMessage());
             }
         }
 
-        if (Objects.nonNull(username) &&
-                SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = this.customUserDetailsService.loadUserByUsername(username);
-
-            if (jwtUtil.validateToken(jwt, userDetails)) {
-                UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken =
-                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                usernamePasswordAuthenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(usernamePasswordAuthenticationToken);
-            }
-        }
         filterChain.doFilter(request, response);
     }
 

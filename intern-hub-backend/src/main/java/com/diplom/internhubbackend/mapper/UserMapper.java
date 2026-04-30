@@ -16,6 +16,7 @@ public class UserMapper {
             return null;
         }
         return EmployerDto.builder()
+                .id(user.getId())
                 .city(user.getCity())
                 .companyName(user.getCompanyName())
                 .role(user.getRole())

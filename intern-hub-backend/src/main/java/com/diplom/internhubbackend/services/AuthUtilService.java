@@ -68,4 +68,24 @@ public class AuthUtilService {
 
         return buildResponse(accessToken, refreshToken);
     }
+
+    public TokensCookieDto buildLogoutResponse() {
+        ResponseCookie accessTokenCookie = ResponseCookie.from("accessToken", "")
+                .httpOnly(true)
+                .secure(false)
+                .sameSite("Lax")
+                .path("/")
+                .maxAge(Duration.ZERO)
+                .build();
+
+        ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", "")
+                .httpOnly(true)
+                .secure(false)
+                .sameSite("Lax")
+                .path("/")
+                .maxAge(Duration.ZERO)
+                .build();
+
+        return new TokensCookieDto(accessTokenCookie, refreshTokenCookie);
+    }
 }
