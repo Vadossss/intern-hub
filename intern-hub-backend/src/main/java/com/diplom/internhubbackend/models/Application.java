@@ -34,6 +34,8 @@ public class Application {
     @Column(columnDefinition = "TEXT")
     private String coverLetter;
 
+    private String resumeUrl;
+
     @Column(name = "status")
     @Enumerated(EnumType.STRING)
     @Builder.Default

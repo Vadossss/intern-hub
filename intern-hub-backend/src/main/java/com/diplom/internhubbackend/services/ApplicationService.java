@@ -37,6 +37,7 @@ public class ApplicationService {
                 .vacancy(vacancy)
                 .chosenContactMethod(applyRequestDto.chosenContactMethod())
                 .coverLetter(applyRequestDto.coverLetter())
+                .resumeUrl(applyRequestDto.resumeUrl())
                 .build();
 
         applicationRepository.save(application);
