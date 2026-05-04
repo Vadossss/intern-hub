@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 @Setter
 @Builder
 public class EmployerDto {
+    private Integer id;
     private String companyName;
     private String city;
     private Role role;

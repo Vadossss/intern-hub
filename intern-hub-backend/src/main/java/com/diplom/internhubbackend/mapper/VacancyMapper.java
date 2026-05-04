@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -45,7 +46,7 @@ public class VacancyMapper {
         dto.setWorkFormat(vacancy.getWorkFormat());
         dto.setCity(vacancy.getCity());
         dto.setEmployer(userMapper.toDto(vacancy.getEmployer()));
-        dto.setStack(vacancy.getStack().getName());
+        dto.setStack(vacancy.getStack() != null ? vacancy.getStack().getName() : null);
         dto.setStatus(vacancy.getStatus());
         dto.setContacts(
                 vacancy.getContacts().stream()
@@ -55,7 +56,7 @@ public class VacancyMapper {
         );
 
         dto.setSkills(
-                vacancy.getSkills().stream()
+                (vacancy.getSkills() != null ? vacancy.getSkills() : Collections.<KeySkill>emptySet()).stream()
                         .map(skill -> new KeySkillDto(skill.getId(), skill.getName()))
                         .collect(Collectors.toSet())
         );

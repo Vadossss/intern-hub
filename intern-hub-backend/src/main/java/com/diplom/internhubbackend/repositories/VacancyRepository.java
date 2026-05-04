@@ -7,6 +7,8 @@ import com.diplom.internhubbackend.models.Vacancy;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -19,11 +21,13 @@ public interface VacancyRepository extends JpaRepository<Vacancy, Integer> {
     @Query("SELECT v FROM Vacancy v WHERE lower(v.publicId) = :publicId")
     Optional<Vacancy> findByPublicId(String publicId);
 
-    @Query("SELECT v FROM Vacancy v WHERE v.publicId = :publicId and v.status = 'ACTIVE'")
+    @Query("SELECT v FROM Vacancy v WHERE v.publicId = :publicId and v.status = 'APPROVED'")
     Optional<Vacancy> findActiveVacancyByPublicId(String publicId);
 
     @Query("SELECT v FROM Vacancy v JOIN v.source as s WHERE s.code = :sourceCode AND v.externalId = :externalId")
     Optional<Vacancy> findBySourceCodeAndExternalId(String externalId, String sourceCode);
+
+    Optional<Vacancy> findByPublicIdAndEmployerId(String publicId, Integer employerId);
 
     @Query("SELECT v FROM Vacancy v JOIN FavoriteVacancy fv on fv.vacancy = v WHERE fv.user = :user")
     Optional<List<Vacancy>> findAllFavoriteVacancies(User user);
@@ -31,7 +35,7 @@ public interface VacancyRepository extends JpaRepository<Vacancy, Integer> {
     @Modifying
     @Query("""
         UPDATE Vacancy v SET v.status = 'ARCHIVED'
-        WHERE v.expiresAt < :dateTimeNow and v.status = 'ACTIVE'
+        WHERE v.expiresAt < :dateTimeNow and v.status = 'APPROVED' and v.isAggregated = true
         """)
     int archiveVacancies(LocalDateTime dateTimeNow);
 
@@ -58,4 +62,14 @@ public interface VacancyRepository extends JpaRepository<Vacancy, Integer> {
     Optional<Void> reject(String vacancyId);
 
     List<Vacancy> findAllByStatus(VacancyStatus status);
+
+    Page<Vacancy> findBySource_CodeAndIsAggregatedTrue(String sourceCode, Pageable pageable);
+
+    Page<Vacancy> findBySource_CodeAndIsAggregatedTrueAndStack_IdIgnoreCase(
+            String sourceCode,
+            String stackId,
+            Pageable pageable
+    );
+
+    Page<Vacancy> findAllByEmployerIdOrderByCreatedAtDesc(Integer employerId, Pageable pageable);
 }
