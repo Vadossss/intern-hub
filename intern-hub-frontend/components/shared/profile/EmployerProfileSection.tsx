@@ -1,8 +1,8 @@
 import type { FormEvent } from "react";
 import { Pencil } from "lucide-react";
 
-import { InfoCard } from "@/components/profile/InfoCard";
-import type { EmployerProfile } from "@/components/profile/types";
+import { InfoCard } from "@/components/shared/profile/InfoCard";
+import type { EmployerProfile } from "@/components/shared/profile/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -51,7 +51,11 @@ export function EmployerProfileSection({
                   defaultValue={employer.companyName}
                   placeholder="Название компании"
                 />
-                <Input name="city" defaultValue={employer.city} placeholder="Город" />
+                <Input
+                  name="city"
+                  defaultValue={employer.city}
+                  placeholder="Город"
+                />
                 <Input
                   name="email"
                   defaultValue={employer.email}

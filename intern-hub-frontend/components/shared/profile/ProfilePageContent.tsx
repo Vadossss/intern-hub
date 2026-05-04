@@ -5,20 +5,20 @@ import type { FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
-import { CandidateApplicationsSection } from "@/components/profile/CandidateApplicationsSection";
-import { CandidateDialog } from "@/components/profile/CandidateDialog";
-import { CandidateFavoritesSection } from "@/components/profile/CandidateFavoritesSection";
-import { CandidateProfileSection } from "@/components/profile/CandidateProfileSection";
-import { EmployerApplicationsSection } from "@/components/profile/EmployerApplicationsSection";
-import { EmployerProfileSection } from "@/components/profile/EmployerProfileSection";
-import { EmployerVacanciesSection } from "@/components/profile/EmployerVacanciesSection";
-import { ProfilePageSkeleton } from "@/components/profile/ProfilePageSkeleton";
-import { SectionMenu } from "@/components/profile/SectionMenu";
+import { CandidateApplicationsSection } from "@/components/shared/profile/CandidateApplicationsSection";
+import { CandidateDialog } from "@/components/shared/profile/CandidateDialog";
+import { CandidateFavoritesSection } from "@/components/shared/profile/CandidateFavoritesSection";
+import { CandidateProfileSection } from "@/components/shared/profile/CandidateProfileSection";
+import { EmployerApplicationsSection } from "@/components/shared/profile/EmployerApplicationsSection";
+import { EmployerProfileSection } from "@/components/shared/profile/EmployerProfileSection";
+import { EmployerVacanciesSection } from "@/components/shared/profile/EmployerVacanciesSection";
+import { ProfilePageSkeleton } from "@/components/shared/profile/ProfilePageSkeleton";
+import { SectionMenu } from "@/components/shared/profile/SectionMenu";
 import {
   ALL_VACANCIES_FILTER,
   PROFILE_SECTION_PARAM,
   VACANCY_FILTER_PARAM,
-} from "@/components/profile/constants";
+} from "@/components/shared/profile/constants";
 import {
   demoApplications,
   demoEmployerApplications,
@@ -29,16 +29,19 @@ import {
   type EmployerSection,
   type EmployerProfile,
   type RoleView,
-} from "@/components/profile/types";
+} from "@/components/shared/profile/types";
 import {
   isCandidateSection,
   isEmployerSection,
   numberValue,
   profileSectionHref,
   textValue,
-} from "@/components/profile/utils";
+} from "@/components/shared/profile/utils";
 import { Badge } from "@/components/ui/badge";
-import { getVacancyDictionaries, type SkillOption } from "@/lib/api/dictionaries";
+import {
+  getVacancyDictionaries,
+  type SkillOption,
+} from "@/lib/api/dictionaries";
 import { useAuth } from "@/lib/auth/context";
 import {
   type CandidateApplicationHistory,
@@ -61,7 +64,8 @@ export function ProfilePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
-  const role: RoleView = user?.role === "ROLE_EMPLOYER" ? "employer" : "candidate";
+  const role: RoleView =
+    user?.role === "ROLE_EMPLOYER" ? "employer" : "candidate";
   const [candidateSection, setCandidateSection] =
     useState<CandidateSection>("profile");
   const [employerSection, setEmployerSection] =
@@ -80,9 +84,8 @@ export function ProfilePageContent() {
   const [employerApplications, setEmployerApplications] = useState<
     EmployerApplication[]
   >(demoEmployerApplications);
-  const [selectedCandidate, setSelectedCandidate] = useState<CandidateProfile | null>(
-    null,
-  );
+  const [selectedCandidate, setSelectedCandidate] =
+    useState<CandidateProfile | null>(null);
   const [isCandidateDialogOpen, setIsCandidateDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -96,12 +99,14 @@ export function ProfilePageContent() {
         setIsLoading(true);
 
         if (role === "candidate") {
-          const [profile, history, favorites, dictionaries] = await Promise.all([
-            getCandidateProfile(),
-            getCandidateApplications(0, 10),
-            getCandidateFavorites(0, 10),
-            getVacancyDictionaries().catch(() => null),
-          ]);
+          const [profile, history, favorites, dictionaries] = await Promise.all(
+            [
+              getCandidateProfile(),
+              getCandidateApplications(0, 10),
+              getCandidateFavorites(0, 10),
+              getVacancyDictionaries().catch(() => null),
+            ],
+          );
           if (!isMounted) return;
           setCandidate({ ...emptyCandidate, ...profile });
           setCandidateApplications(history.content);
@@ -146,7 +151,8 @@ export function ProfilePageContent() {
         }
       } catch (error) {
         console.error("Failed to load profile:", error);
-        if (isMounted) toast.error("Не удалось получить данные профиля с сервера.");
+        if (isMounted)
+          toast.error("Не удалось получить данные профиля с сервера.");
       } finally {
         if (isMounted) setIsLoading(false);
       }
@@ -170,7 +176,9 @@ export function ProfilePageContent() {
       return;
     }
 
-    const nextSection = isEmployerSection(sectionParam) ? sectionParam : "profile";
+    const nextSection = isEmployerSection(sectionParam)
+      ? sectionParam
+      : "profile";
     setEmployerSection(nextSection);
     setSelectedVacancy(
       nextSection === "applications"
@@ -186,13 +194,16 @@ export function ProfilePageContent() {
     return fullName || candidate.email;
   }, [candidate]);
 
-  const profileTitle = role === "candidate" ? candidateName : employer.companyName;
+  const profileTitle =
+    role === "candidate" ? candidateName : employer.companyName;
   const roleLabel = role === "candidate" ? "Соискатель" : "Работодатель";
 
   function loadApplications(publicId: string) {
     setSelectedVacancy(publicId);
     setEmployerSection("applications");
-    router.push(profileSectionHref("applications", publicId), { scroll: false });
+    router.push(profileSectionHref("applications", publicId), {
+      scroll: false,
+    });
   }
 
   function changeCandidateSection(section: CandidateSection) {
@@ -209,7 +220,9 @@ export function ProfilePageContent() {
   function changeEmployerApplicationFilter(publicId: string) {
     setSelectedVacancy(publicId);
     setEmployerSection("applications");
-    router.push(profileSectionHref("applications", publicId), { scroll: false });
+    router.push(profileSectionHref("applications", publicId), {
+      scroll: false,
+    });
   }
 
   async function handleCandidateSave(event: FormEvent<HTMLFormElement>) {
@@ -244,7 +257,9 @@ export function ProfilePageContent() {
       toast.success("Профиль сохранен.");
     } catch (error) {
       console.error("Failed to update profile:", error);
-      toast.error("Не удалось сохранить профиль. Проверьте сервер и авторизацию.");
+      toast.error(
+        "Не удалось сохранить профиль. Проверьте сервер и авторизацию.",
+      );
     } finally {
       setIsSaving(false);
     }
@@ -296,13 +311,18 @@ export function ProfilePageContent() {
     status: "ACCEPTED" | "REJECTED",
   ) {
     try {
-      const updated = await updateEmployerApplicationStatus(applicationId, status);
+      const updated = await updateEmployerApplicationStatus(
+        applicationId,
+        status,
+      );
       setEmployerApplications((items) =>
         items.map((item) =>
           item.applicationId === applicationId ? updated : item,
         ),
       );
-      toast.success(status === "ACCEPTED" ? "Отклик принят." : "Отклик отклонен.");
+      toast.success(
+        status === "ACCEPTED" ? "Отклик принят." : "Отклик отклонен.",
+      );
     } catch (error) {
       console.error("Failed to update application:", error);
       toast.error("Не удалось обновить статус отклика.");
@@ -368,7 +388,9 @@ export function ProfilePageContent() {
             ) : null}
 
             {role === "candidate" && candidateSection === "applications" ? (
-              <CandidateApplicationsSection applications={candidateApplications} />
+              <CandidateApplicationsSection
+                applications={candidateApplications}
+              />
             ) : null}
 
             {role === "candidate" && candidateSection === "favorites" ? (

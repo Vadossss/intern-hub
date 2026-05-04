@@ -2,12 +2,12 @@ import {
   ALL_VACANCIES_FILTER,
   PROFILE_SECTION_PARAM,
   VACANCY_FILTER_PARAM,
-} from "@/components/profile/constants";
+} from "@/components/shared/profile/constants";
 import type {
   CandidateSection,
   EmployerSection,
   ProfileSection,
-} from "@/components/profile/types";
+} from "@/components/shared/profile/types";
 
 export function labelFrom(map: Record<string, string>, value?: string) {
   return value ? (map[value] ?? value) : "Не указано";
@@ -87,7 +87,9 @@ export function isCandidateSection(
   );
 }
 
-export function isEmployerSection(value: string | null): value is EmployerSection {
+export function isEmployerSection(
+  value: string | null,
+): value is EmployerSection {
   return (
     value === "profile" || value === "vacancies" || value === "applications"
   );

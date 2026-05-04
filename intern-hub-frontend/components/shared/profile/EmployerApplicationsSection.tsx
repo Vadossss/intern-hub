@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { ArrowUpRight, Check, Search, X } from "lucide-react";
 
-import { ALL_VACANCIES_FILTER } from "@/components/profile/constants";
-import { statusLabel, vacancyHref } from "@/components/profile/utils";
+import { ALL_VACANCIES_FILTER } from "@/components/shared/profile/constants";
+import { statusLabel, vacancyHref } from "@/components/shared/profile/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

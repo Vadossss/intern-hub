@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 
-import { InfoCard } from "@/components/profile/InfoCard";
-import { formatMoney } from "@/components/profile/utils";
+import { InfoCard } from "@/components/shared/profile/InfoCard";
+import { formatMoney } from "@/components/shared/profile/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,7 +38,9 @@ export function CandidateDialog({
               </h2>
               <p className="mt-1 text-sm text-[#626262]">{candidate.email}</p>
             </div>
-            <p className="text-sm leading-7 text-[#4d4d4d]">{candidate.about}</p>
+            <p className="text-sm leading-7 text-[#4d4d4d]">
+              {candidate.about}
+            </p>
             <div className="grid gap-3 sm:grid-cols-2">
               <InfoCard title="Город" value={candidate.city || "Не указан"} />
               <InfoCard

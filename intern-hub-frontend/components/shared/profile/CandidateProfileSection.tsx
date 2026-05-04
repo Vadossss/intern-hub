@@ -3,9 +3,16 @@ import type { FormEvent } from "react";
 import { Mail, Pencil, UserRound } from "lucide-react";
 
 import { SkillsSelector } from "@/components/shared/SkillsSelector";
-import { InfoCard } from "@/components/profile/InfoCard";
-import { employmentLabels, workFormatLabels } from "@/components/profile/constants";
-import { formatMoney, labelFrom, textValue } from "@/components/profile/utils";
+import { InfoCard } from "@/components/shared/profile/InfoCard";
+import {
+  employmentLabels,
+  workFormatLabels,
+} from "@/components/shared/profile/constants";
+import {
+  formatMoney,
+  labelFrom,
+  textValue,
+} from "@/components/shared/profile/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -82,7 +89,11 @@ export function CandidateProfileSection({
                   defaultValue={candidate.lastName}
                   placeholder="Фамилия"
                 />
-                <Input name="city" defaultValue={candidate.city} placeholder="Город" />
+                <Input
+                  name="city"
+                  defaultValue={candidate.city}
+                  placeholder="Город"
+                />
                 <Input
                   name="preferredCity"
                   defaultValue={candidate.preferredCity}
@@ -173,7 +184,9 @@ export function CandidateProfileSection({
             </form>
           ) : (
             <div className="space-y-5">
-              <p className="text-sm leading-7 text-[#4d4d4d]">{candidate.about}</p>
+              <p className="text-sm leading-7 text-[#4d4d4d]">
+                {candidate.about}
+              </p>
               <div className="grid gap-3 sm:grid-cols-2">
                 <InfoCard title="Город" value={candidate.city || "Не указан"} />
                 <InfoCard
@@ -182,11 +195,17 @@ export function CandidateProfileSection({
                 />
                 <InfoCard
                   title="Формат"
-                  value={labelFrom(workFormatLabels, candidate.preferredWorkFormat)}
+                  value={labelFrom(
+                    workFormatLabels,
+                    candidate.preferredWorkFormat,
+                  )}
                 />
                 <InfoCard
                   title="Занятость"
-                  value={labelFrom(employmentLabels, candidate.preferredEmployment)}
+                  value={labelFrom(
+                    employmentLabels,
+                    candidate.preferredEmployment,
+                  )}
                 />
                 <InfoCard
                   title="Зарплата"
@@ -216,7 +235,9 @@ export function CandidateProfileSection({
                     </Badge>
                   ))
                 ) : (
-                  <span className="text-sm text-[#777]">Навыки пока не добавлены</span>
+                  <span className="text-sm text-[#777]">
+                    Навыки пока не добавлены
+                  </span>
                 )}
               </div>
             </div>
