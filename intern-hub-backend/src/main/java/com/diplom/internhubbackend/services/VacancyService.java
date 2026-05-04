@@ -1,27 +1,21 @@
 package com.diplom.internhubbackend.services;
 
+import com.diplom.internhubbackend.dto.FilterParams;
 import com.diplom.internhubbackend.dto.NewVacancyDto;
+import com.diplom.internhubbackend.dto.VacancyResponseDto;
+import com.diplom.internhubbackend.dto.hh.HhVacancyDetailsResponse;
 import com.diplom.internhubbackend.enums.VacancyStatus;
-import com.diplom.internhubbackend.exception.TokenGenerationException;
 import com.diplom.internhubbackend.exception.VacancyNotFoundException;
 import com.diplom.internhubbackend.mapper.VacancyMapper;
 import com.diplom.internhubbackend.models.*;
-import com.diplom.internhubbackend.models.VacancySource;
-import com.diplom.internhubbackend.dto.FilterParams;
-import com.diplom.internhubbackend.dto.VacancyResponseDto;
-import com.diplom.internhubbackend.dto.hh.HhItemVacancy;
-import com.diplom.internhubbackend.dto.hh.HhVacancyListResponse;
-import com.diplom.internhubbackend.dto.hh.HhKeySkill;
 import com.diplom.internhubbackend.repositories.VacancyRepository;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.TypedQuery;
 import jakarta.persistence.criteria.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.Cacheable;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -31,10 +25,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.reactive.function.client.WebClient;
-import reactor.util.retry.Retry;
 
-import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -49,14 +42,17 @@ public class VacancyService {
     private final WebClient webClient;
     private final VacancyRepository vacancyRepository;
     private final RestClient defaultRestClient = RestClient.create();
-    private final KeySkillService keySkillService;
     private final HhAggregationService hhAggregationService;
+    private final SjAggregationService sjAggregationService;
+    private final HhVacancyClassificationService hhVacancyClassificationService;
     private final VacancySourceService vacancySourceService;
     private final VacancyMapper vacancyMapper;
+    @Qualifier("superJobWebClient")
+    private final WebClient superJobWebClient;
 
 
     @Transactional()
-    @Cacheable(value = "vacancy", key = "#publicId")
+//    @Cacheable(value = "vacancy", key = "#publicId")
     public Vacancy getVacancy(String publicId) {
         Vacancy vacancy = vacancyRepository.findByPublicId(publicId.toLowerCase()).orElseThrow(() ->
                 new VacancyNotFoundException("Vacancy not found"));
@@ -66,17 +62,21 @@ public class VacancyService {
                     .getVacancySourceByCode(vacancy.getSource().getCode());
             if (vacancySource != null) {
 
-                HhVacancy hhVacancy = webClient.get()
+                HhVacancyDetailsResponse hhVacancy = webClient.get()
                         .uri("/vacancies/{id}", vacancy.getExternalId())
                         .retrieve()
-                        .bodyToMono(HhVacancy.class)
+                        .bodyToMono(HhVacancyDetailsResponse.class)
                         .block();
                 if (hhVacancy == null) {
                     return vacancy;
                 }
                 vacancy.setDescription(hhVacancy.description());
-
-                vacancy.setSkills(keySkillService.parseAndSaveKeySkills(hhVacancy.keySkills));
+                vacancy.setSkills(hhVacancyClassificationService.resolveTags(
+                        vacancy.getTitle(),
+                        hhVacancy.description(),
+                        hhVacancy.keySkills() != null ? hhVacancy.keySkills() : Collections.emptyList(),
+                        vacancy.getStack()
+                ));
 
                 vacancyRepository.save(vacancy);
 
@@ -120,7 +120,7 @@ public class VacancyService {
         List<Predicate> predicates = buildPredicates(params, cb, root, companyJoin);
         query.where(cb.and(predicates.toArray(new Predicate[0])));
 
-        applySorting(params, cb, query, root);
+//        applySorting(params, cb, query, root);
 
         TypedQuery<Vacancy> typedQuery = entityManager.createQuery(query);
         typedQuery.setFirstResult(params.getPage() * params.getSize());
@@ -216,14 +216,6 @@ public class VacancyService {
         return predicates;
     }
 
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    record HhVacancy(
-            String id,
-            String description,
-            @JsonProperty("key_skills") List<HhKeySkill> keySkills
-    ) {
-    }
-
     @Transactional
     public void archiveVacancy(User user, String publicId) {
 
@@ -281,52 +273,23 @@ public class VacancyService {
         return ResponseEntity.ok().body("Successfully created vacancy");
     }
 
+    public void fetchAndSaveSJ(Stack stack) {
+        try {
+            sjAggregationService.fetchAndSave(stack);
+        } catch (Exception ex) {
+            log.warn("SuperJob aggregation failed for stack {}", stack.getName(), ex);
+        }
+    }
+
     public void fetchAndSave(Stack stack) {
 
-        VacancySource vacancySource = vacancySourceService.getVacancySourceByCode("HH");
-
-        if (vacancySource != null && vacancySource.isActive()) {
-
-            int page = 0;
-
-            while (true) {
-                try {
-                    int finalPage = page;
-                    HhVacancyListResponse response = webClient.get()
-                            .uri(uriBuilder -> uriBuilder
-                                    .path("/vacancies")
-                                    .queryParam("text", stack.getSearchQuery())
-                                    .queryParam("vacancy_search_fields", "name")
-                                    .queryParam("per_page", "100")
-                                    .queryParam("page", finalPage)
-                                    .build())
-                            .retrieve()
-                            .bodyToMono(HhVacancyListResponse.class)
-                            .timeout(Duration.ofSeconds(10))
-                            .retryWhen(Retry.fixedDelay(3, Duration.ofSeconds(2)))
-                            .block();
-
-                    if (response == null || response.items() == null || response.items().isEmpty()) {
-                        break;
-                    }
-
-                    log.info("Сохранено {} вакансий", response.items().size());
-
-                    for (HhItemVacancy item : response.items()) {
-                        try {
-                            hhAggregationService.saveVacancy(item, vacancySource, stack).join();
-                        } catch (Exception e) {
-                            log.error("Ошибка при получении вакансии", e);
-                        }
-                    }
-
-                    page++;
-                    if (page >= response.pages()) break;
-                } catch (Exception e) {
-                    throw new TokenGenerationException("Ошибка при получении токена: " + e);
-                }
-            }
+        try {
+            hhAggregationService.fetchAndSave(stack);
+        } catch (Exception ex) {
+            log.warn("SuperJob aggregation failed for stack {}", stack.getName(), ex);
         }
+
+
     }
 
 }
