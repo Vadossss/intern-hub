@@ -1,16 +1,19 @@
 package com.diplom.internhubbackend.mapper;
 
+import com.diplom.internhubbackend.dto.KeySkillDto;
 import com.diplom.internhubbackend.models.KeySkill;
-import com.diplom.internhubbackend.models.dto.KeySkillDto;
-import org.mapstruct.*;
-
+import org.springframework.stereotype.Component;
 
 import java.util.Set;
+import java.util.stream.Collectors;
 
-@Mapper(componentModel = "spring")
-public interface KeySkillMapper {
+@Component
+public class KeySkillMapper {
+    public KeySkillDto toDto(KeySkill keySkill) {
+        return new KeySkillDto(keySkill.getId(), keySkill.getName());
+    }
 
-    KeySkillDto toDto(KeySkill skill);
-
-    Set<KeySkillDto> toDtoSet(Set<KeySkill> skills);
+    public Set<KeySkillDto> toDto(Set<KeySkill> keySkills) {
+        return keySkills.stream().map(this::toDto).collect(Collectors.toSet());
+    }
 }

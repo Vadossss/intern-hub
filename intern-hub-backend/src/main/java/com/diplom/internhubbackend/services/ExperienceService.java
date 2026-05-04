@@ -24,4 +24,8 @@ public class ExperienceService {
     public List<Experience> getAllExperiencesById(List<String> experienceIds) {
         return experienceRepository.findAllById(experienceIds);
     }
+
+    public List<Experience> getAllExperiences() {
+        return experienceRepository.findAll();
+    }
 }

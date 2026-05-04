@@ -25,4 +25,8 @@ public class EmploymentService {
     public List<Employment> getAllEmploymentsById(List<String> employmentIds) {
         return employmentRepository.findAllById(employmentIds);
     }
+
+    public List<Employment> getAllEmployments() {
+        return employmentRepository.findAll();
+    }
 }

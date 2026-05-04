@@ -23,4 +23,8 @@ public class WorkFormatService {
     public List<WorkFormat> getAllWorkFormatById(List<String> workFormats) {
         return workFormatRepository.findAllById(workFormats);
     }
+
+    public List<WorkFormat> getAllWorkFormat() {
+        return workFormatRepository.findAll();
+    }
 }
