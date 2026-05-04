@@ -1,26 +1,21 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import {
-  getVacancies,
-  GetVacanciesParams,
-  VacanciesResponse,
-} from "@/lib/api/vacancies";
-import { Vacancy } from "@/components/shared/VacancyCard";
+import { PageResponse, VacancyResponseDto } from "@/app/types/api";
+import { getVacancies, GetVacanciesParams } from "@/lib/api/vacancies";
+import { useEffect, useState } from "react";
 
 interface UseVacanciesResult {
-  vacancies: Vacancy[];
+  vacancies: VacancyResponseDto[];
   total: number;
   loading: boolean;
   error: Error | null;
   refetch: () => Promise<void>;
 }
 
-/**
- * Хук для получения списка вакансий
- */
-export function useVacancies(params?: GetVacanciesParams): UseVacanciesResult {
-  const [data, setData] = useState<VacanciesResponse>({
+export function useVacancies(
+  params?: GetVacanciesParams,
+): PageResponse<VacancyResponseDto> {
+  const [data, setData] = useState<PageResponse<VacancyResponseDto>>({
     content: [],
     pageNumber: 0,
     pageSize: 0,
@@ -36,13 +31,15 @@ export function useVacancies(params?: GetVacanciesParams): UseVacanciesResult {
     try {
       setLoading(true);
       setError(null);
-      const response = await getVacancies(params);
+      const response = (await getVacancies(
+        params,
+      )) as unknown as PageResponse<VacancyResponseDto>;
       console.log(response);
 
       setData(response);
     } catch (err) {
       setError(
-        err instanceof Error ? err : new Error("Failed to fetch vacancies")
+        err instanceof Error ? err : new Error("Failed to fetch vacancies"),
       );
       console.error("Error fetching vacancies:", err);
     } finally {
@@ -54,11 +51,5 @@ export function useVacancies(params?: GetVacanciesParams): UseVacanciesResult {
     fetchVacancies();
   }, [JSON.stringify(params)]);
 
-  return {
-    vacancies: data.content,
-    total: data.totalElements,
-    loading,
-    error,
-    refetch: fetchVacancies,
-  };
+  return data;
 }

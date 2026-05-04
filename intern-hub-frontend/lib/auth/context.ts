@@ -1,9 +1,22 @@
 import { create } from "zustand";
 
-interface User {
-  id: string;
+export type UserRole = "ROLE_USER" | "ROLE_EMPLOYER" | "ROLE_ADMIN";
+
+export interface User {
+  id: number;
   email: string;
-  role: string;
+  role: UserRole;
+  phoneNumber?: string | null;
+  city?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  companyName?: string | null;
+  status?: string | null;
+  verified?: boolean | null;
+  verificationStatus?: string | null;
+  verifiedAt?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
 }
 
 interface AuthState {

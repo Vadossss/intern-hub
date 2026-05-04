@@ -1,29 +1,35 @@
+import type { User } from "../auth/context";
 import { apiClient } from "./client";
 import { API_ENDPOINTS } from "./config";
-import { Direction } from "@/components/shared/DirectionSelector";
-import { Vacancy } from "@/components/shared/VacancyCard";
 
-/**
- * Параметры для получения вакансий
- */
 export interface LoginParams {
   email: string;
   password: string;
 }
 
-export interface LoginResponse {
-  accessToken: string;
-}
+export type LoginResponse = string | Record<string, never>;
 
-export async function login(data?: LoginParams): Promise<LoginResponse> {
+export async function login(data: LoginParams): Promise<LoginResponse> {
   return apiClient.post<LoginResponse>(API_ENDPOINTS.login, data);
 }
 
-export async function validateToken(): Promise<boolean> {
-  return apiClient.get<boolean>(API_ENDPOINTS.validateToken);
+export async function getCurrentUser(): Promise<User> {
+  return apiClient.get<User>(API_ENDPOINTS.me);
 }
 
-//
-// export async function getVacancyById(id: string): Promise<Vacancy> {
-//   return apiClient.get<Vacancy>(`${API_ENDPOINTS.vacancies}/${id}`);
-// }
+export async function refreshToken(): Promise<void> {
+  return apiClient.post(API_ENDPOINTS.refreshToken);
+}
+
+export async function getCurrentUserWithRefresh(): Promise<User> {
+  try {
+    return await getCurrentUser();
+  } catch {
+    await refreshToken();
+    return getCurrentUser();
+  }
+}
+
+export async function logout(): Promise<void> {
+  await apiClient.post(API_ENDPOINTS.logout);
+}
