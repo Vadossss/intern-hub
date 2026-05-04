@@ -2,9 +2,6 @@ import { API_CONFIG } from "./config";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
-/**
- * Опции для запроса
- */
 interface RequestOptions extends RequestInit {
   params?: Record<string, string | number | boolean | null | undefined>;
 }
@@ -13,7 +10,7 @@ export class ApiError extends Error {
   constructor(
     public status: number,
     public statusText: string,
-    public data?: unknown
+    public data?: unknown,
   ) {
     super(`API Error: ${status} ${statusText}`);
     this.name = "ApiError";
@@ -29,7 +26,7 @@ class ApiClient {
 
   private buildURL(
     endpoint: string,
-    params?: Record<string, string | number | boolean | null | undefined>
+    params?: Record<string, string | number | boolean | null | undefined>,
   ): string {
     const url = new URL(endpoint, this.baseURL);
 
@@ -44,13 +41,10 @@ class ApiClient {
     return url.toString();
   }
 
-  /**
-   * Выполняет запрос к API
-   */
   private async request<T>(
     endpoint: string,
     method: HttpMethod = "GET",
-    options: RequestOptions = {}
+    options: RequestOptions = {},
   ): Promise<T> {
     const { params, ...fetchOptions } = options;
     const url = this.buildURL(endpoint, params);
@@ -91,7 +85,7 @@ class ApiClient {
       throw new Error(
         `Network error: ${
           error instanceof Error ? error.message : "Unknown error"
-        }`
+        }`,
       );
     }
   }
@@ -109,7 +103,7 @@ class ApiClient {
   async post<T>(
     endpoint: string,
     data?: unknown,
-    options?: RequestOptions
+    options?: RequestOptions,
   ): Promise<T> {
     return this.request<T>(endpoint, "POST", {
       ...options,
@@ -123,7 +117,7 @@ class ApiClient {
   async put<T>(
     endpoint: string,
     data?: unknown,
-    options?: RequestOptions
+    options?: RequestOptions,
   ): Promise<T> {
     return this.request<T>(endpoint, "PUT", {
       ...options,
@@ -137,7 +131,7 @@ class ApiClient {
   async patch<T>(
     endpoint: string,
     data?: unknown,
-    options?: RequestOptions
+    options?: RequestOptions,
   ): Promise<T> {
     return this.request<T>(endpoint, "PATCH", {
       ...options,
@@ -153,5 +147,4 @@ class ApiClient {
   }
 }
 
-// Экспортируем экземпляр клиента
 export const apiClient = new ApiClient(API_CONFIG.baseURL);

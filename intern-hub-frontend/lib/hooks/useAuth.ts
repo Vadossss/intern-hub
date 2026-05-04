@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
-import { login, validateToken, LoginParams, LoginResponse } from "../api/auth";
+import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
+
+import { getCurrentUser, login, LoginParams } from "../api/auth";
 import { useAuth as useAuthStore } from "../auth/context";
 
 interface UseAuthResult {
-  accessToken: string;
   loading: boolean;
   isAuthenticated: boolean;
   error: Error | null;
@@ -15,10 +15,7 @@ interface UseAuthResult {
 
 export function useAuth(): UseAuthResult {
   const router = useRouter();
-  const { isAuthenticated, setIsAuthenticated } = useAuthStore();
-  const [data, setData] = useState<LoginResponse>({
-    accessToken: "",
-  });
+  const { isAuthenticated, setIsAuthenticated, setUser } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
@@ -27,33 +24,25 @@ export function useAuth(): UseAuthResult {
       try {
         setLoading(true);
         setError(null);
-        const response = await login(credentials);
-        setData(response);
-        try {
-          const isValid = await validateToken();
-          setIsAuthenticated(isValid);
-        } catch {
-          setIsAuthenticated(false);
-        }
+
+        await login(credentials);
+        const user = await getCurrentUser();
+
+        setUser(user);
+        setIsAuthenticated(true);
+        router.push("/profile");
       } catch (err) {
         setError(err instanceof Error ? err : new Error("Failed to login"));
-        console.error("Error during login:", err);
         setIsAuthenticated(false);
+        setUser(null);
       } finally {
         setLoading(false);
       }
     },
-    [setIsAuthenticated]
+    [router, setIsAuthenticated, setUser],
   );
 
-  useEffect(() => {
-    if (data.accessToken != "" && isAuthenticated) {
-      router.push("/");
-    }
-  }, [data.accessToken, isAuthenticated, router]);
-
   return {
-    accessToken: data.accessToken,
     loading,
     isAuthenticated,
     error,

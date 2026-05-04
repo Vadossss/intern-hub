@@ -1,78 +1,110 @@
 "use client";
 
-import { Briefcase, User } from "lucide-react";
-import { Button } from "../ui/button";
+import { LogOut, Menu, UserRound } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+
+import { Button } from "../ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
+import { logout as logoutRequest } from "@/lib/api/auth";
 import { useAuth } from "@/lib/auth/context";
 
-interface Props {
-  className?: string;
-}
+export function Header() {
+  const router = useRouter();
+  const { isAuthenticated, setIsAuthenticated, setUser, user } = useAuth();
 
-export const Header: React.FC<Props> = ({ className }) => {
-  const { isAuthenticated } = useAuth();
+  async function logout() {
+    try {
+      await logoutRequest();
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+
+    setIsAuthenticated(false);
+    setUser(null);
+    router.push("/auth");
+  }
+
   return (
-    <header className="bg-white shadow-sm border-b border-border">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          <div className="flex-shrink-0">
-            <Link href="/">
-              <h1 className="text-2xl font-bold">InternHub</h1>
-            </Link>
-          </div>
-          <nav className="hidden md:flex space-x-8">
+    <header className="sticky top-0 z-50 border-b border-border bg-white shadow-sm">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 items-center justify-between">
+          <Link href="/" className="text-2xl font-bold">
+            InternHub
+          </Link>
+
+          <nav className="hidden items-center gap-8 md:flex">
             <Link
-              href="/"
-              className="text-foreground hover:text-primary transition-colors"
+              href="/vacancies"
+              className="text-foreground transition-colors hover:text-primary"
             >
-              Стажировки
+              Вакансии
             </Link>
             <Link
               href="/"
-              className="text-foreground hover:text-primary transition-colors"
+              className="text-foreground transition-colors hover:text-primary"
             >
               Компании
             </Link>
             <Link
               href="/"
-              className="text-foreground hover:text-primary transition-colors"
+              className="text-foreground transition-colors hover:text-primary"
             >
               О нас
             </Link>
             <Link
               href="/"
-              className="text-foreground hover:text-primary transition-colors"
+              className="text-foreground transition-colors hover:text-primary"
             >
               Помощь
             </Link>
           </nav>
-          <div className="flex items-center space-x-4">
-            {/* <Button variant="ghost" size="sm" className="hidden sm:flex">
-              <User className="w-4 h-4 mr-2" />
-              Для студентов
-            </Button>
-            <Button variant="outline" size="sm" className="hidden sm:flex">
-              <Briefcase className="w-4 h-4 mr-2" />
-              Для работодателей
-            </Button> */}
-            {!isAuthenticated ? (
-              <Link
-                href={"/auth"}
-                className="border rounded-md p-1 px-2 hover:bg-gray-100 ease-in-out duration-250"
-              >
-                Войти
-              </Link>
-            ) : (
-              <Link
-                href={"/profile"}
-                className="border rounded-md p-1 px-2 hover:bg-gray-100 ease-in-out duration-250"
-              >
-                Профиль
-              </Link>
-            )}
-          </div>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="rounded-xl">
+                <Menu className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-48" align="end">
+              {!isAuthenticated ? (
+                <DropdownMenuGroup>
+                  <DropdownMenuItem className="cursor-pointer" asChild>
+                    <Link href="/auth">Войти</Link>
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+              ) : (
+                <DropdownMenuGroup>
+                  <DropdownMenuItem className="cursor-pointer" asChild>
+                    <Link href="/profile">
+                      <UserRound className="h-4 w-4" />
+                      Профиль
+                    </Link>
+                  </DropdownMenuItem>
+                  {user?.role === "ROLE_ADMIN" ? (
+                    <DropdownMenuItem className="cursor-pointer" asChild>
+                      <Link href="/admin">Админ панель</Link>
+                    </DropdownMenuItem>
+                  ) : null}
+                  <DropdownMenuItem
+                    className="cursor-pointer text-red-700 focus:text-red-700"
+                    onClick={logout}
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Выйти
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </header>
   );
-};
+}

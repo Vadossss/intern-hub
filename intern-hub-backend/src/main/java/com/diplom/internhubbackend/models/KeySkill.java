@@ -1,8 +1,7 @@
 package com.diplom.internhubbackend.models;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import java.util.Set;
 
@@ -10,6 +9,9 @@ import java.util.Set;
 @Table
 @Getter
 @Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class KeySkill {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

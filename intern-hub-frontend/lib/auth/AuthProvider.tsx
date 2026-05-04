@@ -1,39 +1,58 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAuth as useAuthStore } from "./context";
-import { validateToken } from "../api/auth";
+import type { ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
+
 import { Spinner } from "@/components/ui/spinner";
+import { getCurrentUserWithRefresh } from "../api/auth";
+import { useAuth as useAuthStore } from "./context";
 
 interface AuthProviderProps {
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const { setIsAuthenticated } = useAuthStore();
+  const pathname = usePathname();
+  const router = useRouter();
+  const { setIsAuthenticated, setUser } = useAuthStore();
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    const checkAuth = async () => {
+    let isMounted = true;
+
+    async function checkAuth() {
       try {
-        const isValid = await validateToken();
-        setIsAuthenticated(isValid);
-      } catch (error) {
+        const user = await getCurrentUserWithRefresh();
+        if (!isMounted) return;
+
+        setUser(user);
+        setIsAuthenticated(true);
+      } catch {
+        if (!isMounted) return;
+
+        setUser(null);
         setIsAuthenticated(false);
+
+        if (pathname.startsWith("/profile")) {
+          router.replace("/auth");
+        }
       } finally {
-        setIsChecking(false);
+        if (isMounted) setIsChecking(false);
       }
-    };
+    }
 
     checkAuth();
-  }, [setIsAuthenticated]);
-  
+
+    return () => {
+      isMounted = false;
+    };
+  }, [pathname, router, setIsAuthenticated, setUser]);
+
   if (isChecking) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <Spinner />
-        </div>
+      <div className="flex min-h-screen items-center justify-center">
+        <Spinner />
       </div>
     );
   }

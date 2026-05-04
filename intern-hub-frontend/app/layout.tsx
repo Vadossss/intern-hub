@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Geist, Nunito } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/shared/Header";
+import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/lib/auth/AuthProvider";
 
 const nunito = Nunito({
@@ -40,6 +41,7 @@ export default function RootLayout({
           <Header />
           {children}
         </AuthProvider>
+        <Toaster position="bottom-right" richColors />
       </body>
     </html>
   );

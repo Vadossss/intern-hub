@@ -1,9 +1,11 @@
 package com.diplom.internhubbackend.services;
 
 import com.diplom.internhubbackend.models.JwtPair;
-import com.diplom.internhubbackend.models.dto.TokensCookieDto;
-import com.diplom.internhubbackend.security.config.CustomUserDetails;
+import com.diplom.internhubbackend.dto.TokensCookieDto;
+import com.diplom.internhubbackend.models.User;
 import com.diplom.internhubbackend.security.jwt.JwtUtil;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -12,35 +14,76 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 
 @Service
+@Slf4j
+@RequiredArgsConstructor
 public class AuthUtilService {
 
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     private final JwtUtil jwtUtil;
-
-    public AuthUtilService(JwtUtil jwtUtil) {
-        this.jwtUtil = jwtUtil;
-    }
+    private final RefreshTokenService refreshTokenService;
 
     public boolean passwordMatches(String password, String hashedPassword) {
         return passwordEncoder.matches(password, hashedPassword);
     }
 
-    public TokensCookieDto generateAuthResponse(CustomUserDetails customUserDetails) {
-        JwtPair tokens = jwtUtil.generateTokenPair(customUserDetails);
-        ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", tokens.getRefreshToken())
-                .httpOnly(true)
-                .secure(false)
-                .sameSite("Lax")
-                .path("/")
-                .maxAge(Duration.ofDays(7))
-                .build();
+    public JwtPair generateTokenPair(User user) {
+        return new JwtPair(
+                jwtUtil.createAccessToken(user),
+                refreshTokenService.createRefreshToken(user)
+        );
+    }
 
-        ResponseCookie accessTokenCookie = ResponseCookie.from("accessToken", tokens.getAccessToken())
+    private TokensCookieDto buildResponse(String accessToken, String refreshToken) {
+        ResponseCookie accessTokenCookie = ResponseCookie.from("accessToken", accessToken)
                 .httpOnly(true)
                 .secure(false)
                 .sameSite("Lax")
                 .path("/")
                 .maxAge(Duration.ofMinutes(30))
+                .build();
+
+        ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", refreshToken)
+                .httpOnly(true)
+                .secure(false)
+                .sameSite("Lax")
+                .path("/")
+                .maxAge(Duration.ofDays(30))
+                .build();
+
+        return new TokensCookieDto(accessTokenCookie, refreshTokenCookie);
+    }
+
+    public TokensCookieDto generateAuthResponse(User user) {
+        String accessToken = jwtUtil.createAccessToken(user);
+        String refreshToken = refreshTokenService.createRefreshToken(user);
+
+        return buildResponse(accessToken, refreshToken);
+    }
+
+    public TokensCookieDto refreshTokens(String refreshTokenValue) {
+        User user = refreshTokenService.updateRefreshToken(refreshTokenValue);
+
+        String accessToken = jwtUtil.createAccessToken(user);
+        String refreshToken = refreshTokenService.createRefreshToken(user);
+
+        return buildResponse(accessToken, refreshToken);
+    }
+
+    public TokensCookieDto buildLogoutResponse() {
+        ResponseCookie accessTokenCookie = ResponseCookie.from("accessToken", "")
+                .httpOnly(true)
+                .secure(false)
+                .sameSite("Lax")
+                .path("/")
+                .maxAge(Duration.ZERO)
+                .build();
+
+        ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", "")
+                .httpOnly(true)
+                .secure(false)
+                .sameSite("Lax")
+                .path("/")
+                .maxAge(Duration.ZERO)
                 .build();
 
         return new TokensCookieDto(accessTokenCookie, refreshTokenCookie);

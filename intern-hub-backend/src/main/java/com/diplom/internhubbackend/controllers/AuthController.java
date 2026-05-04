@@ -1,25 +1,31 @@
 package com.diplom.internhubbackend.controllers;
 
+import com.diplom.internhubbackend.dto.AuthMeResponseDto;
+import com.diplom.internhubbackend.dto.TokensCookieDto;
+import com.diplom.internhubbackend.dto.UserRegisterDto;
 import com.diplom.internhubbackend.mapper.UserMapper;
-import com.diplom.internhubbackend.models.dto.TokensCookieDto;
-import com.diplom.internhubbackend.models.dto.UserRegisterDto;
+import com.diplom.internhubbackend.security.config.CustomUserDetails;
 import com.diplom.internhubbackend.services.AuthService;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Encoders;
 import io.jsonwebtoken.security.Keys;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.hibernate.service.spi.ServiceException;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Key;
 
+@Slf4j
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/api/auth")
 public class AuthController {
     private final AuthService authService;
     private final UserMapper userMapper;
@@ -57,18 +63,42 @@ public class AuthController {
                 .body(tokensCookieDto.getAccessTokenCookie().getValue());
     }
 
-    @GetMapping("/validateToken")
-    public ResponseEntity<Object> validateToken(HttpServletRequest request) {
-        return ResponseEntity.ok().body(authService.validateToken(request));
-    }
-
-    @PostMapping("/updateRefreshToken")
-    public ResponseEntity<Object> updateRefreshToken(HttpServletRequest request) {
-        TokensCookieDto tokensCookieDto = authService.updateRefreshToken(request);
+    @Operation(summary = "Обновление пары токенов")
+    @PostMapping("/update-refresh-token")
+    public ResponseEntity<Object> updateRefreshToken(
+            @Parameter(hidden = true)
+            @CookieValue("refreshToken") String refreshToken
+    ) {
+        TokensCookieDto tokensCookieDto = authService.updateRefreshToken(refreshToken);
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, tokensCookieDto.getAccessTokenCookie().toString())
                 .header(HttpHeaders.SET_COOKIE, tokensCookieDto.getRefreshTokenCookie().toString())
                 .body(tokensCookieDto.getAccessTokenCookie().getValue());
+    }
+
+    @Operation(summary = "Logout пользователя")
+    @PostMapping("/logout")
+    public ResponseEntity<Object> logout(
+            @CookieValue(value = "refreshToken", required = false) String refreshToken
+    ) {
+        TokensCookieDto tokensCookieDto = authService.logout(refreshToken);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, tokensCookieDto.getAccessTokenCookie().toString())
+                .header(HttpHeaders.SET_COOKIE, tokensCookieDto.getRefreshTokenCookie().toString())
+                .body("Successfully logged out");
+    }
+
+    @Operation(summary = "Получить текущего авторизованного пользователя")
+    @GetMapping("/me")
+    public ResponseEntity<AuthMeResponseDto> me(
+            @AuthenticationPrincipal CustomUserDetails customUserDetails
+    ) {
+        if (customUserDetails == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        return ResponseEntity.ok(AuthMeResponseDto.fromUser(customUserDetails.getUser()));
     }
 
     @GetMapping("generate")

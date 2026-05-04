@@ -1,7 +1,6 @@
 import { apiClient } from "./client";
 import { API_ENDPOINTS } from "./config";
-import { Direction } from "@/components/shared/DirectionSelector";
-import { Vacancy } from "@/components/shared/VacancyCard";
+import { VacancyResponseDto } from "@/app/types/api";
 
 /**
  * Параметры для получения вакансий
@@ -15,7 +14,7 @@ export interface GetVacanciesParams {
  * Ответ API для списка вакансий
  */
 export interface VacanciesResponse {
-  content: Vacancy[];
+  content: VacancyResponseDto[];
   pageNumber: number;
   pageSize: number;
   totalElements: number;
@@ -24,11 +23,8 @@ export interface VacanciesResponse {
   last: boolean;
 }
 
-/**
- * Получить список вакансий
- */
 export async function getVacancies(
-  params?: GetVacanciesParams
+  params?: GetVacanciesParams,
 ): Promise<VacanciesResponse> {
   return apiClient.get<VacanciesResponse>(API_ENDPOINTS.vacancies, {
     params: params
@@ -40,9 +36,6 @@ export async function getVacancies(
   });
 }
 
-/**
- * Получить вакансию по ID
- */
-export async function getVacancyById(id: string): Promise<Vacancy> {
-  return apiClient.get<Vacancy>(`${API_ENDPOINTS.vacancies}/${id}`);
+export async function getVacancyById(id: string): Promise<VacancyResponseDto> {
+  return apiClient.get<VacancyResponseDto>(`${API_ENDPOINTS.vacancies}/${id}`);
 }

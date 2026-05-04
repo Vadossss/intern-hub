@@ -3,8 +3,8 @@ package com.diplom.internhubbackend.test;
 import com.diplom.internhubbackend.exception.PasswordIncorrectException;
 import com.diplom.internhubbackend.exception.UserNotFoundException;
 import com.diplom.internhubbackend.models.User;
-import com.diplom.internhubbackend.models.dto.TokensCookieDto;
-import com.diplom.internhubbackend.models.dto.UserRegisterDto;
+import com.diplom.internhubbackend.dto.TokensCookieDto;
+import com.diplom.internhubbackend.dto.UserRegisterDto;
 import com.diplom.internhubbackend.repositories.UserRepository;
 import com.diplom.internhubbackend.security.config.CustomUserDetails;
 import com.diplom.internhubbackend.services.AuthService;
@@ -100,7 +100,7 @@ class AuthServiceTest {
         when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
         when(authUtilService.passwordMatches(rawPassword, encodedPassword)).thenReturn(true);
         when(customUserDetailsService.loadUserByUsername(email)).thenReturn(customUserDetails);
-        when(authUtilService.generateAuthResponse(customUserDetails)).thenReturn(tokensCookieDto);
+        when(authUtilService.generateAuthResponse(customUserDetails.getUser())).thenReturn(tokensCookieDto);
 
         TokensCookieDto result = authService.loginUser(userRegisterDto);
 

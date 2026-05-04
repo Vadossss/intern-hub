@@ -37,9 +37,9 @@ public class SecurityConfiguration {
         http.csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**", "/public/**", "/swagger-ui/**", "/skill/**",
-                                "/v3/api-docs/**", "/vacancy/getVacancies", "/vacancy", "/stacks",
-                                "/api-docs/**").permitAll()
+                        .requestMatchers("/api/auth/**", "/public/**", "/swagger-ui/**", "/api/skill/**",
+                                "/v3/api-docs/**", "/api/vacancies", "/api/vacancies/{vacancy_id}", "/api/stack",
+                                "/api-docs/**", "api/learn/**","api/question/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(sess -> sess.sessionCreationPolicy(
@@ -54,7 +54,7 @@ public class SecurityConfiguration {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowCredentials(true);
         configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000"));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
@@ -62,3 +62,4 @@ public class SecurityConfiguration {
         return source;
     }
 }
+
