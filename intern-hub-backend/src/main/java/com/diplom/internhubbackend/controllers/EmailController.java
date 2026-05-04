@@ -2,6 +2,7 @@ package com.diplom.internhubbackend.controllers;
 
 import com.diplom.internhubbackend.models.EmailDetails;
 import com.diplom.internhubbackend.services.EmailService;
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -15,14 +16,16 @@ public class EmailController {
 
     private final EmailService emailService;
 
-    @PostMapping("/send-mail")
+    @Operation(summary = "Отправить письмо на почту")
+    @PostMapping()
     public String sendMail(
             @RequestBody EmailDetails details) {
 
         return emailService.sendSimpleEmail(details);
     }
 
-    @PostMapping("/send-mail-with-attachment")
+    @Operation(summary = "Отправить письмо на почту с файлом")
+    @PostMapping("/attachment")
     public String sendMailWithAttachment(
             @RequestBody EmailDetails details) {
 

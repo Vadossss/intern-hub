@@ -3,6 +3,7 @@ package com.diplom.internhubbackend.controllers;
 import com.diplom.internhubbackend.dto.PageResponse;
 import com.diplom.internhubbackend.dto.VacancyResponseDto;
 import com.diplom.internhubbackend.services.VacancyModerationService;
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -18,6 +19,7 @@ public class VacancyModerationController {
 
     private final VacancyModerationService vacancyModerationService;
 
+    @Operation(summary = "Принять модерируемую вакансию")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     @PatchMapping("/{vacancy_id}/approve")
@@ -25,6 +27,7 @@ public class VacancyModerationController {
         vacancyModerationService.approve(vacancyId);
     }
 
+    @Operation(summary = "Отклонить модерируемую вакансию")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     @PatchMapping("/{vacancy_id}/reject")
@@ -32,6 +35,7 @@ public class VacancyModerationController {
         vacancyModerationService.reject(vacancyId);
     }
 
+    @Operation(summary = "Получить вакансии на модерации")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     @GetMapping()
     public PageResponse<VacancyResponseDto> getVacancy(Pageable pageable) {

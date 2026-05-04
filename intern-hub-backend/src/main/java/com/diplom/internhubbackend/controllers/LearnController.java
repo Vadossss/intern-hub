@@ -17,25 +17,25 @@ public class LearnController {
     }
 
     @Operation(summary = "Добавить новое обучение")
-    @PostMapping("/add")
+    @PostMapping()
     public ResponseEntity<Object> addLearn(@RequestBody Learn learn) {
         return ResponseEntity.ok(learnService.addLearn(learn));
     }
 
     @Operation(summary = "Удалить обучение из базы")
-    @DeleteMapping("/delete/{learnId}")
-    public ResponseEntity<Object> deleteLearn(@PathVariable Integer learnId) {
+    @DeleteMapping("/{learn_id}")
+    public ResponseEntity<Object> deleteLearn(@PathVariable(name = "learn_id") Integer learnId) {
         return ResponseEntity.ok(learnService.deleteLearn(learnId));
     }
 
     @Operation(summary = "Получить обучение по id")
-    @GetMapping("/get/{id}")
-    public ResponseEntity<Object> findLearn(@PathVariable Integer id) {
-       return ResponseEntity.ok(learnService.getLearnById(id));
+    @GetMapping("/{learn_id}")
+    public ResponseEntity<Object> findLearn(@PathVariable(name = "learn_id") Integer learnId) {
+       return ResponseEntity.ok(learnService.getLearnById(learnId));
     }
 
     @Operation(summary = "Получить все записи обучения")
-    @GetMapping("/get-all")
+    @GetMapping()
     public ResponseEntity<Object> findAllLearns() {
         return ResponseEntity.ok(learnService.getAllLearns());
     }
