@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight, Check, Search, X } from "lucide-react";
 
@@ -7,6 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { EmployerApplication, EmployerVacancy } from "@/lib/api/profile";
+
+type ApplicationsView = "active" | "archive";
 
 export function EmployerApplicationsSection({
   applications,
@@ -26,6 +31,7 @@ export function EmployerApplicationsSection({
     status: "ACCEPTED" | "REJECTED",
   ) => void;
 }) {
+  const [view, setView] = useState<ApplicationsView>("active");
   const vacancyById = new Map(
     vacancies.map((vacancy) => [vacancy.publicId, vacancy]),
   );
@@ -35,6 +41,20 @@ export function EmployerApplicationsSection({
       : applications.filter(
           (application) => application.vacancyPublicId === selectedVacancy,
         );
+  const activeApplications = filteredApplications.filter(
+    (application) =>
+      !application.archived &&
+      application.status !== "ACCEPTED" &&
+      application.status !== "REJECTED",
+  );
+  const archivedApplications = filteredApplications.filter(
+    (application) =>
+      application.archived ||
+      application.status === "ACCEPTED" ||
+      application.status === "REJECTED",
+  );
+  const visibleApplications =
+    view === "active" ? activeApplications : archivedApplications;
 
   return (
     <Card className="rounded-2xl border-[#161616]/10 bg-white/90">
@@ -55,10 +75,42 @@ export function EmployerApplicationsSection({
           </select>
         </div>
       </CardHeader>
-      <CardContent className="space-y-3">
-        {filteredApplications.length > 0 ? (
-          filteredApplications.map((application) => {
+      <CardContent className="space-y-4">
+        <div className="inline-flex rounded-xl border bg-white p-1">
+          <Button
+            type="button"
+            size="sm"
+            variant={view === "active" ? "default" : "ghost"}
+            className={view === "active" ? "bg-[#171717] text-white" : ""}
+            onClick={() => setView("active")}
+          >
+            Активные
+            <Badge variant="outline" className="ml-2 rounded-lg bg-white/80">
+              {activeApplications.length}
+            </Badge>
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={view === "archive" ? "default" : "ghost"}
+            className={view === "archive" ? "bg-[#171717] text-white" : ""}
+            onClick={() => setView("archive")}
+          >
+            Архив
+            <Badge variant="outline" className="ml-2 rounded-lg bg-white/80">
+              {archivedApplications.length}
+            </Badge>
+          </Button>
+        </div>
+
+        {visibleApplications.length > 0 ? (
+          visibleApplications.map((application) => {
             const vacancy = vacancyById.get(application.vacancyPublicId);
+            const isArchived =
+              view === "archive" ||
+              application.archived ||
+              application.status === "ACCEPTED" ||
+              application.status === "REJECTED";
 
             return (
               <div
@@ -67,9 +119,13 @@ export function EmployerApplicationsSection({
               >
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                   <div>
-                    <p className="font-semibold text-[#171717]">
-                      {application.candidateName}
-                    </p>
+                    <Link
+                      href={`/candidate/${application.candidateId}`}
+                      className="inline-flex items-center gap-1 font-semibold text-[#171717] hover:text-[#48644d] hover:underline"
+                    >
+                      {application.candidateName || "Кандидат"}
+                      <ArrowUpRight className="h-4 w-4" />
+                    </Link>
                     <p className="mt-1 text-sm text-[#626262]">
                       {application.candidateEmail}
                     </p>
@@ -80,6 +136,21 @@ export function EmployerApplicationsSection({
                       {vacancy?.title ?? "Открыть вакансию"}
                       <ArrowUpRight className="h-4 w-4" />
                     </Link>
+                    {application.resumeProfession ? (
+                      <p className="mt-2 text-sm font-semibold text-[#48644d]">
+                        Резюме: {application.resumeProfession}
+                      </p>
+                    ) : application.resumeUrl ? (
+                      <a
+                        href={application.resumeUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-[#48644d] hover:underline"
+                      >
+                        Ссылка на резюме
+                        <ArrowUpRight className="h-4 w-4" />
+                      </a>
+                    ) : null}
                     {application.coverLetter ? (
                       <p className="mt-3 max-w-2xl text-sm leading-6 text-[#555]">
                         {application.coverLetter}
@@ -99,33 +170,39 @@ export function EmployerApplicationsSection({
                     <Search className="h-4 w-4" />
                     Профиль
                   </Button>
-                  <Button
-                    size="sm"
-                    className="bg-[#48644d] text-white hover:bg-[#3b543f]"
-                    onClick={() =>
-                      onStatusChange(application.applicationId, "ACCEPTED")
-                    }
-                  >
-                    <Check className="h-4 w-4" />
-                    Принять
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      onStatusChange(application.applicationId, "REJECTED")
-                    }
-                  >
-                    <X className="h-4 w-4" />
-                    Отклонить
-                  </Button>
+                  {!isArchived ? (
+                    <>
+                      <Button
+                        size="sm"
+                        className="bg-[#48644d] text-white hover:bg-[#3b543f]"
+                        onClick={() =>
+                          onStatusChange(application.applicationId, "ACCEPTED")
+                        }
+                      >
+                        <Check className="h-4 w-4" />
+                        Принять
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          onStatusChange(application.applicationId, "REJECTED")
+                        }
+                      >
+                        <X className="h-4 w-4" />
+                        Отклонить
+                      </Button>
+                    </>
+                  ) : null}
                 </div>
               </div>
             );
           })
         ) : (
           <p className="rounded-2xl border border-dashed bg-white p-5 text-sm text-[#626262]">
-            Откликов по выбранному фильтру пока нет.
+            {view === "active"
+              ? "Активных откликов по выбранному фильтру пока нет."
+              : "В архиве по выбранному фильтру пока нет откликов."}
           </p>
         )}
       </CardContent>
