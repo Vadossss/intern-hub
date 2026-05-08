@@ -3,6 +3,7 @@ package com.diplom.internhubbackend.security.config;
 import com.diplom.internhubbackend.security.jwtFilter.JwtFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -38,8 +39,12 @@ public class SecurityConfiguration {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**", "/public/**", "/swagger-ui/**", "/api/skill/**",
-                                "/v3/api-docs/**", "/api/vacancies", "/api/vacancies/{vacancy_id}", "/api/stack",
+                                "/uploads/**",
+                                "/v3/api-docs/**", "/api/vacancies", "/api/vacancies/{vacancy_id}",
+                                "/api/vacancies/*/application-status",
+                                "/api/employers", "/api/employers/**", "/api/candidates/**", "/api/stack",
                                 "/api-docs/**", "api/learn/**","api/question/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/blog/articles", "/api/blog/articles/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(sess -> sess.sessionCreationPolicy(
@@ -53,7 +58,7 @@ public class SecurityConfiguration {
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowCredentials(true);
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000"));
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://127.0.0.1:3000"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
 
