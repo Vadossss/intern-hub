@@ -14,6 +14,7 @@ public class EmployerDto {
     private Integer id;
     private String companyName;
     private String city;
+    private String avatarUrl;
     private Role role;
     private Boolean isAggregated;
     private Boolean verified;
