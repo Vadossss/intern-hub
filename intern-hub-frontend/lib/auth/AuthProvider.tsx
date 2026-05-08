@@ -21,6 +21,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     let isMounted = true;
 
+    function clearAuth() {
+      setUser(null);
+      setIsAuthenticated(false);
+
+      if (pathname.startsWith("/profile")) {
+        router.replace("/auth");
+      }
+    }
+
     async function checkAuth() {
       try {
         const user = await getCurrentUserWithRefresh();
@@ -31,21 +40,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
       } catch {
         if (!isMounted) return;
 
-        setUser(null);
-        setIsAuthenticated(false);
-
-        if (pathname.startsWith("/profile")) {
-          router.replace("/auth");
-        }
+        clearAuth();
       } finally {
         if (isMounted) setIsChecking(false);
       }
     }
 
+    window.addEventListener("intern-hub:auth-expired", clearAuth);
     checkAuth();
 
     return () => {
       isMounted = false;
+      window.removeEventListener("intern-hub:auth-expired", clearAuth);
     };
   }, [pathname, router, setIsAuthenticated, setUser]);
 
