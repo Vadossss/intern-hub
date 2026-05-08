@@ -7,3 +7,4 @@ export * from "./questions";
 export * from "./profile";
 export * from "./auth";
 export * from "./dictionaries";
+export * from "./blog";

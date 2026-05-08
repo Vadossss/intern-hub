@@ -3,6 +3,7 @@ import {
   PROFILE_SECTION_PARAM,
   VACANCY_FILTER_PARAM,
 } from "@/components/shared/profile/constants";
+import { API_CONFIG } from "@/lib/api/config";
 import type {
   CandidateSection,
   EmployerSection,
@@ -39,12 +40,24 @@ export function formatDate(value?: string) {
   }).format(new Date(value));
 }
 
+export function formatBirthday(value?: string) {
+  if (!value) return "Не указан";
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(`${value}T00:00:00`));
+}
+
 export function statusLabel(status?: string) {
   const labels: Record<string, string> = {
     ACTIVE: "Активна",
+    APPROVED: "Активна",
     DRAFT: "Черновик",
     ARCHIVED: "Архив",
     PENDING: "На рассмотрении",
+    MODERATED: "На проверке",
+    REVISION_REQUIRED: "Нужны правки",
     ACCEPTED: "Принят",
     REJECTED: "Отклонен",
   };
@@ -60,6 +73,12 @@ export function employerHref(companyName?: string) {
   return companyName
     ? `/vacancies?companyName=${encodeURIComponent(companyName)}`
     : "/vacancies";
+}
+
+export function mediaUrl(path?: string | null) {
+  if (!path) return "";
+  if (/^https?:\/\//i.test(path)) return path;
+  return new URL(path, API_CONFIG.baseURL).toString();
 }
 
 export function profileSectionHref(
@@ -83,7 +102,11 @@ export function isCandidateSection(
   value: string | null,
 ): value is CandidateSection {
   return (
-    value === "profile" || value === "applications" || value === "favorites"
+    value === "profile" ||
+    value === "resumes" ||
+    value === "applications" ||
+    value === "favorites" ||
+    value === "settings"
   );
 }
 
@@ -91,6 +114,10 @@ export function isEmployerSection(
   value: string | null,
 ): value is EmployerSection {
   return (
-    value === "profile" || value === "vacancies" || value === "applications"
+    value === "profile" ||
+    value === "candidates" ||
+    value === "vacancies" ||
+    value === "applications" ||
+    value === "settings"
   );
 }

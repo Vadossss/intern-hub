@@ -3,30 +3,36 @@ import type {
   CandidateFavoriteVacancy,
   CandidateProfile,
   EmployerApplication,
+  EmployerProfileData,
   EmployerVacancy,
 } from "@/lib/api/profile";
 
 export type RoleView = "candidate" | "employer";
-export type CandidateSection = "profile" | "applications" | "favorites";
-export type EmployerSection = "profile" | "vacancies" | "applications";
+export type CandidateSection =
+  | "profile"
+  | "resumes"
+  | "applications"
+  | "favorites"
+  | "settings";
+export type EmployerSection =
+  | "profile"
+  | "candidates"
+  | "vacancies"
+  | "applications"
+  | "settings";
 export type ProfileSection = CandidateSection | EmployerSection;
 
-export interface EmployerProfile {
-  companyName: string;
-  email: string;
-  city: string;
-  website: string;
-  contactName: string;
-  phone: string;
-  about: string;
-}
+export type EmployerProfile = EmployerProfileData;
 
 export const emptyCandidate: CandidateProfile = {
   userId: 0,
   email: "user@internhub.ru",
+  phoneNumber: "",
   firstName: "Ваш",
   lastName: "профиль",
+  birthday: "",
   city: "Не указан",
+  avatarUrl: "",
   about:
     "Заполните профиль, чтобы работодатели быстрее понимали ваш опыт, стек и ожидания.",
   preferredCity: "Любой город",
@@ -39,12 +45,14 @@ export const emptyCandidate: CandidateProfile = {
 };
 
 export const emptyEmployer: EmployerProfile = {
+  userId: 0,
   companyName: "Ваша компания",
   email: "",
   city: "Не указан",
   website: "",
   contactName: "",
   phone: "",
+  avatarUrl: "",
   about:
     "Добавьте описание компании, чтобы кандидаты понимали, чем занимается команда и какие стажировки вы предлагаете.",
 };
@@ -54,8 +62,13 @@ export const demoApplications: CandidateApplicationHistory[] = [
     applicationId: 1,
     vacancyPublicId: "demo-frontend",
     vacancyTitle: "Frontend intern",
-    companyName: "InternHub",
+    employer: {
+      id: 1,
+      companyName: "InternHub",
+      city: "Москва",
+    },
     status: "PENDING",
+    archived: false,
     appliedAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },

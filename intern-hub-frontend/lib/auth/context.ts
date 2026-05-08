@@ -11,6 +11,7 @@ export interface User {
   firstName?: string | null;
   lastName?: string | null;
   companyName?: string | null;
+  avatarUrl?: string | null;
   status?: string | null;
   verified?: boolean | null;
   verificationStatus?: string | null;
