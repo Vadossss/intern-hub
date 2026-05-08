@@ -25,6 +25,8 @@ public class FilterParams {
 
     private String companyName;
 
+    private String employerId;
+
     private String schedule;
 
     private List<Employment> employment;
