@@ -1,12 +1,20 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { ArrowUpDown, Briefcase, Sparkles } from "lucide-react";
+import { toast } from "sonner";
 
 import { VacancyResponseDto } from "@/app/types/api";
 import { Direction } from "@/components/shared/DirectionSelector";
 import { VacancyCardNew } from "@/components/shared/VacancyCardNew";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  addCandidateFavorite,
+  getCandidateFavorites,
+  removeCandidateFavorite,
+} from "@/lib/api/profile";
+import { useAuth } from "@/lib/auth/context";
 
 interface Props {
   vacancies: VacancyResponseDto[];
@@ -23,6 +31,79 @@ export const VacanciesSection: React.FC<Props> = ({
   title = "Вакансии",
   description = "Подборка актуальных предложений по выбранному стеку.",
 }) => {
+  const { isAuthenticated, user } = useAuth();
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+  const [isFavoritesLoaded, setIsFavoritesLoaded] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadFavorites() {
+      if (!isAuthenticated || user?.role !== "ROLE_USER") {
+        setFavoriteIds(new Set());
+        setIsFavoritesLoaded(true);
+        return;
+      }
+
+      try {
+        setIsFavoritesLoaded(false);
+        const response = await getCandidateFavorites(0, 1000);
+
+        if (isMounted) {
+          setFavoriteIds(
+            new Set(response.content.map((favorite) => favorite.publicId)),
+          );
+        }
+      } catch (error) {
+        console.error("Failed to load favorite vacancies:", error);
+      } finally {
+        if (isMounted) {
+          setIsFavoritesLoaded(true);
+        }
+      }
+    }
+
+    loadFavorites();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isAuthenticated, user?.role]);
+
+  async function toggleFavorite(publicId: string) {
+    if (!isAuthenticated) {
+      toast.error("Войдите в аккаунт, чтобы добавлять вакансии в избранное.");
+      return;
+    }
+
+    if (user?.role !== "ROLE_USER") {
+      toast.error("Избранное доступно только соискателям.");
+      return;
+    }
+
+    const isFavorite = favoriteIds.has(publicId);
+
+    try {
+      if (isFavorite) {
+        await removeCandidateFavorite(publicId);
+        setFavoriteIds((current) => {
+          const next = new Set(current);
+          next.delete(publicId);
+          return next;
+        });
+        toast.success("Вакансия удалена из избранного.");
+        return;
+      }
+
+      await addCandidateFavorite(publicId);
+      setFavoriteIds((current) => new Set(current).add(publicId));
+      toast.success("Вакансия добавлена в избранное.");
+    } catch (error) {
+      console.error("Failed to toggle favorite vacancy:", error);
+      toast.error("Не удалось обновить избранное.");
+    }
+  }
+
   if (vacancies.length === 0) {
     return (
       <section className={className}>
@@ -49,7 +130,6 @@ export const VacanciesSection: React.FC<Props> = ({
         <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <div className="flex items-center gap-3">
-              <Briefcase className="h-6 w-6 text-[#3f5f4a]" />
               <h2 className="text-3xl font-bold uppercase tracking-tight text-[#171717]">
                 {title}
               </h2>
@@ -57,7 +137,7 @@ export const VacanciesSection: React.FC<Props> = ({
             <p className="mt-3 max-w-2xl text-[#5a5a5a]">{description}</p>
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* <div className="flex items-center gap-2">
             <Badge
               variant="outline"
               className="rounded-full border-[#161616]/15 bg-white px-4 py-2 text-sm text-[#3f3f3f]"
@@ -71,12 +151,19 @@ export const VacanciesSection: React.FC<Props> = ({
               <ArrowUpDown className="mr-2 h-4 w-4" />
               Сортировка
             </Button>
-          </div>
+          </div> */}
         </div>
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           {vacancies.map((vacancy) => (
-            <VacancyCardNew key={vacancy.id} vacancy={vacancy} />
+            <VacancyCardNew
+              key={vacancy.id}
+              vacancy={vacancy}
+              isFavorite={
+                isFavoritesLoaded ? favoriteIds.has(vacancy.publicId) : false
+              }
+              onToggleFavorite={toggleFavorite}
+            />
           ))}
         </div>
       </div>

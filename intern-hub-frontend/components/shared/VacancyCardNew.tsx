@@ -1,18 +1,11 @@
 "use client";
 
-import {
-  ArrowUpRight,
-  Briefcase,
-  Building2,
-  Clock3,
-  DollarSign,
-  MapPin,
-  Star,
-} from "lucide-react";
+import type { ReactNode } from "react";
+import { Briefcase, Building2, Heart, MapPin, Monitor } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { VacancyResponseDto } from "@/app/types/api";
-import { Badge } from "@/components/ui/badge";
 
 interface VacancyCardProps {
   vacancy: VacancyResponseDto;
@@ -23,10 +16,10 @@ interface VacancyCardProps {
 
 function formatSalary(vacancy: VacancyResponseDto) {
   const { salaryFrom, salaryTo, currency } = vacancy;
-  const currencySymbol = currency?.abbr ?? "";
+  const currencySymbol = currency?.abbr || "₽";
 
   if (salaryFrom && salaryTo) {
-    return `${salaryFrom.toLocaleString("ru-RU")} — ${salaryTo.toLocaleString("ru-RU")} ${currencySymbol}`;
+    return `${salaryFrom.toLocaleString("ru-RU")} - ${salaryTo.toLocaleString("ru-RU")} ${currencySymbol}`;
   }
 
   if (salaryFrom) {
@@ -37,20 +30,15 @@ function formatSalary(vacancy: VacancyResponseDto) {
     return `до ${salaryTo.toLocaleString("ru-RU")} ${currencySymbol}`;
   }
 
-  return "Зарплата не указана";
+  return "Не указана";
 }
 
-function getStatusLabel(status: VacancyResponseDto["status"]) {
-  switch (status) {
-    case "ACTIVE":
-      return "Активна";
-    case "MODERATED":
-      return "На модерации";
-    case "ARCHIVED":
-      return "В архиве";
-    default:
-      return status;
-  }
+function companyName(vacancy: VacancyResponseDto) {
+  return vacancy.employer?.companyName || "Компания не указана";
+}
+
+function chipText(value?: string | null, fallback = "Не указано") {
+  return value && value.trim() ? value : fallback;
 }
 
 export function VacancyCardNew({
@@ -61,136 +49,89 @@ export function VacancyCardNew({
 }: VacancyCardProps) {
   const router = useRouter();
 
+  function openVacancy() {
+    onClickCard?.(vacancy.publicId);
+    router.push(`/vacancies/${vacancy.publicId}`);
+  }
+
   return (
     <article
-      className="group relative overflow-hidden rounded-[1.5rem] border border-[#161616]/12 bg-[#faf8f2]/90 p-5 shadow-sm transition duration-200 hover:-translate-y-1 hover:border-[#3f5f4a]/45 hover:shadow-[0_18px_40px_rgba(20,20,20,0.1)]"
-      onClick={() => {
-        onClickCard?.(vacancy.publicId);
-        router.push(`/vacancies/${vacancy.publicId}`);
-      }}
+      className="group cursor-pointer rounded-[8px] border border-[#d9d9d9] bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-[#bdbdbd] hover:shadow-[0_14px_32px_rgba(20,20,20,0.08)]"
+      onClick={openVacancy}
     >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(216,231,214,0.9),transparent_32%)] opacity-0 transition group-hover:opacity-100" />
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h3 className="line-clamp-2 text-[21px] font-black leading-tight tracking-normal text-[#050505]">
+            {vacancy.title}
+          </h3>
 
-      <div className="relative">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge className="rounded-full bg-[#edf3ea] px-3 py-1 text-[#3f5f4a] hover:bg-[#edf3ea]">
-                {vacancy.stack}
-              </Badge>
-              <Badge
-                variant="outline"
-                className="rounded-full border-[#161616]/15 bg-white text-[#4c4c4c]"
-              >
-                {getStatusLabel(vacancy.status)}
-              </Badge>
-              {vacancy.employer?.verified ? (
-                <Badge
-                  variant="outline"
-                  className="rounded-full border-amber-200 bg-amber-50 text-amber-700"
-                >
-                  Проверенный работодатель
-                </Badge>
-              ) : null}
-            </div>
-
-            <h3 className="mt-4 line-clamp-2 text-xl font-semibold tracking-tight text-[#171717] sm:text-2xl">
-              {vacancy.title}
-            </h3>
-          </div>
-
-          {onToggleFavorite ? (
-            <button
-              onClick={(event) => {
-                event.stopPropagation();
-                onToggleFavorite(vacancy.publicId);
-              }}
-              className="rounded-full border border-[#161616]/15 bg-white p-2.5 text-[#8b8b8b] transition hover:border-amber-300 hover:text-amber-500"
-              aria-label="Добавить в избранное"
+          {vacancy.employer?.id ? (
+            <Link
+              href={`/employers/${vacancy.employer.id}`}
+              onClick={(event) => event.stopPropagation()}
+              className="mt-1.5 inline-flex min-w-0 items-center gap-2 text-[15px] font-medium text-[#777] hover:text-[#171717]"
             >
-              <Star
-                className={`h-5 w-5 ${isFavorite ? "fill-amber-400 text-amber-400" : ""}`}
-              />
-            </button>
-          ) : null}
-        </div>
-
-        <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-[#565656]">
-          <span className="inline-flex items-center gap-2">
-            <Building2 className="h-4 w-4 text-[#8a8a8a]" />
-            {vacancy.employer?.companyName ?? "Компания не указана"}
-          </span>
-          <span className="inline-flex items-center gap-2">
-            <MapPin className="h-4 w-4 text-[#8a8a8a]" />
-            {vacancy.city || "Локация не указана"}
-          </span>
-        </div>
-
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          <div className="rounded-xl border border-[#161616]/10 bg-white/80 p-4">
-            <div className="flex items-center gap-2 text-sm text-[#6a6a6a]">
-              <DollarSign className="h-4 w-4" />
-              Условия
-            </div>
-            <p className="mt-2 text-lg font-semibold text-[#171717]">
-              {formatSalary(vacancy)}
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-[#161616]/10 bg-white/80 p-4">
-            <div className="flex items-center gap-2 text-sm text-[#6a6a6a]">
-              <Clock3 className="h-4 w-4" />
-              Формат и опыт
-            </div>
-            <p className="mt-2 text-sm font-medium text-[#171717]">
-              {vacancy.experience?.name ?? "Опыт не указан"}
-            </p>
-            <p className="mt-1 text-sm text-[#606060]">
-              {vacancy.workFormat?.name ?? "Формат не указан"}
-              {vacancy.employment?.name ? ` • ${vacancy.employment.name}` : ""}
-            </p>
-          </div>
-        </div>
-
-        {/* <p className="mt-5 line-clamp-3 text-sm leading-7 text-[#575757]">
-          {vacancy.description}
-        </p> */}
-
-        <div className="mt-5 flex flex-wrap gap-2">
-          {vacancy.skills?.length ? (
-            <>
-              {vacancy.skills.slice(0, 5).map((skill) => (
-                <span
-                  key={skill.id}
-                  className="rounded-full border border-[#161616]/12 bg-white/80 px-3 py-1.5 text-xs font-medium text-[#4b4b4b]"
-                >
-                  {skill.name}
-                </span>
-              ))}
-              {vacancy.skills.length > 5 ? (
-                <span className="rounded-full border border-[#161616]/12 bg-white/80 px-3 py-1.5 text-xs font-medium text-[#7a7a7a]">
-                  +{vacancy.skills.length - 5}
-                </span>
-              ) : null}
-            </>
+              <Building2 className="h-4 w-4 shrink-0" />
+              <span className="truncate">{companyName(vacancy)}</span>
+            </Link>
           ) : (
-            <span className="rounded-full border border-dashed border-[#161616]/20 px-3 py-1.5 text-xs text-[#7a7a7a]">
-              Навыки не указаны
-            </span>
+            <div className="mt-1.5 inline-flex min-w-0 items-center gap-2 text-[15px] font-medium text-[#777]">
+              <Building2 className="h-4 w-4 shrink-0" />
+              <span className="truncate">{companyName(vacancy)}</span>
+            </div>
           )}
         </div>
 
-        <div className="mt-6 flex items-center justify-between border-t border-[#161616]/8 pt-4 text-sm">
-          <div className="inline-flex items-center gap-2 text-[#666]">
-            <Briefcase className="h-4 w-4" />
-            Открыть карточку вакансии
-          </div>
-          <div className="inline-flex items-center font-semibold text-[#3f5f4a]">
-            Подробнее
-            <ArrowUpRight className="ml-1 h-4 w-4" />
-          </div>
-        </div>
+        <button
+          type="button"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#6f6f6f] transition hover:bg-[#f3f3f3] hover:text-red-600"
+          aria-label={isFavorite ? "Удалить из избранного" : "Добавить в избранное"}
+          onClick={(event) => {
+            event.stopPropagation();
+            onToggleFavorite?.(vacancy.publicId);
+          }}
+        >
+          <Heart
+            className={`h-6 w-6 stroke-[2] ${
+              isFavorite ? "fill-red-600 text-red-600" : ""
+            }`}
+          />
+        </button>
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <InfoChip icon={<MapPin className="h-4 w-4" />}>
+          {chipText(vacancy.city, "Город не указан")}
+        </InfoChip>
+        <InfoChip icon={<Monitor className="h-4 w-4" />}>
+          {chipText(vacancy.workFormat?.name, "Формат не указан")}
+        </InfoChip>
+        <InfoChip icon={<Briefcase className="h-4 w-4" />}>
+          {chipText(vacancy.experience?.name, "Опыт не указан")}
+        </InfoChip>
+      </div>
+
+      <div className="mt-4 rounded-[8px] bg-[#f7f7f7] px-4 py-3">
+        <p className="text-[13px] font-medium text-[#777]">Зарплата</p>
+        <p className="mt-0.5 text-[23px] font-black leading-tight tracking-normal text-[#050505]">
+          {formatSalary(vacancy)}
+        </p>
       </div>
     </article>
+  );
+}
+
+function InfoChip({
+  icon,
+  children,
+}: {
+  icon: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <div className="inline-flex max-w-full items-center gap-1.5 rounded-[8px] bg-[#f8f8f8] px-3 py-1.5 text-[14px] font-semibold text-[#1f1f1f]">
+      <span className="shrink-0 text-[#6f6f6f]">{icon}</span>
+      <span className="min-w-0 truncate">{children}</span>
+    </div>
   );
 }
