@@ -11,6 +11,7 @@ public class ApplicationMapper {
                 entity.getId(),
                 entity.getVacancy().getPublicId(),
                 entity.getCandidate().getId(),
-                entity.getStatus().name());
+                entity.getStatus().name(),
+                entity.getResume() == null ? null : entity.getResume().getId());
     }
 }

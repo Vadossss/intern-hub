@@ -1,4 +1,10 @@
 package com.diplom.internhubbackend.dto;
 
-public record ApplicationDto(Long id, String vacancyPublicId, Integer userId, String status) {
+public record ApplicationDto(
+        Long id,
+        String vacancyPublicId,
+        Integer userId,
+        String status,
+        Long resumeId
+) {
 }
