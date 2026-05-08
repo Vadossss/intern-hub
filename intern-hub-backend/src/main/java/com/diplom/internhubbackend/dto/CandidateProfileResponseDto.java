@@ -3,6 +3,8 @@ package com.diplom.internhubbackend.dto;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.time.LocalDate;
+import java.util.List;
 import java.util.Set;
 
 @Getter
@@ -10,9 +12,12 @@ import java.util.Set;
 public class CandidateProfileResponseDto {
     private Integer userId;
     private String email;
+    private String phoneNumber;
     private String firstName;
     private String lastName;
+    private LocalDate birthday;
     private String city;
+    private String avatarUrl;
     private String about;
     private String resumeUrl;
     private String portfolioUrl;
@@ -23,4 +28,5 @@ public class CandidateProfileResponseDto {
     private Long expectedSalaryTo;
     private Boolean openToWork;
     private Set<KeySkillDto> skills;
+    private List<CandidateResumeResponseDto> resumes;
 }

@@ -2,42 +2,154 @@ package com.diplom.internhubbackend.repositories;
 
 import com.diplom.internhubbackend.enums.AccountStatus;
 import com.diplom.internhubbackend.models.CandidateProfile;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
 public interface CandidateProfileRepository extends JpaRepository<CandidateProfile, Long> {
     Optional<CandidateProfile> findByUserId(Integer userId);
 
-    @Query("""
-            SELECT DISTINCT cp FROM CandidateProfile cp
-            JOIN cp.user u
-            LEFT JOIN cp.skills s
-            WHERE u.role.id = 'ROLE_USER'
-              AND u.status = :status
-              AND (:openToWork IS NULL OR cp.openToWork = :openToWork)
-            """)
-    List<CandidateProfile> searchCandidatesNoSkills(
-            @Param("openToWork") Boolean openToWork,
-            @Param("status") AccountStatus status
-    );
-
-    @Query("""
-            SELECT DISTINCT cp FROM CandidateProfile cp
-            JOIN cp.user u
-            JOIN cp.skills s
-            WHERE u.role.id = 'ROLE_USER'
-              AND u.status = :status
-              AND s.id IN :skillIds
-              AND (:openToWork IS NULL OR cp.openToWork = :openToWork)
-            """)
-    List<CandidateProfile> searchCandidatesWithSkills(
+    @Query(
+            value = """
+                    SELECT cp FROM CandidateProfile cp
+                    JOIN cp.user u
+                    WHERE u.role.id = 'ROLE_USER'
+                      AND u.status = :status
+                      AND EXISTS (
+                            SELECT activeResume.id
+                            FROM CandidateResume activeResume
+                            WHERE activeResume.candidateProfile = cp
+                              AND (activeResume.archived IS NULL OR activeResume.archived = false)
+                      )
+                      AND (
+                            :openToWork IS NULL
+                            OR cp.openToWork = :openToWork
+                      )
+                      AND (
+                            :cityPattern IS NULL
+                            OR EXISTS (
+                                SELECT cityResume.id
+                                FROM CandidateResume cityResume
+                                WHERE cityResume.candidateProfile = cp
+                                  AND (cityResume.archived IS NULL OR cityResume.archived = false)
+                                  AND LOWER(cityResume.city) LIKE :cityPattern
+                            )
+                      )
+                      AND (
+                            :searchPattern IS NULL
+                            OR LOWER(cp.firstName) LIKE :searchPattern
+                            OR LOWER(cp.lastName) LIKE :searchPattern
+                            OR LOWER(u.email) LIKE :searchPattern
+                            OR LOWER(u.phoneNumber) LIKE :searchPattern
+                            OR EXISTS (
+                                SELECT resume.id
+                                FROM CandidateResume resume
+                                WHERE resume.candidateProfile = cp
+                                  AND (resume.archived IS NULL OR resume.archived = false)
+                                  AND (
+                                        LOWER(resume.profession) LIKE :searchPattern
+                                        OR LOWER(resume.city) LIKE :searchPattern
+                                        OR LOWER(resume.about) LIKE :searchPattern
+                                  )
+                            )
+                            OR EXISTS (
+                                SELECT resumeSkill.id
+                                FROM CandidateResume skillResume
+                                JOIN skillResume.skills resumeSkill
+                                WHERE skillResume.candidateProfile = cp
+                                  AND (skillResume.archived IS NULL OR skillResume.archived = false)
+                                  AND LOWER(resumeSkill.name) LIKE :searchPattern
+                            )
+                      )
+                      AND (
+                            :skillIdsEmpty = TRUE
+                            OR EXISTS (
+                                SELECT filterResumeSkill.id
+                                FROM CandidateResume filterResume
+                                JOIN filterResume.skills filterResumeSkill
+                                WHERE filterResume.candidateProfile = cp
+                                  AND (filterResume.archived IS NULL OR filterResume.archived = false)
+                                  AND filterResumeSkill.id IN :skillIds
+                            )
+                      )
+                    ORDER BY COALESCE(cp.updatedAt, cp.createdAt) DESC
+                    """,
+            countQuery = """
+                    SELECT COUNT(cp) FROM CandidateProfile cp
+                    JOIN cp.user u
+                    WHERE u.role.id = 'ROLE_USER'
+                      AND u.status = :status
+                      AND EXISTS (
+                            SELECT activeResume.id
+                            FROM CandidateResume activeResume
+                            WHERE activeResume.candidateProfile = cp
+                              AND (activeResume.archived IS NULL OR activeResume.archived = false)
+                      )
+                      AND (
+                            :openToWork IS NULL
+                            OR cp.openToWork = :openToWork
+                      )
+                      AND (
+                            :cityPattern IS NULL
+                            OR EXISTS (
+                                SELECT cityResume.id
+                                FROM CandidateResume cityResume
+                                WHERE cityResume.candidateProfile = cp
+                                  AND (cityResume.archived IS NULL OR cityResume.archived = false)
+                                  AND LOWER(cityResume.city) LIKE :cityPattern
+                            )
+                      )
+                      AND (
+                            :searchPattern IS NULL
+                            OR LOWER(cp.firstName) LIKE :searchPattern
+                            OR LOWER(cp.lastName) LIKE :searchPattern
+                            OR LOWER(u.email) LIKE :searchPattern
+                            OR LOWER(u.phoneNumber) LIKE :searchPattern
+                            OR EXISTS (
+                                SELECT resume.id
+                                FROM CandidateResume resume
+                                WHERE resume.candidateProfile = cp
+                                  AND (resume.archived IS NULL OR resume.archived = false)
+                                  AND (
+                                        LOWER(resume.profession) LIKE :searchPattern
+                                        OR LOWER(resume.city) LIKE :searchPattern
+                                        OR LOWER(resume.about) LIKE :searchPattern
+                                  )
+                            )
+                            OR EXISTS (
+                                SELECT resumeSkill.id
+                                FROM CandidateResume skillResume
+                                JOIN skillResume.skills resumeSkill
+                                WHERE skillResume.candidateProfile = cp
+                                  AND (skillResume.archived IS NULL OR skillResume.archived = false)
+                                  AND LOWER(resumeSkill.name) LIKE :searchPattern
+                            )
+                      )
+                      AND (
+                            :skillIdsEmpty = TRUE
+                            OR EXISTS (
+                                SELECT filterResumeSkill.id
+                                FROM CandidateResume filterResume
+                                JOIN filterResume.skills filterResumeSkill
+                                WHERE filterResume.candidateProfile = cp
+                                  AND (filterResume.archived IS NULL OR filterResume.archived = false)
+                                  AND filterResumeSkill.id IN :skillIds
+                            )
+                      )
+                    """
+    )
+    Page<CandidateProfile> searchCandidates(
+            @Param("searchPattern") String searchPattern,
+            @Param("cityPattern") String cityPattern,
             @Param("openToWork") Boolean openToWork,
             @Param("skillIds") Set<Integer> skillIds,
-            @Param("status") AccountStatus status
+            @Param("skillIdsEmpty") boolean skillIdsEmpty,
+            @Param("status") AccountStatus status,
+            Pageable pageable
     );
 }
