@@ -2,8 +2,11 @@ package com.diplom.internhubbackend.services;
 
 import com.diplom.internhubbackend.dto.FilterParams;
 import com.diplom.internhubbackend.dto.NewVacancyDto;
+import com.diplom.internhubbackend.dto.VacancyContactDto;
+import com.diplom.internhubbackend.dto.VacancyFilterOptionsDto;
 import com.diplom.internhubbackend.dto.VacancyResponseDto;
 import com.diplom.internhubbackend.dto.hh.HhVacancyDetailsResponse;
+import com.diplom.internhubbackend.enums.ContactMethod;
 import com.diplom.internhubbackend.enums.VacancyStatus;
 import com.diplom.internhubbackend.exception.VacancyNotFoundException;
 import com.diplom.internhubbackend.mapper.VacancyMapper;
@@ -19,10 +22,12 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -109,7 +114,25 @@ public class VacancyService {
         return new PageImpl<>(result, PageRequest.of(page, pageSize), vacancies.size());
     }
 
+    public VacancyFilterOptionsDto getActiveFilterOptions() {
+        List<VacancyStatus> activeStatuses = activeCatalogStatuses();
+
+        return new VacancyFilterOptionsDto(
+                vacancyRepository.findActiveVacancyCities(activeStatuses),
+                vacancyRepository.findActiveVacancyCompanies(activeStatuses),
+                vacancyRepository.findActiveVacancySources(activeStatuses)
+                        .stream()
+                        .map(source -> new VacancyFilterOptionsDto.FilterOptionDto(
+                                source.getCode(),
+                                source.getName()
+                        ))
+                        .collect(Collectors.toList())
+        );
+    }
+
     public Page<VacancyResponseDto> getVacanciesByParams(FilterParams params) {
+        int page = normalizePage(params.getPage());
+        int size = normalizeSize(params.getSize());
 
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
 
@@ -117,14 +140,14 @@ public class VacancyService {
         Root<Vacancy> root = query.from(Vacancy.class);
         Join<Vacancy, User> companyJoin = root.join("employer", JoinType.LEFT);
 
-        List<Predicate> predicates = buildPredicates(params, cb, root, companyJoin);
+        List<Predicate> predicates = buildPredicates(params, cb, query, root, companyJoin);
         query.where(cb.and(predicates.toArray(new Predicate[0])));
 
-//        applySorting(params, cb, query, root);
+        applySorting(params, cb, query, root);
 
         TypedQuery<Vacancy> typedQuery = entityManager.createQuery(query);
-        typedQuery.setFirstResult(params.getPage() * params.getSize());
-        typedQuery.setMaxResults(params.getSize());
+        typedQuery.setFirstResult(page * size);
+        typedQuery.setMaxResults(size);
 
         List<Vacancy> content = typedQuery.getResultList();
         List<VacancyResponseDto> vacancies = vacancyMapper.toDto(content);
@@ -133,14 +156,14 @@ public class VacancyService {
         Root<Vacancy> countRoot = countQuery.from(Vacancy.class);
         Join<Vacancy, User> countCompanyJoin = countRoot.join("employer", JoinType.LEFT);
 
-        List<Predicate> countPredicates = buildPredicates(params, cb, countRoot, countCompanyJoin);
+        List<Predicate> countPredicates = buildPredicates(params, cb, countQuery, countRoot, countCompanyJoin);
 
         countQuery.select(cb.count(countRoot));
         countQuery.where(cb.and(countPredicates.toArray(new Predicate[0])));
 
         Long total = entityManager.createQuery(countQuery).getSingleResult();
 
-        return new PageImpl<>(vacancies, PageRequest.of(params.getPage(), params.getSize()), total);
+        return new PageImpl<>(vacancies, PageRequest.of(page, size), total);
     }
 
     private void applySorting(
@@ -149,20 +172,19 @@ public class VacancyService {
             CriteriaQuery<Vacancy> query,
             Root<Vacancy> root
     ) {
-        if (params.getSortBy() == null) {
-            return;
-        }
+        String sortBy = normalizeSortBy(params.getSortBy());
 
         if ("asc".equalsIgnoreCase(params.getSortDirection())) {
-            query.orderBy(cb.asc(root.get(params.getSortBy())));
+            query.orderBy(cb.asc(root.get(sortBy)));
         } else {
-            query.orderBy(cb.desc(root.get(params.getSortBy())));
+            query.orderBy(cb.desc(root.get(sortBy)));
         }
     }
 
     private List<Predicate> buildPredicates(
             FilterParams params,
             CriteriaBuilder cb,
+            CriteriaQuery<?> query,
             Root<Vacancy> root,
             Join<Vacancy, User> companyJoin
     ) {
@@ -172,12 +194,14 @@ public class VacancyService {
             predicates.add(root.get("source").in(params.getSource()));
         }
 
-        if (params.getCity() != null) {
-            predicates.add(cb.equal(root.get("city"), params.getCity()));
+        if (hasText(params.getCity())) {
+            predicates.add(cb.like(cb.lower(root.get("city")), likePattern(params.getCity())));
         }
 
         if (params.getStatus() != null) {
             predicates.add(cb.equal(root.get("status"), params.getStatus()));
+        } else {
+            predicates.add(root.get("status").in(activeCatalogStatuses()));
         }
 
         if (params.getWorkFormats() != null && !params.getWorkFormats().isEmpty()) {
@@ -192,13 +216,12 @@ public class VacancyService {
             predicates.add(root.get("experience").in(params.getExperience()));
         }
 
-        if (params.getCompanyName() != null) {
-            predicates.add(
-                    cb.equal(
-                            cb.lower(companyJoin.get("companyName")),
-                            params.getCompanyName().toLowerCase()
-                    )
-            );
+        if (hasText(params.getEmployerId())) {
+            predicates.add(cb.equal(root.get("employer").get("id"), params.getEmployerId()));
+        }
+
+        if (hasText(params.getCompanyName())) {
+            predicates.add(companyNamePredicate(params.getCompanyName(), cb, query, root, companyJoin));
         }
 
         if (params.getStack() != null) {
@@ -213,7 +236,69 @@ public class VacancyService {
             predicates.add(cb.lessThanOrEqualTo(root.get("salaryTo"), params.getSalaryMax()));
         }
 
+        if (hasText(params.getSearchText())) {
+            String pattern = likePattern(params.getSearchText());
+            predicates.add(cb.or(
+                    cb.like(cb.lower(root.get("title")), pattern),
+                    cb.like(cb.lower(root.get("description")), pattern),
+                    cb.like(cb.lower(root.get("city")), pattern),
+                    cb.like(cb.lower(companyJoin.get("companyName")), pattern),
+                    companyNamePredicate(params.getSearchText(), cb, query, root, companyJoin)
+            ));
+        }
+
         return predicates;
+    }
+
+    private Predicate companyNamePredicate(
+            String companyName,
+            CriteriaBuilder cb,
+            CriteriaQuery<?> query,
+            Root<Vacancy> root,
+            Join<Vacancy, User> companyJoin
+    ) {
+        String pattern = likePattern(companyName);
+        Subquery<Integer> employerProfileUsers = query.subquery(Integer.class);
+        Root<EmployerProfile> employerProfileRoot = employerProfileUsers.from(EmployerProfile.class);
+
+        employerProfileUsers
+                .select(employerProfileRoot.get("user").get("id"))
+                .where(cb.like(cb.lower(employerProfileRoot.get("companyName")), pattern));
+
+        return cb.or(
+                cb.like(cb.lower(companyJoin.get("companyName")), pattern),
+                root.get("employer").get("id").in(employerProfileUsers)
+        );
+    }
+
+    private int normalizePage(Integer page) {
+        return page == null || page < 0 ? 0 : page;
+    }
+
+    private int normalizeSize(Integer size) {
+        return size == null || size < 1 ? 20 : Math.min(size, 100);
+    }
+
+    private String normalizeSortBy(String sortBy) {
+        if ("salaryFrom".equals(sortBy)
+                || "city".equals(sortBy)
+                || "createdAt".equals(sortBy)) {
+            return sortBy;
+        }
+
+        return "title";
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
+    }
+
+    private String likePattern(String value) {
+        return "%" + value.trim().toLowerCase() + "%";
+    }
+
+    private List<VacancyStatus> activeCatalogStatuses() {
+        return List.of(VacancyStatus.APPROVED, VacancyStatus.PENDING);
     }
 
     @Transactional
@@ -251,11 +336,15 @@ public class VacancyService {
     }
 
     public ResponseEntity<Object> createVacancy(User user, NewVacancyDto newVacancy){
+        validateSingleInternalContact(newVacancy);
+
         Vacancy vacancy = vacancyMapper.fromDto(newVacancy);
         vacancy.setEmployer(user);
 
         Vacancy finalVacancy = vacancy;
-        vacancy.setContacts(newVacancy.getContactsList().stream().map(contact ->
+        List<VacancyContactDto> contactRequests =
+                newVacancy.getContactsList() == null ? Collections.emptyList() : newVacancy.getContactsList();
+        vacancy.setContacts(contactRequests.stream().map(contact ->
                 VacancyContact
                         .builder()
                         .vacancy(finalVacancy)
@@ -271,6 +360,23 @@ public class VacancyService {
 
         vacancyRepository.save(vacancy);
         return ResponseEntity.ok().body("Successfully created vacancy");
+    }
+
+    private void validateSingleInternalContact(NewVacancyDto newVacancy) {
+        if (newVacancy.getContactsList() == null) {
+            return;
+        }
+
+        long internalContacts = newVacancy.getContactsList().stream()
+                .filter(contact -> contact.chosenContactMethod() == ContactMethod.INTERNAL_CHAT)
+                .count();
+
+        if (internalContacts > 1) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Only one internal apply contact is allowed"
+            );
+        }
     }
 
     public void fetchAndSaveSJ(Stack stack) {
