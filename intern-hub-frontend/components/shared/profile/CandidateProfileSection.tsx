@@ -1,52 +1,84 @@
+"use client";
+
+import { ru } from "react-day-picker/locale";
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
-import { Mail, Pencil, UserRound } from "lucide-react";
+import { Camera, Mail, Pencil, UserRound } from "lucide-react";
 
-import { SkillsSelector } from "@/components/shared/SkillsSelector";
 import { InfoCard } from "@/components/shared/profile/InfoCard";
 import {
-  employmentLabels,
-  workFormatLabels,
-} from "@/components/shared/profile/constants";
-import {
-  formatMoney,
-  labelFrom,
+  formatBirthday,
+  mediaUrl,
   textValue,
 } from "@/components/shared/profile/utils";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import type { SkillOption } from "@/lib/api/dictionaries";
 import type { CandidateProfile } from "@/lib/api/profile";
 
 export function CandidateProfileSection({
   candidate,
-  candidateName,
-  skillOptions,
   isEditing,
   isSaving,
   onSubmit,
+  onPhotoUpload,
   onEdit,
   onCancel,
 }: {
   candidate: CandidateProfile;
-  candidateName: string;
-  skillOptions: SkillOption[];
   isEditing: boolean;
   isSaving: boolean;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onPhotoUpload: (file: File) => Promise<void>;
   onEdit: () => void;
   onCancel: () => void;
 }) {
-  const [selectedSkillIds, setSelectedSkillIds] = useState<number[]>([]);
+  const [selectedBirthday, setSelectedBirthday] = useState<Date | undefined>();
+  const [isPhotoUploading, setIsPhotoUploading] = useState(false);
+  const avatarSrc = mediaUrl(candidate.avatarUrl);
+  const fullName = [candidate.lastName, candidate.firstName]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+  const displayName = fullName || "Имя не указано";
 
   useEffect(() => {
     if (isEditing) {
-      setSelectedSkillIds((candidate.skills ?? []).map((skill) => skill.id));
+      setSelectedBirthday(parseBirthday(candidate.birthday));
     }
-  }, [candidate.skills, isEditing]);
+  }, [candidate.birthday, isEditing]);
+
+  async function handlePhotoChange(file?: File) {
+    if (!file || !isEditing) return;
+
+    try {
+      setIsPhotoUploading(true);
+      await onPhotoUpload(file);
+    } finally {
+      setIsPhotoUploading(false);
+    }
+  }
+
+  const avatar = (
+    <div className="relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl bg-[#edf3ea] text-[#48644d]">
+      {avatarSrc ? (
+        <img
+          src={avatarSrc}
+          alt={candidate.email}
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <UserRound className="h-9 w-9" />
+      )}
+      {isEditing ? (
+        <span className="absolute inset-0 flex items-center justify-center bg-black/45 text-white opacity-100 transition hover:bg-black/55">
+          <Camera className="h-6 w-6" />
+        </span>
+      ) : null}
+    </div>
+  );
 
   return (
     <div className="grid gap-6">
@@ -54,11 +86,28 @@ export function CandidateProfileSection({
         <CardHeader>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex items-start gap-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#edf3ea] text-[#48644d]">
-                <UserRound className="h-8 w-8" />
-              </div>
+              {isEditing ? (
+                <label className="cursor-pointer" aria-label="Изменить фото">
+                  {avatar}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    disabled={isPhotoUploading}
+                    onChange={(event) => {
+                      void handlePhotoChange(event.target.files?.[0]);
+                      event.target.value = "";
+                    }}
+                  />
+                </label>
+              ) : (
+                avatar
+              )}
               <div>
-                <CardTitle className="text-2xl">{candidateName}</CardTitle>
+                <CardTitle className="text-2xl">Личные данные</CardTitle>
+                <p className="mt-1 text-lg font-extrabold text-[#171717]">
+                  {displayName}
+                </p>
                 <p className="mt-2 flex flex-wrap gap-3 text-sm text-[#626262]">
                   <span className="inline-flex items-center gap-1">
                     <Mail className="h-4 w-4" />
@@ -78,93 +127,77 @@ export function CandidateProfileSection({
         <CardContent>
           {isEditing ? (
             <form onSubmit={onSubmit} className="grid gap-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Input
-                  name="firstName"
-                  defaultValue={candidate.firstName}
-                  placeholder="Имя"
-                />
-                <Input
-                  name="lastName"
-                  defaultValue={candidate.lastName}
-                  placeholder="Фамилия"
-                />
-                <Input
-                  name="city"
-                  defaultValue={candidate.city}
-                  placeholder="Город"
-                />
-                <Input
-                  name="preferredCity"
-                  defaultValue={candidate.preferredCity}
-                  placeholder="Желаемый город"
-                />
-                <Input
-                  name="expectedSalaryFrom"
-                  defaultValue={textValue(candidate.expectedSalaryFrom)}
-                  placeholder="Зарплата от"
-                  type="number"
-                />
-                <Input
-                  name="expectedSalaryTo"
-                  defaultValue={textValue(candidate.expectedSalaryTo)}
-                  placeholder="Зарплата до"
-                  type="number"
-                />
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <select
-                  name="preferredWorkFormat"
-                  defaultValue={candidate.preferredWorkFormat}
-                  className="h-10 rounded-md border bg-white px-3 text-sm"
-                >
-                  <option value="remote">Удаленно</option>
-                  <option value="office">Офис</option>
-                  <option value="hybrid">Гибрид</option>
-                  <option value="unknown">Не указано</option>
-                </select>
-                <select
-                  name="preferredEmployment"
-                  defaultValue={candidate.preferredEmployment}
-                  className="h-10 rounded-md border bg-white px-3 text-sm"
-                >
-                  <option value="probation">Стажировка</option>
-                  <option value="full">Полная занятость</option>
-                  <option value="part">Частичная занятость</option>
-                  <option value="project">Проектная работа</option>
-                </select>
-              </div>
-              <textarea
-                name="about"
-                defaultValue={candidate.about}
-                placeholder="О себе"
-                className="min-h-28 rounded-md border bg-white px-3 py-2 text-sm"
+              <input
+                type="hidden"
+                name="birthday"
+                value={dateInputValue(selectedBirthday)}
               />
               <div className="grid gap-4 sm:grid-cols-2">
-                <Input
-                  name="resumeUrl"
-                  defaultValue={candidate.resumeUrl}
-                  placeholder="Ссылка на резюме"
-                />
-                <Input
-                  name="portfolioUrl"
-                  defaultValue={candidate.portfolioUrl}
-                  placeholder="Ссылка на портфолио"
-                />
+                <label className="grid gap-2">
+                  <span className="text-sm font-semibold text-[#333]">
+                    Фамилия
+                  </span>
+                  <Input
+                    name="lastName"
+                    defaultValue={candidate.lastName}
+                    placeholder="Иванов"
+                  />
+                </label>
+                <label className="grid gap-2">
+                  <span className="text-sm font-semibold text-[#333]">
+                    Имя
+                  </span>
+                  <Input
+                    name="firstName"
+                    defaultValue={candidate.firstName}
+                    placeholder="Иван"
+                  />
+                </label>
+                <label className="grid gap-2">
+                  <span className="text-sm font-semibold text-[#333]">
+                    Почта
+                  </span>
+                  <Input value={candidate.email} readOnly className="bg-[#f7f7f3]" />
+                </label>
+                <label className="grid gap-2">
+                  <span className="text-sm font-semibold text-[#333]">
+                    Номер телефона
+                  </span>
+                  <Input
+                    name="phoneNumber"
+                    defaultValue={candidate.phoneNumber}
+                    placeholder="+7 999 000-00-00"
+                    type="tel"
+                  />
+                </label>
               </div>
-              <SkillsSelector
-                skills={skillOptions}
-                selectedSkillIds={selectedSkillIds}
-                onChange={setSelectedSkillIds}
-                name="skillIds"
-              />
-              <label className="flex items-center gap-3 text-sm text-[#333]">
+              <label className="flex items-center gap-3 rounded-xl border border-[#161616]/10 bg-white p-3 text-sm font-semibold text-[#333]">
                 <Checkbox
                   name="openToWork"
-                  defaultChecked={candidate.openToWork}
+                  defaultChecked={candidate.openToWork !== false}
                 />
                 Открыт к предложениям
               </label>
+              <div className="rounded-2xl border bg-white p-3">
+                <p className="mb-2 text-sm font-semibold text-[#333]">
+                  День рождения
+                </p>
+                <Calendar
+                  mode="single"
+                  selected={selectedBirthday}
+                  onSelect={setSelectedBirthday}
+                  captionLayout="dropdown"
+                  startMonth={new Date(1950, 0)}
+                  locale={ru}
+                  endMonth={
+                    new Date(
+                      new Date().setFullYear(new Date().getFullYear() - 10),
+                    )
+                  }
+                  disabled={{ after: new Date() }}
+                  className="rounded-xl border"
+                />
+              </div>
               <div className="flex flex-wrap gap-2">
                 <Button
                   disabled={isSaving}
@@ -183,67 +216,49 @@ export function CandidateProfileSection({
               </div>
             </form>
           ) : (
-            <div className="space-y-5">
-              <p className="text-sm leading-7 text-[#4d4d4d]">
-                {candidate.about}
-              </p>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <InfoCard title="Город" value={candidate.city || "Не указан"} />
-                <InfoCard
-                  title="Желаемый город"
-                  value={candidate.preferredCity || "Не указан"}
-                />
-                <InfoCard
-                  title="Формат"
-                  value={labelFrom(
-                    workFormatLabels,
-                    candidate.preferredWorkFormat,
-                  )}
-                />
-                <InfoCard
-                  title="Занятость"
-                  value={labelFrom(
-                    employmentLabels,
-                    candidate.preferredEmployment,
-                  )}
-                />
-                <InfoCard
-                  title="Зарплата"
-                  value={formatMoney(
-                    candidate.expectedSalaryFrom,
-                    candidate.expectedSalaryTo,
-                  )}
-                />
-                <InfoCard
-                  title="Статус"
-                  value={
-                    candidate.openToWork
-                      ? "Открыт к предложениям"
-                      : "Не ищет работу"
-                  }
-                />
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {(candidate.skills ?? []).length > 0 ? (
-                  candidate.skills?.map((skill) => (
-                    <Badge
-                      key={skill.id}
-                      variant="outline"
-                      className="rounded-lg bg-white"
-                    >
-                      {skill.name}
-                    </Badge>
-                  ))
-                ) : (
-                  <span className="text-sm text-[#777]">
-                    Навыки пока не добавлены
-                  </span>
-                )}
-              </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <InfoCard
+                title="Фамилия"
+                value={textValue(candidate.lastName) || "Не указана"}
+              />
+              <InfoCard
+                title="Имя"
+                value={textValue(candidate.firstName) || "Не указано"}
+              />
+              <InfoCard title="Почта" value={candidate.email || "Не указана"} />
+              <InfoCard
+                title="Номер телефона"
+                value={textValue(candidate.phoneNumber) || "Не указан"}
+              />
+              <InfoCard
+                title="День рождения"
+                value={formatBirthday(candidate.birthday)}
+              />
+              <InfoCard
+                title="Статус поиска"
+                value={
+                  candidate.openToWork === false
+                    ? "Не ищет работу"
+                    : "Открыт к предложениям"
+                }
+              />
             </div>
           )}
         </CardContent>
       </Card>
     </div>
   );
+}
+
+function parseBirthday(value?: string) {
+  if (!value) return undefined;
+  return new Date(`${value}T00:00:00`);
+}
+
+function dateInputValue(date?: Date) {
+  if (!date) return "";
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
