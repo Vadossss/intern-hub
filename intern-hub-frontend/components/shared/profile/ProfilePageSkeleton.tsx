@@ -3,7 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export function ProfilePageSkeleton({ roleLabel }: { roleLabel: string }) {
   const isEmployer = roleLabel === "Работодатель";
-  const menuItems = 3;
+  const menuItems = 5;
 
   return (
     <main className="min-h-screen bg-[#f4f1e9]">
