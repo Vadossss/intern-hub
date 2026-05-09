@@ -71,10 +71,6 @@ public class CandidateProfileService {
                     ? null
                     : request.getPhoneNumber().trim());
         }
-        if (request.getCity() != null) {
-            user.setCity(request.getCity());
-        }
-
         if (request.getAbout() != null) {
             profile.setAbout(request.getAbout());
         }
@@ -177,10 +173,10 @@ public class CandidateProfileService {
                 .userId(user.getId())
                 .email(user.getEmail())
                 .phoneNumber(user.getPhoneNumber())
-                .firstName(firstNonBlank(profile.getFirstName(), user.getFirstName()))
-                .lastName(firstNonBlank(profile.getLastName(), user.getLastName()))
+                .firstName(profile.getFirstName())
+                .lastName(profile.getLastName())
                 .birthday(profile.getBirthday())
-                .city(user.getCity())
+                .city(null)
                 .avatarUrl(user.getAvatarUrl())
                 .about(profile.getAbout())
                 .resumeUrl(profile.getResumeUrl())
@@ -201,28 +197,12 @@ public class CandidateProfileService {
         CandidateProfile profile = candidateProfileRepository.findByUserId(user.getId())
                 .orElseGet(() -> CandidateProfile.builder()
                         .user(user)
-                        .firstName(user.getFirstName())
-                        .lastName(user.getLastName())
                         .build());
 
-        boolean changed = false;
-        if ((profile.getFirstName() == null || profile.getFirstName().isBlank()) && user.getFirstName() != null) {
-            profile.setFirstName(user.getFirstName());
-            changed = true;
-        }
-        if ((profile.getLastName() == null || profile.getLastName().isBlank()) && user.getLastName() != null) {
-            profile.setLastName(user.getLastName());
-            changed = true;
-        }
-
-        if (profile.getId() == null || changed) {
+        if (profile.getId() == null) {
             return candidateProfileRepository.save(profile);
         }
 
         return profile;
-    }
-
-    private String firstNonBlank(String value, String fallback) {
-        return value == null || value.isBlank() ? fallback : value;
     }
 }

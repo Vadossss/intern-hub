@@ -49,7 +49,7 @@ public class CandidateResumeService {
         CandidateResume resume = CandidateResume.builder()
                 .candidateProfile(profile)
                 .profession(DEFAULT_RESUME_PROFESSION)
-                .city(profile.getPreferredCity() != null ? profile.getPreferredCity() : profile.getUser().getCity())
+                .city(profile.getPreferredCity())
                 .about(profile.getAbout())
                 .expectedSalaryFrom(profile.getExpectedSalaryFrom())
                 .expectedSalaryTo(profile.getExpectedSalaryTo())

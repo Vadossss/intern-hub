@@ -185,12 +185,8 @@ public class EmployerCabinetService {
     private EmployerApplicationResponseDto toEmployerApplicationDto(Application application) {
         User candidate = application.getCandidate();
         CandidateProfile candidateProfile = candidateProfileRepository.findByUserId(candidate.getId()).orElse(null);
-        String firstName = candidateProfile != null && candidateProfile.getFirstName() != null
-                ? candidateProfile.getFirstName()
-                : candidate.getFirstName();
-        String lastName = candidateProfile != null && candidateProfile.getLastName() != null
-                ? candidateProfile.getLastName()
-                : candidate.getLastName();
+        String firstName = candidateProfile != null ? candidateProfile.getFirstName() : null;
+        String lastName = candidateProfile != null ? candidateProfile.getLastName() : null;
         String candidateName = (firstName == null ? "" : firstName) +
                 (lastName == null ? "" : " " + lastName);
 
