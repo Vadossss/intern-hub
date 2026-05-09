@@ -18,6 +18,8 @@ public class VacancyResponseDto {
     private String publicId;
     private String title;
     private String stack;
+    private String directionId;
+    private String direction;
     private String description;
     private String city;
     @Enumerated(EnumType.STRING)

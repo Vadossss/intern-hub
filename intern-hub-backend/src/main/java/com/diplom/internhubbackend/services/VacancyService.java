@@ -126,6 +126,13 @@ public class VacancyService {
                                 source.getCode(),
                                 source.getName()
                         ))
+                        .collect(Collectors.toList()),
+                vacancyRepository.findActiveVacancyDirections(activeStatuses)
+                        .stream()
+                        .map(direction -> new VacancyFilterOptionsDto.FilterOptionDto(
+                                direction.getId(),
+                                direction.getName()
+                        ))
                         .collect(Collectors.toList())
         );
     }
@@ -138,9 +145,8 @@ public class VacancyService {
 
         CriteriaQuery<Vacancy> query = cb.createQuery(Vacancy.class);
         Root<Vacancy> root = query.from(Vacancy.class);
-        Join<Vacancy, User> companyJoin = root.join("employer", JoinType.LEFT);
 
-        List<Predicate> predicates = buildPredicates(params, cb, query, root, companyJoin);
+        List<Predicate> predicates = buildPredicates(params, cb, query, root);
         query.where(cb.and(predicates.toArray(new Predicate[0])));
 
         applySorting(params, cb, query, root);
@@ -154,9 +160,8 @@ public class VacancyService {
 
         CriteriaQuery<Long> countQuery = cb.createQuery(Long.class);
         Root<Vacancy> countRoot = countQuery.from(Vacancy.class);
-        Join<Vacancy, User> countCompanyJoin = countRoot.join("employer", JoinType.LEFT);
 
-        List<Predicate> countPredicates = buildPredicates(params, cb, countQuery, countRoot, countCompanyJoin);
+        List<Predicate> countPredicates = buildPredicates(params, cb, countQuery, countRoot);
 
         countQuery.select(cb.count(countRoot));
         countQuery.where(cb.and(countPredicates.toArray(new Predicate[0])));
@@ -185,8 +190,7 @@ public class VacancyService {
             FilterParams params,
             CriteriaBuilder cb,
             CriteriaQuery<?> query,
-            Root<Vacancy> root,
-            Join<Vacancy, User> companyJoin
+            Root<Vacancy> root
     ) {
         List<Predicate> predicates = new ArrayList<>();
 
@@ -221,11 +225,15 @@ public class VacancyService {
         }
 
         if (hasText(params.getCompanyName())) {
-            predicates.add(companyNamePredicate(params.getCompanyName(), cb, query, root, companyJoin));
+            predicates.add(companyNamePredicate(params.getCompanyName(), cb, query, root));
         }
 
         if (params.getStack() != null) {
             predicates.add(cb.equal(root.get("stack"), params.getStack()));
+        }
+
+        if (params.getDirection() != null && !params.getDirection().isEmpty()) {
+            predicates.add(root.get("direction").get("id").in(params.getDirection()));
         }
 
         if (params.getSalaryMin() != null) {
@@ -242,8 +250,7 @@ public class VacancyService {
                     cb.like(cb.lower(root.get("title")), pattern),
                     cb.like(cb.lower(root.get("description")), pattern),
                     cb.like(cb.lower(root.get("city")), pattern),
-                    cb.like(cb.lower(companyJoin.get("companyName")), pattern),
-                    companyNamePredicate(params.getSearchText(), cb, query, root, companyJoin)
+                    companyNamePredicate(params.getSearchText(), cb, query, root)
             ));
         }
 
@@ -254,8 +261,7 @@ public class VacancyService {
             String companyName,
             CriteriaBuilder cb,
             CriteriaQuery<?> query,
-            Root<Vacancy> root,
-            Join<Vacancy, User> companyJoin
+            Root<Vacancy> root
     ) {
         String pattern = likePattern(companyName);
         Subquery<Integer> employerProfileUsers = query.subquery(Integer.class);
@@ -265,10 +271,7 @@ public class VacancyService {
                 .select(employerProfileRoot.get("user").get("id"))
                 .where(cb.like(cb.lower(employerProfileRoot.get("companyName")), pattern));
 
-        return cb.or(
-                cb.like(cb.lower(companyJoin.get("companyName")), pattern),
-                root.get("employer").get("id").in(employerProfileUsers)
-        );
+        return root.get("employer").get("id").in(employerProfileUsers);
     }
 
     private int normalizePage(Integer page) {
@@ -379,11 +382,11 @@ public class VacancyService {
         }
     }
 
-    public void fetchAndSaveSJ(Stack stack) {
+    public void fetchAndSaveSJ() {
         try {
-            sjAggregationService.fetchAndSave(stack);
+            sjAggregationService.fetchAndSave();
         } catch (Exception ex) {
-            log.warn("SuperJob aggregation failed for stack {}", stack.getName(), ex);
+            log.warn("SuperJob aggregation failed", ex);
         }
     }
 

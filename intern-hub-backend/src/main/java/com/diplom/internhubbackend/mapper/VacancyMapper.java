@@ -47,6 +47,8 @@ public class VacancyMapper {
         dto.setCity(vacancy.getCity());
         dto.setEmployer(userMapper.toDto(vacancy.getEmployer()));
         dto.setStack(vacancy.getStack() != null ? vacancy.getStack().getName() : null);
+        dto.setDirectionId(vacancy.getDirection() != null ? vacancy.getDirection().getId() : null);
+        dto.setDirection(vacancy.getDirection() != null ? vacancy.getDirection().getName() : null);
         dto.setStatus(vacancy.getStatus());
         dto.setContacts(
                 vacancy.getContacts().stream()

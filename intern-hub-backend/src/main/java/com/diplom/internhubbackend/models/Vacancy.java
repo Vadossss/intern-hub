@@ -35,6 +35,11 @@ public class Vacancy {
     @ManyToOne
     @JoinColumn(name = "stack_id")
     private Stack stack;
+
+    @ManyToOne
+    @JoinColumn(name = "direction_id")
+    private VacancyDirection direction;
+
     private String city;
 
     private Long salaryFrom;

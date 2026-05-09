@@ -5,6 +5,7 @@ import com.diplom.internhubbackend.models.VacancySource;
 import com.diplom.internhubbackend.models.Stack;
 import com.diplom.internhubbackend.models.User;
 import com.diplom.internhubbackend.models.Vacancy;
+import com.diplom.internhubbackend.models.VacancyDirection;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.repository.query.Param;
@@ -83,13 +84,13 @@ public interface VacancyRepository extends JpaRepository<Vacancy, Integer> {
     List<String> findActiveVacancyCities(@Param("statuses") List<VacancyStatus> statuses);
 
     @Query("""
-        SELECT DISTINCT COALESCE(ep.companyName, e.companyName) FROM Vacancy v
+        SELECT DISTINCT ep.companyName FROM Vacancy v
         JOIN v.employer e
         LEFT JOIN EmployerProfile ep ON ep.user = e
         WHERE v.status in :statuses
-          and COALESCE(ep.companyName, e.companyName) is not null
-          and trim(COALESCE(ep.companyName, e.companyName)) <> ''
-        ORDER BY COALESCE(ep.companyName, e.companyName)
+          and ep.companyName is not null
+          and trim(ep.companyName) <> ''
+        ORDER BY ep.companyName
         """)
     List<String> findActiveVacancyCompanies(@Param("statuses") List<VacancyStatus> statuses);
 
@@ -99,4 +100,11 @@ public interface VacancyRepository extends JpaRepository<Vacancy, Integer> {
         ORDER BY v.source.name
         """)
     List<VacancySource> findActiveVacancySources(@Param("statuses") List<VacancyStatus> statuses);
+
+    @Query("""
+        SELECT DISTINCT v.direction FROM Vacancy v
+        WHERE v.status in :statuses and v.direction is not null
+        ORDER BY v.direction.name
+        """)
+    List<VacancyDirection> findActiveVacancyDirections(@Param("statuses") List<VacancyStatus> statuses);
 }

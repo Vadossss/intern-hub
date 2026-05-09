@@ -96,6 +96,7 @@ public class VacancyController {
     public ResponseEntity<PageResponse<VacancyResponseDto>> searchVacancies(
             @RequestParam(required = false) List<VacancySourceCode> source,
             @RequestParam(required = false) PositionsEnum position,
+            @RequestParam(required = false) List<String> direction,
             @RequestParam(required = false) String companyName,
             @RequestParam(required = false) String employerId,
             @RequestParam(required = false) String city,
@@ -113,6 +114,7 @@ public class VacancyController {
         FilterParamsRequest filterParams = new FilterParamsRequest();
         filterParams.setSource(source);
         filterParams.setPosition(position);
+        filterParams.setDirection(direction);
         filterParams.setCity(city);
         filterParams.setCompanyName(companyName);
         filterParams.setEmployerId(employerId);
