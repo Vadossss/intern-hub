@@ -82,10 +82,7 @@ public class BlogArticleService {
 
     private BlogArticleResponseDto toDto(BlogArticle article) {
         User author = article.getAuthor();
-        String authorName = firstNonBlank(
-                joinName(author.getFirstName(), author.getLastName()),
-                author.getEmail()
-        );
+        String authorName = author.getEmail();
 
         return BlogArticleResponseDto.builder()
                 .id(article.getId())
@@ -121,15 +118,6 @@ public class BlogArticleService {
 
     private String trimOrNull(String value) {
         return isBlank(value) ? null : value.trim();
-    }
-
-    private String joinName(String firstName, String lastName) {
-        String joined = (firstNonBlank(firstName, "") + " " + firstNonBlank(lastName, "")).trim();
-        return joined.isBlank() ? null : joined;
-    }
-
-    private String firstNonBlank(String value, String fallback) {
-        return isBlank(value) ? fallback : value;
     }
 
     private boolean isBlank(String value) {
