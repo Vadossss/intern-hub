@@ -21,7 +21,7 @@ public class FilterParams {
 
     private Stack stack;
 
-    private List<String> directionIds;
+    private List<String> direction;
 
     private String city;
 

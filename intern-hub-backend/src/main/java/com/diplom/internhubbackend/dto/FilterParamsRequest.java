@@ -20,7 +20,7 @@ public class FilterParamsRequest {
     private PositionsEnum position;
 
     @Parameter(description = "ID направлений вакансии")
-    private List<String> directionIds;
+    private List<String> direction;
 
     @Parameter(description = "Город")
     private String city;

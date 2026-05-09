@@ -38,9 +38,9 @@ public class FilterParamsMapper {
                 stackService
                         .getStackById(stackIdForPosition(filterParams.getPosition()));
 
-        List<String> directionIds = filterParams.getDirectionIds() == null || filterParams.getDirectionIds().isEmpty() ?
+        List<String> direction = filterParams.getDirection() == null || filterParams.getDirection().isEmpty() ?
                 null :
-                filterParams.getDirectionIds()
+                filterParams.getDirection()
                         .stream()
                         .filter(Objects::nonNull)
                         .map(String::trim)
@@ -80,7 +80,7 @@ public class FilterParamsMapper {
         return FilterParams.builder()
                 .source(source)
                 .stack(stack)
-                .directionIds(directionIds)
+                .direction(direction)
                 .city(filterParams.getCity())
                 .companyName(filterParams.getCompanyName())
                 .employerId(filterParams.getEmployerId())
