@@ -147,6 +147,7 @@ export interface PageResponse<T> {
 export interface SearchVacanciesParams {
   source?: VacancySource[];
   position?: Position;
+  direction?: string[];
   companyName?: string;
   city?: string;
   salaryMin?: number;

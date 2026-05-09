@@ -26,6 +26,7 @@ export interface VacancyFilterOptions {
   cities: string[];
   companies: string[];
   sources: DictionaryItem[];
+  directions: DictionaryItem[];
 }
 
 export function getCurrencies(): Promise<DictionaryItem[]> {

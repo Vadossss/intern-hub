@@ -13,6 +13,7 @@ import type {
 export interface GetVacanciesParams {
   source?: string[];
   position?: string;
+  direction?: string[];
   companyName?: string;
   employerId?: string;
   city?: string;

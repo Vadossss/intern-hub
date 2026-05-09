@@ -207,6 +207,10 @@ export interface EmployerProfileData {
   phone?: string;
   about?: string;
   avatarUrl?: string;
+  aggregated?: boolean;
+  accredited?: boolean;
+  verified?: boolean;
+  verificationStatus?: string;
 }
 
 export interface EmployerProfileUpdate {
