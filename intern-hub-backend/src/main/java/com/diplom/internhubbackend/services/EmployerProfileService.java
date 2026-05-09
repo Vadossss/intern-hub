@@ -2,12 +2,20 @@ package com.diplom.internhubbackend.services;
 
 import com.diplom.internhubbackend.dto.EmployerProfileResponseDto;
 import com.diplom.internhubbackend.dto.EmployerProfileUpdateDto;
+import com.diplom.internhubbackend.dto.aggregation.AggregatedEmployerData;
 import com.diplom.internhubbackend.enums.AccountStatus;
+import com.diplom.internhubbackend.enums.UserRole;
+import com.diplom.internhubbackend.enums.VerificationStatus;
 import com.diplom.internhubbackend.exception.UserNotFoundException;
+import com.diplom.internhubbackend.models.EmployerSource;
 import com.diplom.internhubbackend.models.EmployerProfile;
+import com.diplom.internhubbackend.models.Role;
 import com.diplom.internhubbackend.models.User;
+import com.diplom.internhubbackend.models.VacancySource;
 import com.diplom.internhubbackend.repositories.EmployerProfileRepository;
+import com.diplom.internhubbackend.repositories.EmployerSourceRepository;
 import com.diplom.internhubbackend.repositories.UserRepository;
+import com.diplom.internhubbackend.repositories.VacancySourceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -19,7 +27,10 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 public class EmployerProfileService {
     private final EmployerProfileRepository employerProfileRepository;
+    private final EmployerSourceRepository employerSourceRepository;
     private final UserRepository userRepository;
+    private final VacancySourceRepository vacancySourceRepository;
+    private final UserRoleService userRoleService;
     private final FileStorageService fileStorageService;
 
     @Transactional
@@ -67,11 +78,9 @@ public class EmployerProfileService {
 
         if (request.getCompanyName() != null) {
             profile.setCompanyName(request.getCompanyName());
-            user.setCompanyName(request.getCompanyName());
         }
         if (request.getCity() != null) {
             profile.setCity(request.getCity());
-            user.setCity(request.getCity());
         }
         if (request.getWebsite() != null) {
             profile.setWebsite(request.getWebsite());
@@ -118,6 +127,7 @@ public class EmployerProfileService {
                         .user(user)
                         .companyName(companyName)
                         .avatarUrl(avatarUrl)
+                        .aggregated(true)
                         .build());
 
         if (isBlank(profile.getCompanyName()) && !isBlank(companyName)) {
@@ -127,21 +137,141 @@ public class EmployerProfileService {
             profile.setAvatarUrl(avatarUrl);
             user.setAvatarUrl(avatarUrl);
         }
-        if (!isBlank(companyName) && isBlank(user.getCompanyName())) {
-            user.setCompanyName(companyName);
-        }
+        profile.setAggregated(true);
 
         userRepository.save(user);
         return employerProfileRepository.save(profile);
     }
 
+    @Transactional
+    public User resolveAggregatedEmployer(AggregatedEmployerData data) {
+        if (data == null || isBlank(data.companyName())) {
+            return null;
+        }
+
+        String sourceCode = trimToNull(data.sourceCode());
+        String externalId = trimToNull(data.externalId());
+        VacancySource source = sourceCode == null
+                ? null
+                : vacancySourceRepository.findByCode(sourceCode).orElse(null);
+
+        EmployerProfile profile = findProfileBySource(sourceCode, externalId)
+                .or(() -> employerProfileRepository.findByCompanyNameIgnoreCase(data.companyName().trim()))
+                .orElseGet(() -> employerProfileRepository.save(buildAggregatedProfile(data)));
+
+        mergeAggregatedProfile(profile, data);
+        User user = profile.getUser();
+        if (user.getStatus() == null) {
+            user.setStatus(AccountStatus.ACTIVE);
+        }
+        user.setAvatarUrl(firstNonBlank(profile.getAvatarUrl(), user.getAvatarUrl()));
+        Boolean mergedVerified = firstNonNull(profile.getVerified(), user.getVerified());
+        user.setVerified(Boolean.TRUE.equals(mergedVerified));
+        if (Boolean.TRUE.equals(mergedVerified)) {
+            user.setVerificationStatus(VerificationStatus.CONFIRMED);
+        }
+
+        userRepository.save(user);
+        EmployerProfile savedProfile = employerProfileRepository.save(profile);
+
+        if (source != null && externalId != null) {
+            saveEmployerSource(savedProfile, source, externalId, data);
+        }
+
+        return user;
+    }
+
     private EmployerProfile buildFromUser(User user) {
         return EmployerProfile.builder()
                 .user(user)
-                .companyName(user.getCompanyName())
-                .city(user.getCity())
                 .avatarUrl(user.getAvatarUrl())
+                .aggregated(false)
+                .verified(user.getVerified())
                 .build();
+    }
+
+    private EmployerProfile buildAggregatedProfile(AggregatedEmployerData data) {
+        Role companyRole = userRoleService.findRoleById(UserRole.ROLE_EMPLOYER.name());
+        Boolean verified = Boolean.TRUE.equals(data.verified());
+
+        User user = User.builder()
+                .avatarUrl(trimToNull(data.avatarUrl()))
+                .verified(verified)
+                .verificationStatus(verified ? VerificationStatus.CONFIRMED : VerificationStatus.EXPECTATION)
+                .status(AccountStatus.ACTIVE)
+                .role(companyRole)
+                .build();
+
+        userRepository.save(user);
+
+        return EmployerProfile.builder()
+                .user(user)
+                .companyName(trimToNull(data.companyName()))
+                .city(trimToNull(data.city()))
+                .website(trimToNull(data.website()))
+                .about(trimToNull(data.description()))
+                .avatarUrl(trimToNull(data.avatarUrl()))
+                .aggregated(true)
+                .verified(verified)
+                .accredited(data.accredited())
+                .build();
+    }
+
+    private java.util.Optional<EmployerProfile> findProfileBySource(String sourceCode, String externalId) {
+        if (isBlank(sourceCode) || isBlank(externalId)) {
+            return java.util.Optional.empty();
+        }
+
+        return employerSourceRepository
+                .findBySource_CodeAndExternalId(sourceCode, externalId)
+                .map(EmployerSource::getEmployerProfile);
+    }
+
+    private void mergeAggregatedProfile(EmployerProfile profile, AggregatedEmployerData data) {
+        if (isBlank(profile.getCompanyName()) && !isBlank(data.companyName())) {
+            profile.setCompanyName(data.companyName().trim());
+        }
+        if (isBlank(profile.getCity()) && !isBlank(data.city())) {
+            profile.setCity(data.city().trim());
+        }
+        if (isBlank(profile.getWebsite()) && !isBlank(data.website())) {
+            profile.setWebsite(data.website().trim());
+        }
+        if (isBlank(profile.getAbout()) && !isBlank(data.description())) {
+            profile.setAbout(data.description().trim());
+        }
+        if (isBlank(profile.getAvatarUrl()) && !isBlank(data.avatarUrl())) {
+            profile.setAvatarUrl(data.avatarUrl().trim());
+        }
+        profile.setAggregated(true);
+
+        if (profile.getAccredited() == null || Boolean.TRUE.equals(data.accredited())) {
+            profile.setAccredited(data.accredited());
+        }
+        if (profile.getVerified() == null || Boolean.TRUE.equals(data.verified())) {
+            profile.setVerified(data.verified());
+        }
+    }
+
+    private void saveEmployerSource(
+            EmployerProfile profile,
+            VacancySource source,
+            String externalId,
+            AggregatedEmployerData data
+    ) {
+        EmployerSource employerSource = employerSourceRepository
+                .findBySource_CodeAndExternalId(source.getCode(), externalId)
+                .orElseGet(() -> EmployerSource.builder()
+                        .employerProfile(profile)
+                        .source(source)
+                        .externalId(externalId)
+                        .build());
+
+        employerSource.setEmployerProfile(profile);
+        employerSource.setSourceName(firstNonBlank(data.companyName(), employerSource.getSourceName()));
+        employerSource.setSourceUrl(firstNonBlank(data.sourceUrl(), employerSource.getSourceUrl()));
+
+        employerSourceRepository.save(employerSource);
     }
 
     private EmployerProfileResponseDto toPublicDto(User user) {
@@ -157,17 +287,23 @@ public class EmployerProfileService {
         return EmployerProfileResponseDto.builder()
                 .userId(user.getId())
                 .email(user.getEmail())
-                .companyName(firstNonBlank(profile.getCompanyName(), user.getCompanyName()))
-                .city(firstNonBlank(profile.getCity(), user.getCity()))
+                .companyName(profile.getCompanyName())
+                .city(profile.getCity())
                 .website(profile.getWebsite())
                 .contactName(profile.getContactName())
                 .phone(profile.getPhone())
                 .about(profile.getAbout())
                 .avatarUrl(firstNonBlank(profile.getAvatarUrl(), user.getAvatarUrl()))
-                .verified(user.getVerified())
+                .aggregated(profile.getAggregated())
+                .accredited(profile.getAccredited())
+                .verified(firstNonNull(profile.getVerified(), user.getVerified()))
                 .verificationStatus(user.getVerificationStatus())
                 .createdAt(user.getCreatedAt())
                 .build();
+    }
+
+    private Boolean firstNonNull(Boolean value, Boolean fallback) {
+        return value != null ? value : fallback;
     }
 
     private String firstNonBlank(String value, String fallback) {
@@ -176,6 +312,10 @@ public class EmployerProfileService {
 
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
+    }
+
+    private String trimToNull(String value) {
+        return isBlank(value) ? null : value.trim();
     }
 
     private String normalizeSearchQuery(String query) {
