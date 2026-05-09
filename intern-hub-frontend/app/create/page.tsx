@@ -1,24 +1,27 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
-import type { FormEvent } from "react";
+import { Archive, ArrowLeft, Plus, Save, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  Archive,
-  ArrowLeft,
-  BriefcaseBusiness,
-  Plus,
-  Save,
-  Trash2,
-  X,
-} from "lucide-react";
+import type { FormEvent } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { SkillsSelector } from "@/components/shared/SkillsSelector";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { SkillsSelector } from "@/components/shared/SkillsSelector";
+import {
+  DictionaryItem,
+  getVacancyDictionaries,
+  VacancyDictionaries,
+} from "@/lib/api/dictionaries";
 import {
   archiveVacancy,
   createVacancy,
@@ -29,17 +32,6 @@ import {
   VacancyContact,
   VacancyPayload,
 } from "@/lib/api/profile";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  DictionaryItem,
-  getVacancyDictionaries,
-  VacancyDictionaries,
-} from "@/lib/api/dictionaries";
 
 const emptyDictionaries: VacancyDictionaries = {
   currencies: [],
@@ -711,10 +703,7 @@ function VacancyFormPage() {
         </Card>
       </section>
 
-      <Dialog
-        open={isArchiveDialogOpen}
-        onOpenChange={setIsArchiveDialogOpen}
-      >
+      <Dialog open={isArchiveDialogOpen} onOpenChange={setIsArchiveDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Архивировать вакансию?</DialogTitle>

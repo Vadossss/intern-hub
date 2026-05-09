@@ -3,8 +3,6 @@
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Direction } from "@/components/shared/DirectionSelector";
-import { TasksSection } from "@/components/shared/TasksSection";
-// import { mockTasks } from "@/components/shared/mockData";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";

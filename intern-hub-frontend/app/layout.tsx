@@ -5,6 +5,7 @@ import "./globals.css";
 import { Header } from "@/components/shared/Header";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/lib/auth/AuthProvider";
+import Footer from "@/components/shared/Footer";
 
 const nunito = Nunito({
   subsets: ["cyrillic"],
@@ -40,6 +41,7 @@ export default function RootLayout({
         <AuthProvider>
           <Header />
           {children}
+          <Footer />
         </AuthProvider>
         <Toaster position="bottom-right" richColors />
       </body>

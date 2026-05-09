@@ -2,8 +2,6 @@
 
 import { useParams } from "next/navigation";
 import { Direction } from "@/components/shared/DirectionSelector";
-import { InterviewQuestionsSection } from "@/components/shared/InterviewQuestionsSection";
-// import { mockInterviewQuestions } from "@/components/shared/mockData";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
