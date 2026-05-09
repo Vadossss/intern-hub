@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Component
@@ -37,6 +38,15 @@ public class FilterParamsMapper {
                 stackService
                         .getStackById(stackIdForPosition(filterParams.getPosition()));
 
+        List<String> directionIds = filterParams.getDirectionIds() == null || filterParams.getDirectionIds().isEmpty() ?
+                null :
+                filterParams.getDirectionIds()
+                        .stream()
+                        .filter(Objects::nonNull)
+                        .map(String::trim)
+                        .filter(directionId -> !directionId.isEmpty())
+                        .distinct()
+                        .collect(Collectors.toList());
 
         List<WorkFormat> workFormat = filterParams.getWorkFormats() == null || filterParams.getWorkFormats().isEmpty() ?
                 null :
@@ -70,6 +80,7 @@ public class FilterParamsMapper {
         return FilterParams.builder()
                 .source(source)
                 .stack(stack)
+                .directionIds(directionIds)
                 .city(filterParams.getCity())
                 .companyName(filterParams.getCompanyName())
                 .employerId(filterParams.getEmployerId())
