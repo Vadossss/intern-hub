@@ -7,6 +7,7 @@ import com.diplom.internhubbackend.dto.TokensCookieDto;
 import com.diplom.internhubbackend.dto.UserRegisterDto;
 import com.diplom.internhubbackend.enums.AccountStatus;
 import com.diplom.internhubbackend.enums.UserRole;
+import com.diplom.internhubbackend.enums.VerificationStatus;
 import com.diplom.internhubbackend.repositories.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +27,8 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     private final UserRoleService userRoleService;
     private final RefreshTokenService refreshTokenService;
+    private final AuthTokenService authTokenService;
+    private final CandidateResumeService candidateResumeService;
 
     @Transactional
     public TokensCookieDto registerUser(User user) {
@@ -37,12 +40,17 @@ public class AuthService {
         Role role = userRoleService.findRoleById(UserRole.ROLE_USER.name());
 
         user.setRole(role);
+        user.setVerified(false);
+        user.setVerificationStatus(VerificationStatus.EXPECTATION);
 
         userRepository.save(user);
+        candidateResumeService.ensureDefaultResume(user);
 
         if (user.getEmail() == null) {
             throw new TokenGenerationException("Failed to load user details for token generation");
         }
+
+        authTokenService.sendEmailVerification(user);
 
         return authUtilService.generateAuthResponse(user);
     }

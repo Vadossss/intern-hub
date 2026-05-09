@@ -30,6 +30,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
     }
 
+    @ExceptionHandler(PasswordIncorrectException.class)
+    public ResponseEntity<Object> handlePasswordIncorrect(PasswordIncorrectException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ex.getMessage());
+    }
+
     @ExceptionHandler(RefreshTokenException.class)
     public ResponseEntity<Object> handleRefreshTokenException(RefreshTokenException ex) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ex.getMessage());
