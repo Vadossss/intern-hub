@@ -37,14 +37,24 @@ public class AuthMeResponseDto {
             String profileLastName,
             String profileCompanyName
     ) {
+        return fromUser(user, profileFirstName, profileLastName, profileCompanyName, null);
+    }
+
+    public static AuthMeResponseDto fromUser(
+            User user,
+            String profileFirstName,
+            String profileLastName,
+            String profileCompanyName,
+            String profileCity
+    ) {
         return AuthMeResponseDto.builder()
                 .id(user.getId())
                 .email(user.getEmail())
                 .phoneNumber(user.getPhoneNumber())
-                .city(user.getCity())
-                .firstName(firstNonBlank(profileFirstName, user.getFirstName()))
-                .lastName(firstNonBlank(profileLastName, user.getLastName()))
-                .companyName(firstNonBlank(profileCompanyName, user.getCompanyName()))
+                .city(profileCity)
+                .firstName(profileFirstName)
+                .lastName(profileLastName)
+                .companyName(profileCompanyName)
                 .avatarUrl(user.getAvatarUrl())
                 .role(user.getRole() != null ? user.getRole().getId() : null)
                 .status(user.getStatus())
@@ -54,9 +64,5 @@ public class AuthMeResponseDto {
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
                 .build();
-    }
-
-    private static String firstNonBlank(String value, String fallback) {
-        return value == null || value.isBlank() ? fallback : value;
     }
 }
