@@ -12,7 +12,7 @@ public record HhItemVacancy(
         HhEmployerEntity employer,
         HhAddressEntity address,
         HhNamedEntity experience,
-        HhNamedEntity employment,
+        @JsonProperty("employment_form") HhNamedEntity employment,
         HhNamedEntity schedule,
         @JsonProperty("work_format") List<HhNamedEntity> workFormat,
         String internship,
