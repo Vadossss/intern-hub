@@ -22,8 +22,8 @@ export function Header() {
   async function logout() {
     try {
       await logoutRequest();
-    } catch (error) {
-      console.error("Logout failed:", error);
+    } catch {
+      // Local session is cleared anyway: logout must stay safe for expired cookies.
     }
 
     setIsAuthenticated(false);
@@ -47,10 +47,16 @@ export function Header() {
               Вакансии
             </Link>
             <Link
-              href="/"
+              href="/employers"
               className="text-foreground transition-colors hover:text-primary"
             >
               Компании
+            </Link>
+            <Link
+              href="/blog"
+              className="text-foreground transition-colors hover:text-primary"
+            >
+              Блог
             </Link>
             <Link
               href="/"

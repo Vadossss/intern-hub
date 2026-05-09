@@ -4,7 +4,7 @@ interface Props {
   className?: string;
 }
 
-export const ActualInternships: React.FC<Props> = ({ className }) => {
+export const ActualInternships: React.FC<Props> = ({}) => {
   return (
     <section className="py-15">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
