@@ -27,7 +27,7 @@ export function EmployerCard({ employer }: { employer: PublicEmployerProfile }) 
   return (
     <article className="flex h-full flex-col rounded-2xl border border-[#161616]/10 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-[#3f5f4a]/30 hover:shadow-[0_14px_36px_rgba(20,20,20,0.08)]">
       <div className="flex items-start gap-4">
-        <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#161616]/10 bg-[#f7f7f4] text-[#3f5f4a]">
+        <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#161616]/10 bg-[#f7f7f4] text-[#3f5f4a]">
           {logoUrl ? (
             <img
               src={logoUrl}
@@ -102,7 +102,7 @@ export function EmployersGridSkeleton() {
           className="rounded-2xl border border-[#161616]/10 bg-white p-5"
         >
           <div className="flex gap-4">
-            <Skeleton className="h-16 w-16 rounded-2xl bg-[#e6e2d8]" />
+            <Skeleton className="h-16 w-16 rounded-full bg-[#e6e2d8]" />
             <div className="flex-1 space-y-3">
               <Skeleton className="h-5 w-2/3 rounded-full bg-[#e6e2d8]" />
               <Skeleton className="h-4 w-1/2 rounded-full bg-[#e6e2d8]" />

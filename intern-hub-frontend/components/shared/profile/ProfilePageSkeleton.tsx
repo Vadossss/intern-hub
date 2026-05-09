@@ -33,7 +33,7 @@ export function ProfilePageSkeleton({ roleLabel }: { roleLabel: string }) {
                 <CardHeader>
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div className="flex items-start gap-4">
-                      <Skeleton className="h-16 w-16 rounded-2xl" />
+                      <Skeleton className="h-16 w-16 rounded-full" />
                       <div>
                         <Skeleton className="h-7 w-56" />
                         <Skeleton className="mt-3 h-4 w-72 max-w-full" />

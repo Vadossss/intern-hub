@@ -2,14 +2,11 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  ArrowLeft,
-  Search,
-} from "lucide-react";
+import { Search } from "lucide-react";
 import { toast } from "sonner";
 
+import { EmployerBreadcrumbs } from "@/components/shared/employer/EmployerPublicPageParts";
 import {
   EmployerCard,
   EmployersGridSkeleton,
@@ -148,16 +145,7 @@ function EmployersContent() {
   return (
     <main className="min-h-screen bg-[#f4f1e9] px-4 py-8 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        <Button
-          asChild
-          variant="ghost"
-          className="rounded-xl text-[#4a4a4a] hover:bg-white/70"
-        >
-          <Link href="/">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            На главную
-          </Link>
-        </Button>
+        <EmployerBreadcrumbs />
 
         <section className="rounded-2xl border border-[#161616]/10 bg-white p-5 shadow-sm sm:p-6">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
