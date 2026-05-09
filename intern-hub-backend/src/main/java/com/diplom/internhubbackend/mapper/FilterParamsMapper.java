@@ -35,7 +35,7 @@ public class FilterParamsMapper {
         Stack stack = filterParams.getPosition() == null ?
                 null :
                 stackService
-                        .getStackById(filterParams.getPosition().getFullName().toLowerCase());
+                        .getStackById(stackIdForPosition(filterParams.getPosition()));
 
 
         List<WorkFormat> workFormat = filterParams.getWorkFormats() == null || filterParams.getWorkFormats().isEmpty() ?
@@ -72,6 +72,7 @@ public class FilterParamsMapper {
                 .stack(stack)
                 .city(filterParams.getCity())
                 .companyName(filterParams.getCompanyName())
+                .employerId(filterParams.getEmployerId())
                 .employment(employment)
                 .experience(experience)
                 .salaryMin(filterParams.getSalaryMin())
@@ -84,5 +85,18 @@ public class FilterParamsMapper {
                 .sortBy(filterParams.getSortBy())
                 .sortDirection(filterParams.getSortDirection())
                 .build();
+    }
+
+    private String stackIdForPosition(com.diplom.internhubbackend.enums.PositionsEnum position) {
+        return switch (position) {
+            case JAVASCRIPT -> "javascript";
+            case JAVA -> "java";
+            case PYTHON -> "python";
+            case CSHARP -> "csharp";
+            case DATASCIENCE -> "datascience";
+            case GO -> "go";
+            case QA -> "qa";
+            case DESIGN -> "design";
+        };
     }
 }

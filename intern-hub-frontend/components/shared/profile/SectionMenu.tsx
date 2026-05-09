@@ -1,11 +1,12 @@
 import { cn } from "@/lib/utils";
+import { ReactElement } from "react";
 
 export function SectionMenu<T extends string>({
   items,
   active,
   onChange,
 }: {
-  items: { id: T; label: string }[];
+  items: { id: T; label: string; icon: ReactElement }[];
   active: T;
   onChange: (id: T) => void;
 }) {
@@ -23,7 +24,10 @@ export function SectionMenu<T extends string>({
               : "hover:bg-[#f2f2ed] hover:text-[#171717]",
           )}
         >
-          <span>{item.label}</span>
+          <div className="flex items-center gap-2">
+            {item.icon}
+            <span className="text-md">{item.label}</span>
+          </div>
           {active === item.id ? (
             <span className="h-2 w-2 rounded-full bg-white" />
           ) : null}

@@ -13,6 +13,7 @@ interface SkillsSelectorProps {
   selectedSkillIds: number[];
   onChange: (ids: number[]) => void;
   name?: string;
+  className?: string;
 }
 
 export function SkillsSelector({
@@ -20,6 +21,7 @@ export function SkillsSelector({
   selectedSkillIds,
   onChange,
   name = "skills",
+  className,
 }: SkillsSelectorProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isExpanded, setIsExpanded] = useState(false);
@@ -46,7 +48,12 @@ export function SkillsSelector({
   }
 
   return (
-    <div className="rounded-2xl border border-[#161616]/10 bg-[#f7f7f3] p-4">
+    <div
+      className={cn(
+        "rounded-2xl border border-[#161616]/10 bg-[#f7f7f3] p-4",
+        className,
+      )}
+    >
       <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <p className="text-sm font-semibold text-[#171717]">Навыки</p>
@@ -54,22 +61,20 @@ export function SkillsSelector({
             Выбрано: {selectedSkillIds.length}
           </p>
         </div>
-        <div className="relative w-full lg:max-w-xs">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#777]" />
+        <div className="relative w-full lg:max-w-sm">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[#3f5f4a]" />
           <Input
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
             placeholder="Поиск по навыкам"
-            className="pl-9"
+            className="h-11 border-[#3f5f4a]/40 bg-white pl-10 font-semibold shadow-sm focus-visible:ring-[#3f5f4a]"
           />
         </div>
       </div>
       <div
         className={cn(
-          "flex flex-wrap gap-2 transition-[max-height]",
-          isExpanded || searchQuery
-            ? "max-h-[560px] overflow-auto"
-            : "max-h-28 overflow-hidden",
+          "flex flex-wrap gap-2 overflow-y-auto pr-2 transition-[max-height]",
+          isExpanded || searchQuery ? "max-h-72" : "max-h-28 overflow-hidden",
         )}
       >
         {filteredSkills.length > 0 ? (
@@ -83,7 +88,9 @@ export function SkillsSelector({
                 name={name}
                 value={skill.id}
                 checked={selectedSkillIds.includes(skill.id)}
-                onChange={(event) => toggleSkill(skill.id, event.target.checked)}
+                onChange={(event) =>
+                  toggleSkill(skill.id, event.target.checked)
+                }
                 className="h-4 w-4"
               />
               {skill.name}

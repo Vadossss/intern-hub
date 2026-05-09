@@ -31,6 +31,10 @@ public class Application {
     @JoinColumn(name = "candidate_id", nullable = false)
     private User candidate;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "resume_id")
+    private CandidateResume resume;
+
     @Column(columnDefinition = "TEXT")
     private String coverLetter;
 

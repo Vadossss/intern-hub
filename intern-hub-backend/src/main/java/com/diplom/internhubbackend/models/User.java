@@ -56,6 +56,8 @@ public class User {
     private VerificationStatus verificationStatus;
     private LocalDateTime verifiedAt;
 
+    private String avatarUrl = null;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "merged_into_id")
     private User mergedInto;

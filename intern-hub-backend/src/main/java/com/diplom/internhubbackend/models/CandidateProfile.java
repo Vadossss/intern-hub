@@ -4,8 +4,11 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @Entity
@@ -23,6 +26,12 @@ public class CandidateProfile {
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false, unique = true)
     private User user;
+
+    private String firstName;
+
+    private String lastName;
+
+    private LocalDate birthday;
 
     @Column(columnDefinition = "TEXT")
     private String about;
@@ -52,6 +61,10 @@ public class CandidateProfile {
             joinColumns = @JoinColumn(name = "candidate_profile_id"),
             inverseJoinColumns = @JoinColumn(name = "skill_id"))
     private Set<KeySkill> skills = new HashSet<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "candidateProfile", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<CandidateResume> resumes = new ArrayList<>();
 
     @Column(nullable = false, updatable = false)
     @Builder.Default

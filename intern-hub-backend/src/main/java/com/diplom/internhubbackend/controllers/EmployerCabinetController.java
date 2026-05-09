@@ -4,12 +4,15 @@ import com.diplom.internhubbackend.dto.*;
 import com.diplom.internhubbackend.security.config.CustomUserDetails;
 import com.diplom.internhubbackend.services.CandidateProfileService;
 import com.diplom.internhubbackend.services.EmployerCabinetService;
+import com.diplom.internhubbackend.services.EmployerProfileService;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Set;
 
@@ -20,6 +23,36 @@ public class EmployerCabinetController {
 
     private final EmployerCabinetService employerCabinetService;
     private final CandidateProfileService candidateProfileService;
+    private final EmployerProfileService employerProfileService;
+
+    @Operation(summary = "Получить профиль кандидата текущего пользователя")
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYER', 'ROLE_ADMIN')")
+    @GetMapping("/profile")
+    public EmployerProfileResponseDto getMyProfile(
+            @AuthenticationPrincipal CustomUserDetails customUserDetails
+    ) {
+        return employerProfileService.getProfile(customUserDetails.getUser());
+    }
+
+    @Operation(summary = "Обновить профиль текущего работодателя")
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYER', 'ROLE_ADMIN')")
+    @PutMapping("/profile")
+    public EmployerProfileResponseDto updateMyProfile(
+            @AuthenticationPrincipal CustomUserDetails customUserDetails,
+            @RequestBody EmployerProfileUpdateDto request
+    ) {
+        return employerProfileService.updateProfile(customUserDetails.getUser(), request);
+    }
+
+    @Operation(summary = "Обновить фото профиля работодателя")
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYER', 'ROLE_ADMIN')")
+    @PostMapping(value = "/profile/photo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public EmployerProfileResponseDto uploadMyProfilePhoto(
+            @AuthenticationPrincipal CustomUserDetails customUserDetails,
+            @RequestParam("file") MultipartFile file
+    ) {
+        return employerProfileService.uploadProfilePhoto(customUserDetails.getUser(), file);
+    }
 
     @Operation(summary = "Получить вакансии текущего работодателя")
     @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYER', 'ROLE_ADMIN')")

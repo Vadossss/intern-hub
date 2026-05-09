@@ -21,9 +21,12 @@ export interface PageResponse<T> {
 export interface CandidateProfile {
   userId: number;
   email: string;
+  phoneNumber?: string;
   firstName?: string;
   lastName?: string;
+  birthday?: string;
   city?: string;
+  avatarUrl?: string;
   about?: string;
   resumeUrl?: string;
   portfolioUrl?: string;
@@ -34,11 +37,14 @@ export interface CandidateProfile {
   expectedSalaryTo?: number;
   openToWork?: boolean;
   skills?: KeySkill[];
+  resumes?: CandidateResume[];
 }
 
 export interface CandidateProfileUpdate {
   firstName?: string;
   lastName?: string;
+  birthday?: string;
+  phoneNumber?: string;
   city?: string;
   about?: string;
   resumeUrl?: string;
@@ -52,12 +58,49 @@ export interface CandidateProfileUpdate {
   skillIds?: number[];
 }
 
+export interface CandidateResume {
+  id: number;
+  profession?: string;
+  city?: string;
+  expectedSalaryFrom?: number;
+  expectedSalaryTo?: number;
+  employmentId?: string;
+  employmentName?: string;
+  workFormatId?: string;
+  workFormatName?: string;
+  experienceId?: string;
+  experienceName?: string;
+  about?: string;
+  archived?: boolean;
+  skills?: KeySkill[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CandidateResumePayload {
+  profession?: string;
+  city?: string;
+  expectedSalaryFrom?: number | null;
+  expectedSalaryTo?: number | null;
+  employmentId?: string;
+  workFormatId?: string;
+  experienceId?: string;
+  about?: string;
+  skillIds?: number[];
+}
+
 export interface CandidateApplicationHistory {
   applicationId: number;
   vacancyPublicId: string;
   vacancyTitle: string;
-  companyName: string;
+  employer?: {
+    id?: number;
+    companyName?: string;
+    city?: string;
+    avatarUrl?: string;
+  };
   status: string;
+  archived?: boolean;
   appliedAt: string;
   updatedAt: string;
 }
@@ -154,18 +197,52 @@ export interface VacancyPayload {
   contactsList?: VacancyContact[];
 }
 
+export interface EmployerProfileData {
+  userId?: number;
+  email?: string;
+  companyName?: string;
+  city?: string;
+  website?: string;
+  contactName?: string;
+  phone?: string;
+  about?: string;
+  avatarUrl?: string;
+}
+
+export interface EmployerProfileUpdate {
+  companyName?: string;
+  city?: string;
+  website?: string;
+  contactName?: string;
+  phone?: string;
+  about?: string;
+  avatarUrl?: string;
+}
+
 export interface EmployerApplication {
   applicationId: number;
   vacancyPublicId: string;
   candidateId: number;
-  candidateName: string;
+  candidateName?: string | null;
   candidateEmail: string;
   status: string;
+  archived?: boolean;
   coverLetter?: string;
   resumeUrl?: string;
+  resumeId?: number;
+  resumeProfession?: string;
   chosenContactMethod?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface EmployerCandidateSearchParams {
+  query?: string;
+  city?: string;
+  openToWork?: boolean;
+  skillIds?: number[];
+  page?: number;
+  size?: number;
 }
 
 export function getCandidateProfile(): Promise<CandidateProfile> {
@@ -176,6 +253,58 @@ export function updateCandidateProfile(
   data: CandidateProfileUpdate,
 ): Promise<CandidateProfile> {
   return apiClient.put<CandidateProfile>(API_ENDPOINTS.userProfile, data);
+}
+
+export async function uploadCandidateProfilePhoto(
+  file: File,
+): Promise<CandidateProfile> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  return apiClient.postForm<CandidateProfile>(
+    API_ENDPOINTS.userProfilePhoto,
+    formData,
+  );
+}
+
+export function getCandidateResumes(): Promise<CandidateResume[]> {
+  return apiClient.get<CandidateResume[]>(API_ENDPOINTS.userResumes);
+}
+
+export function createCandidateResume(
+  data: CandidateResumePayload,
+): Promise<CandidateResume> {
+  return apiClient.post<CandidateResume>(API_ENDPOINTS.userResumes, data);
+}
+
+export function updateCandidateResume(
+  resumeId: number,
+  data: CandidateResumePayload,
+): Promise<CandidateResume> {
+  return apiClient.put<CandidateResume>(
+    `${API_ENDPOINTS.userResumes}/${resumeId}`,
+    data,
+  );
+}
+
+export function archiveCandidateResume(
+  resumeId: number,
+): Promise<CandidateResume> {
+  return apiClient.patch<CandidateResume>(
+    `${API_ENDPOINTS.userResumes}/${resumeId}/archive`,
+  );
+}
+
+export function restoreCandidateResume(
+  resumeId: number,
+): Promise<CandidateResume> {
+  return apiClient.patch<CandidateResume>(
+    `${API_ENDPOINTS.userResumes}/${resumeId}/restore`,
+  );
+}
+
+export function deleteCandidateResume(resumeId: number): Promise<void> {
+  return apiClient.delete<void>(`${API_ENDPOINTS.userResumes}/${resumeId}`);
 }
 
 export function getCandidateApplications(
@@ -202,6 +331,18 @@ export function getCandidateFavorites(
   );
 }
 
+export function addCandidateFavorite(publicId: string): Promise<void> {
+  return apiClient.post<void>(
+    `${API_ENDPOINTS.userFavoriteVacancies}/${encodeURIComponent(publicId)}`,
+  );
+}
+
+export function removeCandidateFavorite(publicId: string): Promise<void> {
+  return apiClient.delete<void>(
+    `${API_ENDPOINTS.userFavoriteVacancies}/${encodeURIComponent(publicId)}`,
+  );
+}
+
 export function getEmployerVacancies(
   page = 0,
   size = 20,
@@ -211,6 +352,28 @@ export function getEmployerVacancies(
     {
       params: { page, size },
     },
+  );
+}
+
+export function getEmployerProfile(): Promise<EmployerProfileData> {
+  return apiClient.get<EmployerProfileData>(API_ENDPOINTS.employerProfile);
+}
+
+export function updateEmployerProfile(
+  data: EmployerProfileUpdate,
+): Promise<EmployerProfileData> {
+  return apiClient.put<EmployerProfileData>(API_ENDPOINTS.employerProfile, data);
+}
+
+export async function uploadEmployerProfilePhoto(
+  file: File,
+): Promise<EmployerProfileData> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  return apiClient.postForm<EmployerProfileData>(
+    API_ENDPOINTS.employerProfilePhoto,
+    formData,
   );
 }
 
@@ -232,6 +395,29 @@ export function getCandidateProfileById(
 ): Promise<CandidateProfile> {
   return apiClient.get<CandidateProfile>(
     `/api/employer/me/candidates/${userId}/profile`,
+  );
+}
+
+export function searchEmployerCandidates({
+  query,
+  city,
+  openToWork,
+  skillIds,
+  page = 0,
+  size = 10,
+}: EmployerCandidateSearchParams): Promise<PageResponse<CandidateProfile>> {
+  return apiClient.get<PageResponse<CandidateProfile>>(
+    API_ENDPOINTS.employerCandidates,
+    {
+      params: {
+        query,
+        city,
+        open_to_work: openToWork,
+        skill_ids: skillIds?.length ? skillIds : undefined,
+        page,
+        size,
+      },
+    },
   );
 }
 

@@ -24,13 +24,18 @@ public class EmailService {
     @Value("${spring.mail.username}")
     private String sender;
 
+    public void sendSimpleEmail(String recipient, String subject, String body) {
+        EmailDetails details = new EmailDetails(recipient, body, subject, null);
+        sendSimpleEmail(details);
+    }
+
     public String sendSimpleEmail(EmailDetails details) {
         try {
 
             SimpleMailMessage mailMessage =
                     new SimpleMailMessage();
 
-            mailMessage.setFrom("Vados3s@yandex.ru");
+            mailMessage.setFrom(sender);
             mailMessage.setTo(details.getRecipient());
             mailMessage.setText(details.getMsgBody());
             mailMessage.setSubject(details.getSubject());

@@ -22,6 +22,12 @@ export interface VacancyDictionaries {
   skills: SkillOption[];
 }
 
+export interface VacancyFilterOptions {
+  cities: string[];
+  companies: string[];
+  sources: DictionaryItem[];
+}
+
 export function getCurrencies(): Promise<DictionaryItem[]> {
   return apiClient.get<DictionaryItem[]>(API_ENDPOINTS.currency);
 }
@@ -44,6 +50,10 @@ export function getStacks(): Promise<DictionaryItem[]> {
 
 export function getSkills(): Promise<SkillOption[]> {
   return apiClient.get<SkillOption[]>(API_ENDPOINTS.skills);
+}
+
+export function getVacancyFilterOptions(): Promise<VacancyFilterOptions> {
+  return apiClient.get<VacancyFilterOptions>(API_ENDPOINTS.vacancyFilters);
 }
 
 export async function getVacancyDictionaries(): Promise<VacancyDictionaries> {

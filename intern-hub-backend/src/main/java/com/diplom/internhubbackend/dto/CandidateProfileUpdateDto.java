@@ -3,6 +3,7 @@ package com.diplom.internhubbackend.dto;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDate;
 import java.util.Set;
 
 @Getter
@@ -10,6 +11,8 @@ import java.util.Set;
 public class CandidateProfileUpdateDto {
     private String firstName;
     private String lastName;
+    private LocalDate birthday;
+    private String phoneNumber;
     private String city;
     private String about;
     private String resumeUrl;

@@ -9,8 +9,11 @@ public record EmployerApplicationResponseDto(
         String candidateName,
         String candidateEmail,
         String status,
+        Boolean archived,
         String coverLetter,
         String resumeUrl,
+        Long resumeId,
+        String resumeProfession,
         String chosenContactMethod,
         LocalDateTime createdAt,
         LocalDateTime updatedAt

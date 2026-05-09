@@ -8,8 +8,10 @@ import {
   Archive,
   ArrowLeft,
   BriefcaseBusiness,
+  Plus,
   Save,
   Trash2,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -24,6 +26,7 @@ import {
   EmployerVacancy,
   getVacancy,
   updateEmployerVacancy,
+  VacancyContact,
   VacancyPayload,
 } from "@/lib/api/profile";
 import {
@@ -79,8 +82,79 @@ function optionValue(
   return matched?.id ?? rawValue ?? options[0]?.id ?? fallback;
 }
 
-function buildPayload(formData: FormData): VacancyPayload {
-  const contactValue = textValue(formData.get("contactValue"));
+const contactMethodOptions = [
+  { value: "INTERNAL_CHAT", label: "Отклик внутри сайта" },
+  { value: "EMAIL", label: "Email" },
+  { value: "PHONE", label: "Телефон" },
+  { value: "TELEGRAM", label: "Telegram" },
+  { value: "HH", label: "HeadHunter" },
+  { value: "SJ", label: "SuperJob" },
+  { value: "EXTERNAL_LINK", label: "Внешняя ссылка" },
+];
+
+function createEmptyContact(): VacancyContact {
+  return {
+    chosenContactMethod: "INTERNAL_CHAT",
+    contactValue: "",
+    hint: "",
+  };
+}
+
+function normalizeContacts(contacts?: VacancyContact[]) {
+  if (!contacts?.length) {
+    return [createEmptyContact()];
+  }
+
+  let hasInternalContact = false;
+
+  return contacts
+    .map((contact) => ({
+      chosenContactMethod: contact.chosenContactMethod || "INTERNAL_CHAT",
+      contactValue: contact.contactValue || "",
+      hint: contact.hint || "",
+    }))
+    .filter((contact) => {
+      if (contact.chosenContactMethod !== "INTERNAL_CHAT") {
+        return true;
+      }
+
+      if (hasInternalContact) {
+        return false;
+      }
+
+      hasInternalContact = true;
+      return true;
+    });
+}
+
+function buildPayload(
+  formData: FormData,
+  contacts: VacancyContact[],
+): VacancyPayload {
+  let hasInternalContact = false;
+  const contactsList = contacts
+    .map((contact) => ({
+      chosenContactMethod: contact.chosenContactMethod || "INTERNAL_CHAT",
+      contactValue: contact.contactValue.trim(),
+      hint: contact.hint?.trim() || "",
+    }))
+    .filter(
+      (contact) =>
+        contact.chosenContactMethod === "INTERNAL_CHAT" ||
+        contact.contactValue.length > 0,
+    )
+    .filter((contact) => {
+      if (contact.chosenContactMethod !== "INTERNAL_CHAT") {
+        return true;
+      }
+
+      if (hasInternalContact) {
+        return false;
+      }
+
+      hasInternalContact = true;
+      return true;
+    });
 
   return {
     title: textValue(formData.get("title")),
@@ -97,16 +171,7 @@ function buildPayload(formData: FormData): VacancyPayload {
       to: optionalNumber(formData.get("salaryTo")),
       currency: textValue(formData.get("currency")) || "RUR",
     },
-    contactsList: contactValue
-      ? [
-          {
-            chosenContactMethod:
-              textValue(formData.get("contactMethod")) || "EMAIL",
-            contactValue,
-            hint: textValue(formData.get("contactHint")),
-          },
-        ]
-      : [],
+    contactsList,
   };
 }
 
@@ -121,6 +186,10 @@ function VacancyFormPage() {
   const [dictionaries, setDictionaries] =
     useState<VacancyDictionaries>(emptyDictionaries);
   const [selectedSkillIds, setSelectedSkillIds] = useState<number[]>([]);
+  const [contacts, setContacts] = useState<VacancyContact[]>([
+    createEmptyContact(),
+  ]);
+  const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -166,6 +235,7 @@ function VacancyFormPage() {
         if (isMounted) {
           setVacancy(response);
           setSelectedSkillIds((response.skills ?? []).map((skill) => skill.id));
+          setContacts(normalizeContacts(response.contacts));
         }
       } catch (error) {
         console.error("Failed to load vacancy:", error);
@@ -185,9 +255,59 @@ function VacancyFormPage() {
 
   const isArchived = vacancy?.status === "ARCHIVED";
 
+  function addContact() {
+    setContacts((currentContacts) => [
+      ...currentContacts,
+      { chosenContactMethod: "EMAIL", contactValue: "", hint: "" },
+    ]);
+  }
+
+  function updateContact(
+    index: number,
+    field: keyof VacancyContact,
+    value: string,
+  ) {
+    setContacts((currentContacts) => {
+      if (
+        field === "chosenContactMethod" &&
+        value === "INTERNAL_CHAT" &&
+        currentContacts.some(
+          (contact, contactIndex) =>
+            contactIndex !== index &&
+            contact.chosenContactMethod === "INTERNAL_CHAT",
+        )
+      ) {
+        toast.error("Внутренний отклик можно добавить только один раз.");
+        return currentContacts;
+      }
+
+      return currentContacts.map((contact, contactIndex) =>
+        contactIndex === index
+          ? {
+              ...contact,
+              [field]: value,
+              ...(field === "chosenContactMethod" && value === "INTERNAL_CHAT"
+                ? { contactValue: "" }
+                : {}),
+            }
+          : contact,
+      );
+    });
+  }
+
+  function removeContact(index: number) {
+    setContacts((currentContacts) => {
+      const nextContacts = currentContacts.filter(
+        (_contact, contactIndex) => contactIndex !== index,
+      );
+
+      return nextContacts.length ? nextContacts : [createEmptyContact()];
+    });
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const payload = buildPayload(new FormData(event.currentTarget));
+    const payload = buildPayload(new FormData(event.currentTarget), contacts);
     payload.skills = selectedSkillIds;
 
     if (!payload.title.trim()) {
@@ -237,6 +357,7 @@ function VacancyFormPage() {
       toast.error("Не удалось архивировать вакансию.");
     } finally {
       setIsArchiving(false);
+      setIsArchiveDialogOpen(false);
     }
   }
 
@@ -257,8 +378,6 @@ function VacancyFormPage() {
       setIsDeleteDialogOpen(false);
     }
   }
-
-  const contact = vacancy?.contacts?.[0];
 
   return (
     <main className="min-h-screen bg-[#f4f1e9]">
@@ -316,7 +435,7 @@ function VacancyFormPage() {
                     variant="outline"
                     className="rounded-xl"
                     disabled={isLoading || isArchiving || isArchived}
-                    onClick={handleArchiveVacancy}
+                    onClick={() => setIsArchiveDialogOpen(true)}
                   >
                     <Archive className="h-4 w-4" />
                     {isArchived
@@ -472,28 +591,106 @@ function VacancyFormPage() {
                 name="skills"
               />
 
-              <div className="grid gap-4 rounded-2xl border border-[#161616]/10 bg-[#f7f7f3] p-4 sm:grid-cols-3">
-                <select
-                  name="contactMethod"
-                  defaultValue={contact?.chosenContactMethod ?? "EMAIL"}
-                  className="h-10 rounded-md border bg-white px-3 text-sm"
-                >
-                  <option value="EMAIL">Email</option>
-                  <option value="PHONE">Телефон</option>
-                  <option value="TELEGRAM">Telegram</option>
-                  <option value="EXTERNAL_LINK">Внешняя ссылка</option>
-                  <option value="INTERNAL_CHAT">Чат</option>
-                </select>
-                <Input
-                  name="contactValue"
-                  defaultValue={contact?.contactValue}
-                  placeholder="Контакт"
-                />
-                <Input
-                  name="contactHint"
-                  defaultValue={contact?.hint}
-                  placeholder="Подсказка"
-                />
+              <div className="rounded-2xl border border-[#161616]/10 bg-[#f7f7f3] p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h3 className="text-base font-bold text-[#171717]">
+                      Способы отклика
+                    </h3>
+                    <p className="mt-1 text-sm text-[#626262]">
+                      Добавьте один или несколько вариантов: внутренний отклик,
+                      email, телефон, Telegram или ссылку на внешний ресурс.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-fit rounded-xl bg-white"
+                    onClick={addContact}
+                  >
+                    <Plus className="h-4 w-4" />
+                    Добавить способ
+                  </Button>
+                </div>
+
+                <div className="mt-4 space-y-3">
+                  {contacts.map((contact, index) => {
+                    const isInternal =
+                      contact.chosenContactMethod === "INTERNAL_CHAT";
+                    const hasAnotherInternalContact = contacts.some(
+                      (item, itemIndex) =>
+                        itemIndex !== index &&
+                        item.chosenContactMethod === "INTERNAL_CHAT",
+                    );
+
+                    return (
+                      <div
+                        key={`contact-${index}`}
+                        className="grid gap-3 rounded-xl border border-[#161616]/10 bg-white p-3 lg:grid-cols-[13rem_1fr_1fr_auto]"
+                      >
+                        <select
+                          value={contact.chosenContactMethod}
+                          className="h-10 rounded-md border bg-white px-3 text-sm"
+                          onChange={(event) =>
+                            updateContact(
+                              index,
+                              "chosenContactMethod",
+                              event.target.value,
+                            )
+                          }
+                        >
+                          {contactMethodOptions.map((option) => (
+                            <option
+                              key={option.value}
+                              value={option.value}
+                              disabled={
+                                option.value === "INTERNAL_CHAT" &&
+                                hasAnotherInternalContact
+                              }
+                            >
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+
+                        <Input
+                          value={contact.contactValue}
+                          placeholder={
+                            isInternal
+                              ? "Необязательно"
+                              : "Контакт, ссылка или логин"
+                          }
+                          disabled={isInternal}
+                          onChange={(event) =>
+                            updateContact(
+                              index,
+                              "contactValue",
+                              event.target.value,
+                            )
+                          }
+                        />
+
+                        <Input
+                          value={contact.hint || ""}
+                          placeholder="Подсказка для кандидата"
+                          onChange={(event) =>
+                            updateContact(index, "hint", event.target.value)
+                          }
+                        />
+
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="rounded-xl border-red-200 text-red-700 hover:bg-red-50 hover:text-red-700"
+                          onClick={() => removeContact(index)}
+                          aria-label="Удалить способ отклика"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
               <Button
@@ -513,6 +710,44 @@ function VacancyFormPage() {
           </CardContent>
         </Card>
       </section>
+
+      <Dialog
+        open={isArchiveDialogOpen}
+        onOpenChange={setIsArchiveDialogOpen}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Архивировать вакансию?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm leading-6 text-[#555]">
+              Вакансия “{vacancy?.title ?? "без названия"}” уйдет в архив и
+              перестанет отображаться в активных вакансиях. Вернуть ее можно
+              будет только через управление вакансиями.
+            </p>
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-xl"
+                onClick={() => setIsArchiveDialogOpen(false)}
+                disabled={isArchiving}
+              >
+                Отмена
+              </Button>
+              <Button
+                type="button"
+                className="rounded-xl bg-[#171717] text-white hover:bg-black"
+                onClick={handleArchiveVacancy}
+                disabled={isArchiving}
+              >
+                <Archive className="h-4 w-4" />
+                {isArchiving ? "Архивация..." : "Да, архивировать"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent className="sm:max-w-md">

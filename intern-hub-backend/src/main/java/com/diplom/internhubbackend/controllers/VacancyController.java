@@ -85,17 +85,23 @@ public class VacancyController {
         ));
     }
 
+    @Operation(summary = "Получение доступных значений фильтров вакансий")
+    @GetMapping("/filters")
+    public ResponseEntity<VacancyFilterOptionsDto> getFilterOptions() {
+        return ResponseEntity.ok(vacancyService.getActiveFilterOptions());
+    }
+
     @Operation(summary = "Расширенный поиск вакансий")
     @GetMapping
     public ResponseEntity<PageResponse<VacancyResponseDto>> searchVacancies(
             @RequestParam(required = false) List<VacancySourceCode> source,
             @RequestParam(required = false) PositionsEnum position,
             @RequestParam(required = false) String companyName,
+            @RequestParam(required = false) String employerId,
             @RequestParam(required = false) String city,
             @RequestParam(required = false) Long salaryMin,
             @RequestParam(required = false) Long salaryMax,
             @RequestParam(required = false) String searchText,
-            @RequestParam(required = false) VacancyStatus status,
             @RequestParam(required = false) List<WorkFormatEnum> workFormats,
             @RequestParam(required = false) List<EmploymentEnum> employment,
             @RequestParam(required = false) List<ExperienceEnum> experience,
@@ -109,14 +115,15 @@ public class VacancyController {
         filterParams.setPosition(position);
         filterParams.setCity(city);
         filterParams.setCompanyName(companyName);
+        filterParams.setEmployerId(employerId);
         filterParams.setEmployment(employment);
+        filterParams.setExperience(experience);
         filterParams.setSalaryMin(salaryMin);
         filterParams.setSalaryMax(salaryMax);
-        filterParams.setStatus(status);
         filterParams.setSearchText(searchText);
         filterParams.setWorkFormats(workFormats);
-        filterParams.setPage(page);
-        filterParams.setSize(size);
+        filterParams.setPage(normalizePage(page));
+        filterParams.setSize(normalizeSize(size)    );
         filterParams.setSortBy(sortBy);
         filterParams.setSortDirection(sortDirection);
 
@@ -133,4 +140,13 @@ public class VacancyController {
                 )
         );
     }
+
+    private int normalizePage(Integer page) {
+        return page == null || page < 0 ? 0 : page;
+    }
+
+    private int normalizeSize(Integer size) {
+        return size == null || size < 1 ? 20 : Math.min(size, 100);
+    }
+
 }

@@ -10,6 +10,11 @@ import java.util.Optional;
 public interface ApplicationRepository extends JpaRepository<Application, Long> {
     boolean existsByCandidateIdAndVacancyId(Integer candidateId, Integer vacancyId);
 
+    Optional<Application> findFirstByCandidateIdAndVacancyPublicIdOrderByCreatedAtDesc(
+            Integer candidateId,
+            String vacancyPublicId
+    );
+
     Page<Application> findAllByCandidateIdOrderByCreatedAtDesc(Integer candidateId, Pageable pageable);
 
     Page<Application> findAllByVacancyPublicIdAndVacancyEmployerId(

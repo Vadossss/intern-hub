@@ -25,6 +25,9 @@ public class FilterParamsRequest {
     @Parameter(description = "Название компании")
     private String companyName;
 
+    @Parameter(description = "ID компании")
+    private String employerId;
+
     @Parameter(description = "График работы")
     private String schedule;
 

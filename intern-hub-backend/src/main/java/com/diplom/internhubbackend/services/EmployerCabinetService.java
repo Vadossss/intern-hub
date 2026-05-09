@@ -2,21 +2,17 @@ package com.diplom.internhubbackend.services;
 
 import com.diplom.internhubbackend.dto.*;
 import com.diplom.internhubbackend.enums.AccountStatus;
+import com.diplom.internhubbackend.enums.ContactMethod;
 import com.diplom.internhubbackend.enums.VacancyApplicationStatus;
 import com.diplom.internhubbackend.exception.ResourceNotFoundException;
 import com.diplom.internhubbackend.exception.VacancyNotFoundException;
 import com.diplom.internhubbackend.mapper.VacancyMapper;
-import com.diplom.internhubbackend.models.Application;
-import com.diplom.internhubbackend.models.KeySkill;
-import com.diplom.internhubbackend.models.User;
-import com.diplom.internhubbackend.models.Vacancy;
-import com.diplom.internhubbackend.models.VacancyContact;
+import com.diplom.internhubbackend.models.*;
 import com.diplom.internhubbackend.repositories.ApplicationRepository;
 import com.diplom.internhubbackend.repositories.CandidateProfileRepository;
 import com.diplom.internhubbackend.repositories.VacancyRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -25,9 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -94,6 +88,7 @@ public class EmployerCabinetService {
         }
 
         if (request.getContactsList() != null) {
+            validateSingleInternalContact(request);
             List<VacancyContact> contacts = request.getContactsList().stream().map(contact -> VacancyContact
                     .builder()
                     .vacancy(vacancy)
@@ -110,6 +105,19 @@ public class EmployerCabinetService {
         vacancyRepository.save(vacancy);
 
         return vacancyMapper.toDto(vacancy);
+    }
+
+    private void validateSingleInternalContact(NewVacancyDto request) {
+        long internalContacts = request.getContactsList().stream()
+                .filter(contact -> contact.chosenContactMethod() == ContactMethod.INTERNAL_CHAT)
+                .count();
+
+        if (internalContacts > 1) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Only one internal apply contact is allowed"
+            );
+        }
     }
 
     @Transactional(readOnly = true)
@@ -155,41 +163,36 @@ public class EmployerCabinetService {
             int page,
             int size
     ) {
-        Pageable pageable = PageRequest.of(page, size);
-        String queryValue = normalizeForLike(query);
-        String cityValue = normalizeForLike(city);
+        Set<Integer> normalizedSkillIds = normalizeSkillIds(skillIds);
+        boolean skillIdsEmpty = normalizedSkillIds.isEmpty();
+        Pageable pageable = PageRequest.of(normalizePage(page), normalizeSize(size));
 
-        List<CandidateProfileResponseDto> candidates;
-
-        if (skillIds == null || skillIds.isEmpty()) {
-            candidates = candidateProfileRepository.searchCandidatesNoSkills(openToWork, AccountStatus.ACTIVE)
-                    .stream()
-                    .map(candidateProfile -> candidateProfileService.getProfileByUserId(candidateProfile.getUser().getId()))
-                    .filter(profile -> matchesCandidate(profile, queryValue, cityValue))
-                    .toList();
-        } else {
-            candidates = candidateProfileRepository.searchCandidatesWithSkills(openToWork, skillIds, AccountStatus.ACTIVE)
-                    .stream()
-                    .map(candidateProfile -> candidateProfileService.getProfileByUserId(candidateProfile.getUser().getId()))
-                    .filter(profile -> matchesCandidate(profile, queryValue, cityValue))
-                    .toList();
-        }
-
-        int fromIndex = page * size;
-        if (fromIndex >= candidates.size()) {
-            return new PageImpl<>(new ArrayList<>(), pageable, candidates.size());
-        }
-
-        int toIndex = Math.min(fromIndex + size, candidates.size());
-        List<CandidateProfileResponseDto> paged = candidates.subList(fromIndex, toIndex);
-
-        return new PageImpl<>(paged, pageable, candidates.size());
+        return candidateProfileRepository
+                .searchCandidates(
+                        likePattern(query),
+                        likePattern(city),
+                        openToWork,
+                        skillIdsEmpty ? Set.of(-1) : normalizedSkillIds,
+                        skillIdsEmpty,
+                        AccountStatus.ACTIVE,
+                        pageable
+                )
+                .map(candidateProfile ->
+                        candidateProfileService.getProfileByUserId(candidateProfile.getUser().getId())
+                );
     }
 
     private EmployerApplicationResponseDto toEmployerApplicationDto(Application application) {
         User candidate = application.getCandidate();
-        String candidateName = (candidate.getFirstName() == null ? "" : candidate.getFirstName()) +
-                (candidate.getLastName() == null ? "" : " " + candidate.getLastName());
+        CandidateProfile candidateProfile = candidateProfileRepository.findByUserId(candidate.getId()).orElse(null);
+        String firstName = candidateProfile != null && candidateProfile.getFirstName() != null
+                ? candidateProfile.getFirstName()
+                : candidate.getFirstName();
+        String lastName = candidateProfile != null && candidateProfile.getLastName() != null
+                ? candidateProfile.getLastName()
+                : candidate.getLastName();
+        String candidateName = (firstName == null ? "" : firstName) +
+                (lastName == null ? "" : " " + lastName);
 
         return new EmployerApplicationResponseDto(
                 application.getId(),
@@ -198,58 +201,44 @@ public class EmployerCabinetService {
                 candidateName.trim().isEmpty() ? null : candidateName.trim(),
                 candidate.getEmail(),
                 application.getStatus().name(),
+                application.getStatus() != VacancyApplicationStatus.PENDING,
                 application.getCoverLetter(),
                 application.getResumeUrl(),
+                application.getResume() == null ? null : application.getResume().getId(),
+                application.getResume() == null ? null : application.getResume().getProfession(),
                 application.getChosenContactMethod() == null ? null : application.getChosenContactMethod().name(),
                 application.getCreatedAt(),
                 application.getUpdatedAt()
         );
     }
 
-    private String normalizeForLike(String value) {
+    private int normalizePage(int page) {
+        return Math.max(page, 0);
+    }
+
+    private int normalizeSize(int size) {
+        if (size < 1) {
+            return 20;
+        }
+
+        return Math.min(size, 50);
+    }
+
+    private String likePattern(String value) {
         if (value == null || value.isBlank()) {
-            return "";
+            return null;
         }
-        return value.trim();
+
+        return "%" + value.trim().toLowerCase() + "%";
     }
 
-    private boolean matchesCandidate(CandidateProfileResponseDto profile, String queryValue, String cityValue) {
-        if (profile == null) {
-            return false;
+    private Set<Integer> normalizeSkillIds(Set<Integer> skillIds) {
+        if (skillIds == null || skillIds.isEmpty()) {
+            return Set.of();
         }
 
-        boolean cityMatches = cityValue.isBlank()
-                || containsIgnoreCase(profile.getCity(), cityValue)
-                || containsIgnoreCase(profile.getPreferredCity(), cityValue);
-
-        if (!cityMatches) {
-            return false;
-        }
-
-        if (queryValue.isBlank()) {
-            return true;
-        }
-
-        if (containsIgnoreCase(profile.getFirstName(), queryValue)
-                || containsIgnoreCase(profile.getLastName(), queryValue)
-                || containsIgnoreCase(profile.getEmail(), queryValue)
-                || containsIgnoreCase(profile.getAbout(), queryValue)
-                || containsIgnoreCase(profile.getPreferredCity(), queryValue)) {
-            return true;
-        }
-
-        if (profile.getSkills() == null || profile.getSkills().isEmpty()) {
-            return false;
-        }
-
-        return profile.getSkills().stream()
-                .anyMatch(skill -> containsIgnoreCase(skill.getName(), queryValue));
-    }
-
-    private boolean containsIgnoreCase(String value, String target) {
-        if (value == null || target == null) {
-            return false;
-        }
-        return value.toLowerCase(Locale.ROOT).contains(target.toLowerCase(Locale.ROOT));
+        return skillIds.stream()
+                .filter(id -> id != null && id > 0)
+                .collect(Collectors.toSet());
     }
 }

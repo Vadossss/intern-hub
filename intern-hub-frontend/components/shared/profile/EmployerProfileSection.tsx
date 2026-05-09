@@ -1,8 +1,16 @@
-import type { FormEvent } from "react";
-import { Pencil } from "lucide-react";
+"use client";
 
+import { useState } from "react";
+import type { FormEvent } from "react";
+import { Building2, Camera, Pencil } from "lucide-react";
+
+import {
+  RichTextContent,
+  RichTextEditor,
+} from "@/components/shared/RichText";
 import { InfoCard } from "@/components/shared/profile/InfoCard";
 import type { EmployerProfile } from "@/components/shared/profile/types";
+import { mediaUrl } from "@/components/shared/profile/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,26 +21,85 @@ export function EmployerProfileSection({
   vacancies,
   applications,
   isEditing,
+  isSaving,
   onEdit,
   onCancel,
   onSubmit,
+  onPhotoUpload,
 }: {
   employer: EmployerProfile;
   vacancies: EmployerVacancy[];
   applications: EmployerApplication[];
   isEditing: boolean;
+  isSaving: boolean;
   onEdit: () => void;
   onCancel: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onPhotoUpload: (file: File) => Promise<void>;
 }) {
+  const [isPhotoUploading, setIsPhotoUploading] = useState(false);
+  const avatarSrc = mediaUrl(employer.avatarUrl);
+
+  async function handlePhotoChange(file?: File) {
+    if (!file || !isEditing) return;
+
+    try {
+      setIsPhotoUploading(true);
+      await onPhotoUpload(file);
+    } finally {
+      setIsPhotoUploading(false);
+    }
+  }
+
+  const logo = (
+    <div className="relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl bg-[#edf3ea] text-[#48644d]">
+      {avatarSrc ? (
+        <img
+          src={avatarSrc}
+          alt={employer.companyName || "Компания"}
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <Building2 className="h-9 w-9" />
+      )}
+      {isEditing ? (
+        <span className="absolute inset-0 flex items-center justify-center bg-black/45 text-white opacity-100 transition hover:bg-black/55">
+          <Camera className="h-6 w-6" />
+        </span>
+      ) : null}
+    </div>
+  );
+
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
       <Card className="rounded-2xl border-[#161616]/10 bg-white/90">
         <CardHeader>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <CardTitle className="text-2xl">{employer.companyName}</CardTitle>
-              <p className="mt-2 text-sm text-[#626262]">{employer.about}</p>
+            <div className="flex items-start gap-4">
+              {isEditing ? (
+                <label className="cursor-pointer" aria-label="Изменить фото">
+                  {logo}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    disabled={isPhotoUploading}
+                    onChange={(event) => {
+                      void handlePhotoChange(event.target.files?.[0]);
+                      event.target.value = "";
+                    }}
+                  />
+                </label>
+              ) : (
+                logo
+              )}
+              <div>
+                <CardTitle className="text-2xl">{employer.companyName}</CardTitle>
+                <RichTextContent
+                  value={employer.about}
+                  className="mt-2 text-[#626262]"
+                />
+              </div>
             </div>
             {!isEditing ? (
               <Button variant="outline" className="rounded-xl" onClick={onEdit}>
@@ -60,6 +127,7 @@ export function EmployerProfileSection({
                   name="email"
                   defaultValue={employer.email}
                   placeholder="Email"
+                  disabled
                 />
                 <Input
                   name="phone"
@@ -77,15 +145,17 @@ export function EmployerProfileSection({
                   placeholder="Контактное лицо"
                 />
               </div>
-              <textarea
+              <RichTextEditor
                 name="about"
                 defaultValue={employer.about}
                 placeholder="Описание компании"
-                className="min-h-28 rounded-md border bg-white px-3 py-2 text-sm"
               />
               <div className="flex flex-wrap gap-2">
-                <Button className="rounded-xl bg-[#171717] text-white">
-                  Сохранить профиль
+                <Button
+                  disabled={isSaving}
+                  className="rounded-xl bg-[#171717] text-white"
+                >
+                  {isSaving ? "Сохранение..." : "Сохранить профиль"}
                 </Button>
                 <Button
                   type="button"
