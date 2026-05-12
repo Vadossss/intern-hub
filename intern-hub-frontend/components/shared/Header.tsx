@@ -40,18 +40,29 @@ export function Header() {
           </Link>
 
           <nav className="hidden items-center gap-8 md:flex">
-            <Link
-              href="/vacancies"
-              className="text-foreground transition-colors hover:text-primary"
-            >
-              Вакансии
-            </Link>
-            <Link
-              href="/employers"
-              className="text-foreground transition-colors hover:text-primary"
-            >
-              Компании
-            </Link>
+            {user?.role === "ROLE_EMPLOYER" ? (
+              <Link
+                href="/candidates"
+                className="text-foreground transition-colors hover:text-primary"
+              >
+                Соискатели
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/vacancies"
+                  className="text-foreground transition-colors hover:text-primary"
+                >
+                  Вакансии
+                </Link>
+                <Link
+                  href="/employers"
+                  className="text-foreground transition-colors hover:text-primary"
+                >
+                  Компании
+                </Link>
+              </>
+            )}
             <Link
               href="/blog"
               className="text-foreground transition-colors hover:text-primary"
@@ -93,11 +104,6 @@ export function Header() {
                       Профиль
                     </Link>
                   </DropdownMenuItem>
-                  {user?.role === "ROLE_ADMIN" ? (
-                    <DropdownMenuItem className="cursor-pointer" asChild>
-                      <Link href="/admin">Админ панель</Link>
-                    </DropdownMenuItem>
-                  ) : null}
                   <DropdownMenuItem
                     className="cursor-pointer text-red-700 focus:text-red-700"
                     onClick={logout}
