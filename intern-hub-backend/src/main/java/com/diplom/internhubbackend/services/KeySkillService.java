@@ -1,8 +1,7 @@
 package com.diplom.internhubbackend.services;
 
-import com.diplom.internhubbackend.dto.KeySkillDto;
 import com.diplom.internhubbackend.dto.hh.HhKeySkill;
-import com.diplom.internhubbackend.mapper.KeySkillMapper;
+import com.diplom.internhubbackend.dto.projection.KeySkillProjection;
 import com.diplom.internhubbackend.models.KeySkill;
 import com.diplom.internhubbackend.models.KeySkillRequest;
 import com.diplom.internhubbackend.repositories.KeySkillRepository;
@@ -19,11 +18,9 @@ import java.util.stream.Collectors;
 @Slf4j
 public class KeySkillService {
     private final KeySkillRepository keySkillRepository;
-    private final KeySkillMapper  keySkillMapper;
 
-    public KeySkillService(KeySkillRepository keySkillRepository, KeySkillMapper keySkillMapper) {
+    public KeySkillService(KeySkillRepository keySkillRepository) {
         this.keySkillRepository = keySkillRepository;
-        this.keySkillMapper = keySkillMapper;
     }
 
     @Cacheable(value = "keySkills")
@@ -31,8 +28,9 @@ public class KeySkillService {
         return new HashSet<>(keySkillRepository.findAllById(ids));
     }
 
-    public Set<KeySkillDto> getAllKeySkills() {
-        return keySkillMapper.toDto(new HashSet<>(keySkillRepository.findAll()));
+//    @Cacheable(value = "skills")
+    public Set<KeySkillProjection> getAllKeySkills() {
+        return new HashSet<>(keySkillRepository.findAllProjectedBy());
     }
 
     public KeySkill getKeySkillByName(String name) {
@@ -97,12 +95,29 @@ public class KeySkillService {
                 .filter(Objects::nonNull)
                 .map(String::trim)
                 .filter(name -> !name.isEmpty())
-                .collect(Collectors.toSet());
+                .collect(Collectors.toCollection(LinkedHashSet::new));
 
         if (names.isEmpty()) {
             return Collections.emptySet();
         }
 
-        return getExistingKeySkillsByNames(names);
+        Map<String, KeySkill> existingByName = keySkillRepository.findAllByNameIn(names).stream()
+                .collect(Collectors.toMap(
+                        KeySkill::getName,
+                        skill -> skill,
+                        (left, right) -> left,
+                        LinkedHashMap::new
+                ));
+
+        List<KeySkill> missing = names.stream()
+                .filter(name -> !existingByName.containsKey(name))
+                .map(name -> KeySkill.builder().name(name).build())
+                .toList();
+
+        if (!missing.isEmpty()) {
+            keySkillRepository.saveAll(missing).forEach(skill -> existingByName.put(skill.getName(), skill));
+        }
+
+        return new LinkedHashSet<>(existingByName.values());
     }
 }
