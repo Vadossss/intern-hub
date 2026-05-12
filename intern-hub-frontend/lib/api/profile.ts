@@ -73,8 +73,77 @@ export interface CandidateResume {
   about?: string;
   archived?: boolean;
   skills?: KeySkill[];
+  languages?: CandidateResumeLanguage[];
+  education?: CandidateResumeEducation[];
+  workExperience?: CandidateResumeWorkExperience[];
+  viewCount?: number;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface CandidateResumeLanguage {
+  id?: number;
+  languageId?: string;
+  languageName?: string;
+  level?: string;
+}
+
+export interface CandidateResumeEducation {
+  id?: number;
+  institution?: string;
+  specialty?: string;
+  educationLevel?: string;
+  startDate?: string;
+  endDate?: string;
+  currentlyStudying?: boolean;
+}
+
+export interface CandidateResumeWorkExperience {
+  id?: number;
+  company?: string;
+  position?: string;
+  workFormatId?: string;
+  workFormatName?: string;
+  startDate?: string;
+  endDate?: string;
+  currentlyWorking?: boolean;
+  projectUrl?: string;
+}
+
+export interface CandidateResumeViewStats {
+  resumeId: number;
+  totalViews: number;
+  days: number;
+  chart: CandidateResumeViewPoint[];
+  companies: CandidateResumeCompanyView[];
+}
+
+export interface CandidateResumeViewPoint {
+  date: string;
+  views: number;
+}
+
+export interface CandidateResumeCompanyView {
+  employerId?: number;
+  companyName?: string;
+  avatarUrl?: string;
+  viewedAt: string;
+}
+
+export interface CandidateResumeSearchResult {
+  profileId?: number;
+  userId: number;
+  email: string;
+  phoneNumber?: string;
+  firstName?: string;
+  lastName?: string;
+  birthday?: string;
+  avatarUrl?: string;
+  about?: string;
+  resumeUrl?: string;
+  portfolioUrl?: string;
+  openToWork?: boolean;
+  resume: CandidateResume;
 }
 
 export interface CandidateResumePayload {
@@ -87,12 +156,37 @@ export interface CandidateResumePayload {
   experienceId?: string;
   about?: string;
   skillIds?: number[];
+  languages?: CandidateResumeLanguage[];
+  education?: CandidateResumeEducation[];
+  workExperience?: CandidateResumeWorkExperience[];
 }
 
 export interface CandidateApplicationHistory {
   applicationId: number;
   vacancyPublicId: string;
   vacancyTitle: string;
+  directionId?: string;
+  direction?: string;
+  city?: string;
+  salaryFrom?: number;
+  salaryTo?: number;
+  currency?: {
+    id?: string;
+    name?: string;
+    abbr?: string;
+  };
+  employment?: {
+    id?: string;
+    name?: string;
+  };
+  experience?: {
+    id?: string;
+    name?: string;
+  };
+  workFormat?: {
+    id?: string;
+    name?: string;
+  };
   employer?: {
     id?: number;
     companyName?: string;
@@ -108,7 +202,8 @@ export interface CandidateApplicationHistory {
 export interface CandidateFavoriteVacancy {
   publicId: string;
   title: string;
-  stack?: string;
+  directionId?: string;
+  direction?: string;
   city?: string;
   status?: string;
   salaryFrom?: number;
@@ -141,7 +236,8 @@ export interface EmployerVacancy {
   id: number;
   publicId: string;
   title: string;
-  stack?: string;
+  directionId?: string;
+  direction?: string;
   description?: string;
   city?: string;
   status?: string;
@@ -171,6 +267,7 @@ export interface EmployerVacancy {
   };
   skills?: KeySkill[];
   contacts?: VacancyContact[];
+  viewCount?: number;
 }
 
 export interface VacancyContact {
@@ -181,7 +278,7 @@ export interface VacancyContact {
 
 export interface VacancyPayload {
   title: string;
-  stack?: string;
+  direction?: string;
   description?: string;
   salary?: {
     from?: number | null;
@@ -243,7 +340,6 @@ export interface EmployerApplication {
 export interface EmployerCandidateSearchParams {
   query?: string;
   city?: string;
-  openToWork?: boolean;
   skillIds?: number[];
   page?: number;
   size?: number;
@@ -309,6 +405,18 @@ export function restoreCandidateResume(
 
 export function deleteCandidateResume(resumeId: number): Promise<void> {
   return apiClient.delete<void>(`${API_ENDPOINTS.userResumes}/${resumeId}`);
+}
+
+export function getCandidateResumeViewStats(
+  resumeId: number,
+  days = 30,
+): Promise<CandidateResumeViewStats> {
+  return apiClient.get<CandidateResumeViewStats>(
+    `${API_ENDPOINTS.userResumes}/${resumeId}/view-stats`,
+    {
+      params: { days },
+    },
+  );
 }
 
 export function getCandidateApplications(
@@ -405,23 +513,27 @@ export function getCandidateProfileById(
 export function searchEmployerCandidates({
   query,
   city,
-  openToWork,
   skillIds,
   page = 0,
   size = 10,
-}: EmployerCandidateSearchParams): Promise<PageResponse<CandidateProfile>> {
-  return apiClient.get<PageResponse<CandidateProfile>>(
+}: EmployerCandidateSearchParams): Promise<PageResponse<CandidateResumeSearchResult>> {
+  return apiClient.get<PageResponse<CandidateResumeSearchResult>>(
     API_ENDPOINTS.employerCandidates,
     {
       params: {
         query,
         city,
-        open_to_work: openToWork,
         skill_ids: skillIds?.length ? skillIds : undefined,
         page,
         size,
       },
     },
+  );
+}
+
+export function recordCandidateResumeView(resumeId: number): Promise<void> {
+  return apiClient.post<void>(
+    `${API_ENDPOINTS.employerCandidates}/resumes/${resumeId}/view`,
   );
 }
 
@@ -458,6 +570,12 @@ export function updateEmployerVacancy(
 export function archiveVacancy(publicId: string): Promise<void> {
   return apiClient.patch<void>(
     `${API_ENDPOINTS.vacancies}/${publicId}/archive`,
+  );
+}
+
+export function restoreVacancy(publicId: string): Promise<void> {
+  return apiClient.patch<void>(
+    `${API_ENDPOINTS.vacancies}/${publicId}/restore`,
   );
 }
 

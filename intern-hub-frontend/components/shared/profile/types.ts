@@ -7,7 +7,7 @@ import type {
   EmployerVacancy,
 } from "@/lib/api/profile";
 
-export type RoleView = "candidate" | "employer";
+export type RoleView = "candidate" | "employer" | "admin";
 export type CandidateSection =
   | "profile"
   | "resumes"
@@ -16,11 +16,17 @@ export type CandidateSection =
   | "settings";
 export type EmployerSection =
   | "profile"
-  | "candidates"
   | "vacancies"
   | "applications"
   | "settings";
-export type ProfileSection = CandidateSection | EmployerSection;
+export type AdminSection =
+  | "overview"
+  | "vacancies"
+  | "excluded-words"
+  | "users"
+  | "blog"
+  | "settings";
+export type ProfileSection = CandidateSection | EmployerSection | AdminSection;
 
 export type EmployerProfile = EmployerProfileData;
 
@@ -79,7 +85,8 @@ export const demoVacancies: EmployerVacancy[] = [
     id: 1,
     publicId: "demo-vacancy",
     title: "JavaScript intern",
-    stack: "JavaScript",
+    direction: "Разработка",
+    directionId: "development",
     city: "Москва",
     status: "ACTIVE",
     salaryFrom: 40000,

@@ -18,8 +18,12 @@ export interface VacancyDictionaries {
   employments: DictionaryItem[];
   experiences: DictionaryItem[];
   workFormats: DictionaryItem[];
-  stacks: DictionaryItem[];
+  directions: DictionaryItem[];
+}
+
+export interface VacancyFormDictionaries extends VacancyDictionaries {
   skills: SkillOption[];
+  languages: DictionaryItem[];
 }
 
 export interface VacancyFilterOptions {
@@ -45,8 +49,12 @@ export function getWorkFormats(): Promise<DictionaryItem[]> {
   return apiClient.get<DictionaryItem[]>(API_ENDPOINTS.workFormat);
 }
 
-export function getStacks(): Promise<DictionaryItem[]> {
-  return apiClient.get<DictionaryItem[]>(API_ENDPOINTS.stack);
+export function getLanguages(): Promise<DictionaryItem[]> {
+  return apiClient.get<DictionaryItem[]>(API_ENDPOINTS.languages);
+}
+
+export function getVacancyDirections(): Promise<DictionaryItem[]> {
+  return apiClient.get<DictionaryItem[]>(API_ENDPOINTS.vacancyDirections);
 }
 
 export function getSkills(): Promise<SkillOption[]> {
@@ -58,14 +66,13 @@ export function getVacancyFilterOptions(): Promise<VacancyFilterOptions> {
 }
 
 export async function getVacancyDictionaries(): Promise<VacancyDictionaries> {
-  const [currencies, employments, experiences, workFormats, stacks, skills] =
+  const [currencies, employments, experiences, workFormats, directions] =
     await Promise.all([
       getCurrencies(),
       getEmployments(),
       getExperiences(),
       getWorkFormats(),
-      getStacks(),
-      getSkills(),
+      getVacancyDirections(),
     ]);
 
   return {
@@ -73,7 +80,20 @@ export async function getVacancyDictionaries(): Promise<VacancyDictionaries> {
     employments,
     experiences,
     workFormats,
-    stacks,
+    directions,
+  };
+}
+
+export async function getVacancyFormDictionaries(): Promise<VacancyFormDictionaries> {
+  const [dictionaries, skills, languages] = await Promise.all([
+    getVacancyDictionaries(),
+    getSkills(),
+    getLanguages(),
+  ]);
+
+  return {
+    ...dictionaries,
     skills,
+    languages,
   };
 }

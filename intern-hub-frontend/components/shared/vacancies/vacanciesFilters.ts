@@ -16,7 +16,7 @@ export function readFilters(searchParams: SearchParamsLike): VacancyFilters {
     employment: searchParams.getAll("employment"),
     experience: searchParams.getAll("experience"),
     page: numberParam(searchParams.get("page"), 0),
-    size: positiveNumberParam(searchParams.get("size"), 12),
+    size: positiveNumberParam(searchParams.get("size"), 20),
     sortBy: searchParams.get("sortBy") ?? "title",
     sortDirection: searchParams.get("sortDirection") ?? "asc",
   };

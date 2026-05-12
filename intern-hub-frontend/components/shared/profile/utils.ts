@@ -5,6 +5,7 @@ import {
 } from "@/components/shared/profile/constants";
 import { API_CONFIG } from "@/lib/api/config";
 import type {
+  AdminSection,
   CandidateSection,
   EmployerSection,
   ProfileSection,
@@ -115,9 +116,19 @@ export function isEmployerSection(
 ): value is EmployerSection {
   return (
     value === "profile" ||
-    value === "candidates" ||
     value === "vacancies" ||
     value === "applications" ||
+    value === "settings"
+  );
+}
+
+export function isAdminSection(value: string | null): value is AdminSection {
+  return (
+    value === "overview" ||
+    value === "vacancies" ||
+    value === "excluded-words" ||
+    value === "users" ||
+    value === "blog" ||
     value === "settings"
   );
 }

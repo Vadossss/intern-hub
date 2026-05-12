@@ -11,6 +11,7 @@ export { StickyFilterSidebar } from "./StickyFilterSidebar";
 export { VacanciesContent } from "./VacanciesContent";
 export { VacanciesPage } from "./VacanciesPage";
 export { VacanciesSkeleton } from "./VacanciesSkeleton";
+export { VacancyBreadcrumbs } from "./VacancyBreadcrumbs";
 export { VacancyDetailsPage } from "./VacancyDetailsPage";
 export { VacancyDetailsSkeleton } from "./VacancyDetailsSkeleton";
 export type { ApplyMode } from "./vacancyDetailsTypes";

@@ -8,8 +8,7 @@ export const emptyDictionaries: VacancyDictionaries = {
   employments: [],
   experiences: [],
   workFormats: [],
-  stacks: [],
-  skills: [],
+  directions: [],
 };
 
 export const emptyFilterOptions: VacancyFilterOptions = {
