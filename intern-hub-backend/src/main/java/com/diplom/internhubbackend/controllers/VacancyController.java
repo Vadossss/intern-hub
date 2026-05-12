@@ -7,6 +7,7 @@ import com.diplom.internhubbackend.mapper.VacancyMapper;
 import com.diplom.internhubbackend.security.config.CustomUserDetails;
 import com.diplom.internhubbackend.services.VacancyService;
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -51,8 +52,16 @@ public class VacancyController {
 
     @Operation(summary = "Получение вакансии по id")
     @GetMapping("/{vacancy_id}")
-    public ResponseEntity<Object> getVacancy(@PathVariable(name = "vacancy_id") String vacancyId) {
-        return ResponseEntity.ok(vacancyMapper.toDto(vacancyService.getVacancy(vacancyId)));
+    public ResponseEntity<Object> getVacancy(
+            @AuthenticationPrincipal CustomUserDetails customUserDetails,
+            @PathVariable(name = "vacancy_id") String vacancyId,
+            HttpServletRequest request
+    ) {
+        return ResponseEntity.ok(vacancyService.getVacancyProjection(
+                vacancyId,
+                customUserDetails == null ? null : customUserDetails.getUser(),
+                request
+        ));
     }
 
     @Operation(summary = "Архивирование вакансии")
@@ -64,6 +73,17 @@ public class VacancyController {
             @PathVariable(name = "vacancy_id") String vacancyId
     ) {
         vacancyService.archiveVacancy(customUserDetails.getUser(), vacancyId);
+    }
+
+    @Operation(summary = "Восстановление вакансии из архива")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAuthority('ROLE_EMPLOYER')")
+    @PatchMapping("/{vacancy_id}/restore")
+    public void restoreVacancy(
+            @AuthenticationPrincipal CustomUserDetails customUserDetails,
+            @PathVariable(name = "vacancy_id") String vacancyId
+    ) {
+        vacancyService.restoreVacancy(customUserDetails.getUser(), vacancyId);
     }
 
     @Operation(summary = "Получение избранных вакансий пользователя")
@@ -89,6 +109,12 @@ public class VacancyController {
     @GetMapping("/filters")
     public ResponseEntity<VacancyFilterOptionsDto> getFilterOptions() {
         return ResponseEntity.ok(vacancyService.getActiveFilterOptions());
+    }
+
+    @Operation(summary = "Получение направлений вакансий")
+    @GetMapping("/directions")
+    public ResponseEntity<List<VacancyFilterOptionsDto.FilterOptionDto>> getVacancyDirections() {
+        return ResponseEntity.ok(vacancyService.getVacancyDirections());
     }
 
     @Operation(summary = "Расширенный поиск вакансий")

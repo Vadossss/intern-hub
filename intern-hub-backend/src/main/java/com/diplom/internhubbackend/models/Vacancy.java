@@ -32,9 +32,6 @@ public class Vacancy {
     private String publicId;
 
     private String title;
-    @ManyToOne
-    @JoinColumn(name = "stack_id")
-    private Stack stack;
 
     @ManyToOne
     @JoinColumn(name = "direction_id")
@@ -83,7 +80,7 @@ public class Vacancy {
 
     @EqualsAndHashCode.Exclude
     @ToString.Exclude
-    @ManyToMany(fetch = FetchType.EAGER)
+    @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
             name = "vacancy_skill",
             joinColumns = @JoinColumn(name = "vacancy_id"),

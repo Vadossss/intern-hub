@@ -1,17 +1,23 @@
 package com.diplom.internhubbackend.services;
 
 import com.diplom.internhubbackend.dto.FilterParams;
+import com.diplom.internhubbackend.dto.KeySkillDto;
 import com.diplom.internhubbackend.dto.NewVacancyDto;
 import com.diplom.internhubbackend.dto.VacancyContactDto;
 import com.diplom.internhubbackend.dto.VacancyFilterOptionsDto;
 import com.diplom.internhubbackend.dto.VacancyResponseDto;
 import com.diplom.internhubbackend.dto.hh.HhVacancyDetailsResponse;
+import com.diplom.internhubbackend.dto.projection.VacancyListProjection;
+import com.diplom.internhubbackend.dto.projection.VacancyProjection;
+import com.diplom.internhubbackend.enums.AccountStatus;
 import com.diplom.internhubbackend.enums.ContactMethod;
 import com.diplom.internhubbackend.enums.VacancyStatus;
 import com.diplom.internhubbackend.exception.VacancyNotFoundException;
 import com.diplom.internhubbackend.mapper.VacancyMapper;
 import com.diplom.internhubbackend.models.*;
+import com.diplom.internhubbackend.repositories.EmployerProfileRepository;
 import com.diplom.internhubbackend.repositories.VacancyRepository;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.TypedQuery;
@@ -31,9 +37,14 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -52,6 +63,9 @@ public class VacancyService {
     private final HhVacancyClassificationService hhVacancyClassificationService;
     private final VacancySourceService vacancySourceService;
     private final VacancyMapper vacancyMapper;
+    private final EmployerProfileRepository employerProfileRepository;
+    private final VacancyDirectionService vacancyDirectionService;
+    private final ViewTrackingService viewTrackingService;
     @Qualifier("superJobWebClient")
     private final WebClient superJobWebClient;
 
@@ -59,37 +73,68 @@ public class VacancyService {
     @Transactional()
 //    @Cacheable(value = "vacancy", key = "#publicId")
     public Vacancy getVacancy(String publicId) {
-        Vacancy vacancy = vacancyRepository.findByPublicId(publicId.toLowerCase()).orElseThrow(() ->
+        return vacancyRepository.findByPublicId(publicId.toLowerCase()).orElseThrow(() ->
                 new VacancyNotFoundException("Vacancy not found"));
+    }
 
-        if (vacancy.getDescription() == null) {
-            VacancySource vacancySource = vacancySourceService
-                    .getVacancySourceByCode(vacancy.getSource().getCode());
-            if (vacancySource != null) {
+    @Transactional(readOnly = true)
+    public VacancyResponseDto getVacancyProjection(String publicId, User viewer, HttpServletRequest request) {
+        String normalizedPublicId = publicId.toLowerCase();
+        VacancyProjection vacancy = vacancyRepository.findByPublicIdProjection(normalizedPublicId).orElseThrow(() ->
+                new VacancyNotFoundException("Vacancy not found"));
+        validateVacancyAccess(vacancy, viewer);
+        viewTrackingService.recordVacancyView(vacancy, viewer, request);
 
-                HhVacancyDetailsResponse hhVacancy = webClient.get()
-                        .uri("/vacancies/{id}", vacancy.getExternalId())
-                        .retrieve()
-                        .bodyToMono(HhVacancyDetailsResponse.class)
-                        .block();
-                if (hhVacancy == null) {
-                    return vacancy;
-                }
-                vacancy.setDescription(hhVacancy.description());
-                vacancy.setSkills(hhVacancyClassificationService.resolveTags(
-                        vacancy.getTitle(),
-                        hhVacancy.description(),
-                        hhVacancy.keySkills() != null ? hhVacancy.keySkills() : Collections.emptyList(),
-                        vacancy.getStack()
-                ));
+        Set<KeySkillDto> skills = vacancyRepository.findSkillDtosByPublicId(normalizedPublicId)
+                .stream()
+                .collect(Collectors.toSet());
+        List<VacancyContactDto> contacts = vacancy.status() == VacancyStatus.ARCHIVED
+                ? Collections.emptyList()
+                : vacancyRepository.findContactDtosByPublicId(normalizedPublicId);
 
-                vacancyRepository.save(vacancy);
+        VacancyResponseDto dto = vacancyMapper.toDto(vacancy, skills, contacts);
+        dto.setViewCount(viewTrackingService.countVacancyViews(vacancy.id()));
+        dto.setTodayViewCount(viewTrackingService.countVacancyViewsToday(vacancy.id()));
 
-                return vacancy;
+        return dto;
+    }
+
+    private void validateVacancyAccess(VacancyProjection vacancy, User viewer) {
+        if (vacancy.employerStatus() != null && vacancy.employerStatus() != AccountStatus.ACTIVE) {
+            if (viewer == null) {
+                throw new AccessDeniedException("У вас нет доступа к этой вакансии");
             }
-            return vacancy;
+
+            String roleId = viewer.getRole() == null ? null : viewer.getRole().getId();
+            if ("ROLE_ADMIN".equals(roleId)) {
+                return;
+            }
+
+            if ("ROLE_EMPLOYER".equals(roleId) && Objects.equals(vacancy.employerId(), viewer.getId())) {
+                return;
+            }
+
+            throw new AccessDeniedException("У вас нет доступа к этой вакансии");
         }
-        return vacancy;
+
+        if (vacancy.status() == VacancyStatus.APPROVED || vacancy.status() == VacancyStatus.ARCHIVED) {
+            return;
+        }
+
+        if (viewer == null) {
+            throw new AccessDeniedException("У вас нет доступа к этой вакансии");
+        }
+
+        String roleId = viewer.getRole() == null ? null : viewer.getRole().getId();
+        if ("ROLE_ADMIN".equals(roleId)) {
+            return;
+        }
+
+        if ("ROLE_EMPLOYER".equals(roleId) && Objects.equals(vacancy.employerId(), viewer.getId())) {
+            return;
+        }
+
+        throw new AccessDeniedException("У вас нет доступа к этой вакансии");
     }
 
     public Page<VacancyResponseDto> getFavoritesVacancies(User user, int page, int pageSize) {
@@ -110,6 +155,7 @@ public class VacancyService {
 
         List<VacancyResponseDto>result = vacanciesDto
                 .subList(startIndex, Math.min(startIndex + pageSize, vacanciesDto.size()));
+        viewTrackingService.applyVacancyViewCounts(result);
 
         return new PageImpl<>(result, PageRequest.of(page, pageSize), vacancies.size());
     }
@@ -137,26 +183,38 @@ public class VacancyService {
         );
     }
 
+    public List<VacancyFilterOptionsDto.FilterOptionDto> getVacancyDirections() {
+        return vacancyDirectionService.getDefaultDirections().stream()
+                .map(direction -> new VacancyFilterOptionsDto.FilterOptionDto(
+                        direction.getId(),
+                        direction.getName()
+                ))
+                .toList();
+    }
+
     public Page<VacancyResponseDto> getVacanciesByParams(FilterParams params) {
         int page = normalizePage(params.getPage());
         int size = normalizeSize(params.getSize());
 
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
 
-        CriteriaQuery<Vacancy> query = cb.createQuery(Vacancy.class);
+        CriteriaQuery<VacancyListProjection> query = cb.createQuery(VacancyListProjection.class);
         Root<Vacancy> root = query.from(Vacancy.class);
 
         List<Predicate> predicates = buildPredicates(params, cb, query, root);
+        applyListProjection(query, cb, root);
         query.where(cb.and(predicates.toArray(new Predicate[0])));
 
         applySorting(params, cb, query, root);
 
-        TypedQuery<Vacancy> typedQuery = entityManager.createQuery(query);
+        TypedQuery<VacancyListProjection> typedQuery = entityManager.createQuery(query);
         typedQuery.setFirstResult(page * size);
         typedQuery.setMaxResults(size);
 
-        List<Vacancy> content = typedQuery.getResultList();
-        List<VacancyResponseDto> vacancies = vacancyMapper.toDto(content);
+        List<VacancyListProjection> content = typedQuery.getResultList();
+        Map<Integer, EmployerProfile> employerProfiles = getEmployerProfiles(content);
+        List<VacancyResponseDto> vacancies = vacancyMapper.toListDto(content, employerProfiles);
+        viewTrackingService.applyVacancyViewCounts(vacancies);
 
         CriteriaQuery<Long> countQuery = cb.createQuery(Long.class);
         Root<Vacancy> countRoot = countQuery.from(Vacancy.class);
@@ -171,10 +229,67 @@ public class VacancyService {
         return new PageImpl<>(vacancies, PageRequest.of(page, size), total);
     }
 
+    private void applyListProjection(
+            CriteriaQuery<VacancyListProjection> query,
+            CriteriaBuilder cb,
+            Root<Vacancy> root
+    ) {
+        Join<Vacancy, Currency> currency = root.join("currency", JoinType.LEFT);
+        Join<Vacancy, Employment> employment = root.join("employment", JoinType.LEFT);
+        Join<Vacancy, Experience> experience = root.join("experience", JoinType.LEFT);
+        Join<Vacancy, WorkFormat> workFormat = root.join("workFormat", JoinType.LEFT);
+        Join<Vacancy, VacancyDirection> direction = root.join("direction", JoinType.LEFT);
+        Join<Vacancy, User> employer = root.join("employer", JoinType.LEFT);
+
+        query.select(cb.construct(
+                VacancyListProjection.class,
+                root.get("id"),
+                root.get("publicId"),
+                root.get("title"),
+                root.get("city"),
+                root.get("status"),
+                root.get("salaryFrom"),
+                root.get("salaryTo"),
+                currency,
+                employment,
+                experience,
+                workFormat,
+                direction.get("id"),
+                direction.get("name"),
+                employer.get("id"),
+                employer.get("avatarUrl"),
+                employer.get("verified"),
+                employer.get("verificationStatus"),
+                employer.get("verifiedAt"),
+                employer.get("createdAt"),
+                employer.get("updatedAt")
+        ));
+    }
+
+    private Map<Integer, EmployerProfile> getEmployerProfiles(List<VacancyListProjection> vacancies) {
+        List<Integer> employerIds = vacancies.stream()
+                .map(VacancyListProjection::employerId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        if (employerIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        return employerProfileRepository.findAllByUserIdIn(employerIds).stream()
+                .collect(Collectors.toMap(
+                        profile -> profile.getUser().getId(),
+                        profile -> profile,
+                        (left, right) -> left,
+                        LinkedHashMap::new
+                ));
+    }
+
     private void applySorting(
             FilterParams params,
             CriteriaBuilder cb,
-            CriteriaQuery<Vacancy> query,
+            CriteriaQuery<?> query,
             Root<Vacancy> root
     ) {
         String sortBy = normalizeSortBy(params.getSortBy());
@@ -193,6 +308,7 @@ public class VacancyService {
             Root<Vacancy> root
     ) {
         List<Predicate> predicates = new ArrayList<>();
+        predicates.add(cb.equal(root.get("employer").get("status"), AccountStatus.ACTIVE));
 
         if (params.getSource() != null && !params.getSource().isEmpty()) {
             predicates.add(root.get("source").in(params.getSource()));
@@ -226,10 +342,6 @@ public class VacancyService {
 
         if (hasText(params.getCompanyName())) {
             predicates.add(companyNamePredicate(params.getCompanyName(), cb, query, root));
-        }
-
-        if (params.getStack() != null) {
-            predicates.add(cb.equal(root.get("stack"), params.getStack()));
         }
 
         if (params.getDirection() != null && !params.getDirection().isEmpty()) {
@@ -301,29 +413,37 @@ public class VacancyService {
     }
 
     private List<VacancyStatus> activeCatalogStatuses() {
-        return List.of(VacancyStatus.APPROVED, VacancyStatus.PENDING);
+        return List.of(VacancyStatus.APPROVED);
     }
 
     @Transactional
     public void archiveVacancy(User user, String publicId) {
+        int updated = vacancyRepository.archiveByPublicIdAndEmployerId(
+                publicId.toLowerCase(),
+                user.getId(),
+                LocalDateTime.now()
+        );
 
-        Vacancy vacancy = vacancyRepository.findActiveVacancyByPublicId(publicId).orElseThrow(() ->
-                new VacancyNotFoundException("Vacancy not found"));
-
-        if (!vacancy.getEmployer().getId().equals(user.getId())) {
-            throw new AccessDeniedException("User is not the owner of the vacancy");
+        if (updated == 0) {
+            throw new VacancyNotFoundException("Vacancy not found");
         }
+    }
 
-        if (vacancy.getStatus().equals(VacancyStatus.REJECTED) ||
-                vacancy.getStatus().equals(VacancyStatus.REVISION_REQUIRED)) {
-            throw new VacancyNotFoundException("Vacancy can not be archived");
+    @Transactional
+    public void restoreVacancy(User user, String publicId) {
+        int updated = vacancyRepository.restoreByPublicIdAndEmployerId(
+                publicId.toLowerCase(),
+                user.getId(),
+                LocalDateTime.now()
+        );
+
+        if (updated == 0) {
+            throw new VacancyNotFoundException("Vacancy not found");
         }
-
-        vacancy.setStatus(VacancyStatus.ARCHIVED);
     }
 
     public Vacancy getActiveVacancy(String publicId) {
-        return vacancyRepository.findActiveVacancyByPublicId(publicId).orElse(null);
+        return vacancyRepository.findApprovedVacancyByPublicId(publicId).orElse(null);
     }
 
     @Transactional
@@ -338,6 +458,7 @@ public class VacancyService {
         vacancyRepository.delete(vacancy);
     }
 
+    @Transactional
     public ResponseEntity<Object> createVacancy(User user, NewVacancyDto newVacancy){
         validateSingleInternalContact(newVacancy);
 
@@ -355,14 +476,24 @@ public class VacancyService {
                         .value(contact.contactValue())
                         .hint(contact.hint())
                         .build()
-        ).collect(Collectors.toList()));
+                ).collect(Collectors.toList()));
 
         vacancy = vacancyRepository.save(vacancy);
         vacancy.setPublicId(vacancy.getSource().getCode().toLowerCase() + "_" + vacancy.getId());
 
+        return ResponseEntity.ok().body(getEmployerVacancyListDto(user.getId(), vacancy.getPublicId()));
+    }
 
-        vacancyRepository.save(vacancy);
-        return ResponseEntity.ok().body("Successfully created vacancy");
+    private VacancyResponseDto getEmployerVacancyListDto(Integer employerId, String publicId) {
+        VacancyListProjection vacancy = vacancyRepository
+                .findEmployerVacancyListByPublicIdAndEmployerId(publicId.toLowerCase(), employerId)
+                .orElseThrow(() -> new VacancyNotFoundException("Vacancy not found"));
+        Map<Integer, EmployerProfile> employerProfiles = getEmployerProfiles(List.of(vacancy));
+
+        VacancyResponseDto dto = vacancyMapper.toListDto(vacancy, employerProfiles);
+        dto.setViewCount(viewTrackingService.countVacancyViews(vacancy.id()));
+
+        return dto;
     }
 
     private void validateSingleInternalContact(NewVacancyDto newVacancy) {
@@ -390,15 +521,12 @@ public class VacancyService {
         }
     }
 
-    public void fetchAndSave(Stack stack) {
-
+    public void fetchAndSaveHH() {
         try {
-            hhAggregationService.fetchAndSave(stack);
+            hhAggregationService.fetchAndSave();
         } catch (Exception ex) {
-            log.warn("SuperJob aggregation failed for stack {}", stack.getName(), ex);
+            log.warn("HeadHunter aggregation failed", ex);
         }
-
-
     }
 
 }
