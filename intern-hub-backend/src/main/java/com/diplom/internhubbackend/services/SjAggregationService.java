@@ -223,7 +223,6 @@ public class SjAggregationService {
                         : "Unknown"
         );
         vacancy.setDescription(nonBlankOrDefault(buildDescription(sjVacancyItem), sjVacancyItem.profession()));
-        vacancy.setStack(null);
         vacancy.setDirection(direction);
         Integer ttlDays = vacancySource.getTtlDays() == null ? 30 : vacancySource.getTtlDays();
         vacancy.setExpiresAt(LocalDateTime.now().plusDays(ttlDays));
