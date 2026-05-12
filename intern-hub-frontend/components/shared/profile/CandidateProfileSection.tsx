@@ -38,7 +38,7 @@ export function CandidateProfileSection({
   const [selectedBirthday, setSelectedBirthday] = useState<Date | undefined>();
   const [isPhotoUploading, setIsPhotoUploading] = useState(false);
   const avatarSrc = mediaUrl(candidate.avatarUrl);
-  const fullName = [candidate.lastName, candidate.firstName]
+  const fullName = [candidate.firstName, candidate.lastName]
     .filter(Boolean)
     .join(" ")
     .trim();
@@ -135,22 +135,22 @@ export function CandidateProfileSection({
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="grid gap-2">
                   <span className="text-sm font-semibold text-[#333]">
-                    Фамилия
-                  </span>
-                  <Input
-                    name="lastName"
-                    defaultValue={candidate.lastName}
-                    placeholder="Иванов"
-                  />
-                </label>
-                <label className="grid gap-2">
-                  <span className="text-sm font-semibold text-[#333]">
                     Имя
                   </span>
                   <Input
                     name="firstName"
                     defaultValue={candidate.firstName}
                     placeholder="Иван"
+                  />
+                </label>
+                <label className="grid gap-2">
+                  <span className="text-sm font-semibold text-[#333]">
+                    Фамилия
+                  </span>
+                  <Input
+                    name="lastName"
+                    defaultValue={candidate.lastName}
+                    placeholder="Иванов"
                   />
                 </label>
                 <label className="grid gap-2">
@@ -218,12 +218,12 @@ export function CandidateProfileSection({
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
               <InfoCard
-                title="Фамилия"
-                value={textValue(candidate.lastName) || "Не указана"}
-              />
-              <InfoCard
                 title="Имя"
                 value={textValue(candidate.firstName) || "Не указано"}
+              />
+              <InfoCard
+                title="Фамилия"
+                value={textValue(candidate.lastName) || "Не указана"}
               />
               <InfoCard title="Почта" value={candidate.email || "Не указана"} />
               <InfoCard

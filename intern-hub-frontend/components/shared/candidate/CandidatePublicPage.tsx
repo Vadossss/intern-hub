@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   Briefcase,
   Cake,
+  Eye,
   ExternalLink,
   FileText,
   Mail,
@@ -18,6 +19,7 @@ import {
 } from "lucide-react";
 
 import { RichTextContent } from "@/components/shared/RichText";
+import { ResumeExtendedDetails } from "@/components/shared/profile/ResumeExtendedDetails";
 import {
   CandidatePageSkeleton,
   ContactLink,
@@ -177,6 +179,9 @@ export function CandidatePublicPage() {
                   <InfoPill icon={<Wallet className="h-4 w-4" />}>
                     {formatExpectedSalary(primaryResume)}
                   </InfoPill>
+                  <InfoPill icon={<Eye className="h-4 w-4" />}>
+                    {primaryResume?.viewCount ?? 0}
+                  </InfoPill>
                 </div>
               </div>
             </div>
@@ -266,6 +271,13 @@ export function CandidatePublicPage() {
                               {resume.experienceName}
                             </Badge>
                           ) : null}
+                          <Badge
+                            variant="outline"
+                            className="rounded-full bg-white"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                            {resume.viewCount ?? 0}
+                          </Badge>
                         </div>
                       </div>
 
@@ -274,6 +286,8 @@ export function CandidatePublicPage() {
                         fallback="Описание резюме пока не заполнено."
                         className="mt-4 text-[15px]"
                       />
+
+                      <ResumeExtendedDetails resume={resume} className="mt-4" />
 
                       <div className="mt-4 flex flex-wrap gap-2">
                         {resume.skills?.length ? (
