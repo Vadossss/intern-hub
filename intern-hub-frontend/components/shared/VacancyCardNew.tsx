@@ -2,7 +2,14 @@
 
 import { memo } from "react";
 import type { ComponentType, CSSProperties, SVGProps } from "react";
-import { Briefcase, Building2, Heart, MapPin, Monitor } from "lucide-react";
+import {
+  Briefcase,
+  Building2,
+  Eye,
+  Heart,
+  MapPin,
+  Monitor,
+} from "lucide-react";
 import Link from "next/link";
 
 import { VacancyResponseDto } from "@/app/types/api";

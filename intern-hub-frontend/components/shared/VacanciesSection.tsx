@@ -166,7 +166,7 @@ export const VacanciesSection = memo(function VacanciesSection({
           </div> */}
         </div>
 
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-1 xl:grid-cols-3">
           {vacancies.map((vacancy) => (
             <VacancyCardNew
               key={vacancy.publicId}

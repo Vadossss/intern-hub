@@ -26,6 +26,7 @@ import { Pagination } from "./Pagination";
 import { SearchableFilterSelect } from "./SearchableFilterSelect";
 import { SearchableMultiFilterSelect } from "./SearchableMultiFilterSelect";
 import { StickyFilterSidebar } from "./StickyFilterSidebar";
+import { VacancyBreadcrumbs } from "./VacancyBreadcrumbs";
 import { VacanciesSkeleton } from "./VacanciesSkeleton";
 import {
   readFilters,
@@ -182,11 +183,12 @@ export function VacanciesContent() {
 
   return (
     <main className="relative min-h-screen bg-[#f4f1e9]">
-      <section className="relative mx-auto max-w-7xl px-4 pb-1 pt-10 sm:px-6 lg:px-8">
+      <section className="relative mx-auto max-w-7xl px-4 pb-5 pt-8 sm:px-6 lg:px-8">
+        <VacancyBreadcrumbs />
         <Button
           asChild
           variant="ghost"
-          className="mb-6 rounded-xl text-[#444] hover:bg-white/60"
+          className="hidden"
         >
           <Link href="/">
             <ArrowLeft className="mr-2 h-4 w-4" />

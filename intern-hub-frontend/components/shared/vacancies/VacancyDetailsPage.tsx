@@ -10,6 +10,7 @@ import {
   Building2,
   CheckCircle2,
   Clock3,
+  Eye,
   MapPin,
   Wallet,
 } from "lucide-react";
@@ -17,11 +18,13 @@ import { toast } from "sonner";
 
 import {
   ContactMethod,
+  VacancyStatus,
   type VacancyResponseDto,
 } from "@/app/types/api";
 import { RichTextContent } from "@/components/shared/RichText";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ApiError } from "@/lib/api/client";
 import {
   getCandidateResumes,
   type CandidateResume,
@@ -33,6 +36,7 @@ import {
 import { useAuth } from "@/lib/auth/context";
 
 import { ApplyCard } from "./ApplyCard";
+import { VacancyBreadcrumbs } from "./VacancyBreadcrumbs";
 import type { ApplyMode } from "./vacancyDetailsTypes";
 import {
   buildContactHref,
@@ -61,6 +65,8 @@ export function VacancyDetailsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasApplied, setHasApplied] = useState(false);
 
+  const isArchived = vacancy?.status === VacancyStatus.ARCHIVED;
+
   useEffect(() => {
     let active = true;
 
@@ -75,15 +81,9 @@ export function VacancyDetailsPage() {
           setVacancy(response);
         }
       } catch (loadError) {
-        if (!active) {
-          return;
+        if (active) {
+          setError(getVacancyLoadErrorMessage(loadError));
         }
-
-        setError(
-          loadError instanceof Error
-            ? loadError.message
-            : "Не удалось загрузить вакансию.",
-        );
       } finally {
         if (active) {
           setLoading(false);
@@ -92,7 +92,7 @@ export function VacancyDetailsPage() {
     }
 
     if (publicId) {
-      loadVacancy();
+      void loadVacancy();
     }
 
     return () => {
@@ -104,7 +104,13 @@ export function VacancyDetailsPage() {
     let active = true;
 
     async function loadCandidateData() {
-      if (!isAuthenticated || user?.role !== "ROLE_USER" || !publicId) {
+      if (
+        !vacancy ||
+        isArchived ||
+        !isAuthenticated ||
+        user?.role !== "ROLE_USER" ||
+        !publicId
+      ) {
         setCandidateResumes([]);
         setHasApplied(false);
         setIsResumeLoading(false);
@@ -152,7 +158,7 @@ export function VacancyDetailsPage() {
     return () => {
       active = false;
     };
-  }, [isAuthenticated, publicId, user?.role]);
+  }, [isArchived, isAuthenticated, publicId, user?.role, vacancy]);
 
   const externalContacts = useMemo(
     () =>
@@ -193,7 +199,7 @@ export function VacancyDetailsPage() {
   }, [activeCandidateResumes]);
 
   useEffect(() => {
-    if (!vacancy) {
+    if (!vacancy || isArchived) {
       return;
     }
 
@@ -205,7 +211,7 @@ export function VacancyDetailsPage() {
     if (hasInternalApply && externalContacts.length === 0) {
       setApplyMode("internal");
     }
-  }, [externalContacts.length, hasInternalApply, vacancy]);
+  }, [externalContacts.length, hasInternalApply, isArchived, vacancy]);
 
   const infoItems = useMemo(() => {
     if (!vacancy) {
@@ -242,13 +248,16 @@ export function VacancyDetailsPage() {
       return;
     }
 
-    router.push(
-      vacancy?.stack ? `/${vacancy.stack.toLowerCase()}/jobs` : "/vacancies",
-    );
+    router.push("/vacancies");
   }
 
   async function submitInternalApplication(event: FormEvent) {
     event.preventDefault();
+
+    if (isArchived) {
+      toast.error("Вакансия находится в архиве. Отклики больше не принимаются.");
+      return;
+    }
 
     if (!isAuthenticated) {
       toast.error("Войдите в аккаунт соискателя, чтобы откликнуться.");
@@ -326,10 +335,11 @@ export function VacancyDetailsPage() {
   return (
     <main className="min-h-screen bg-[#f4f1e9] px-4 py-8 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl space-y-5">
+        <VacancyBreadcrumbs current={vacancy.title} />
         <Button
           type="button"
           variant="ghost"
-          className="rounded-xl text-[#4a4a4a] hover:bg-white/70"
+          className="hidden"
           onClick={goBack}
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
@@ -338,18 +348,38 @@ export function VacancyDetailsPage() {
 
         <section className="grid items-start gap-5 lg:grid-cols-[1fr_23rem]">
           <div className="rounded-2xl border border-[#161616]/10 bg-white p-6 shadow-sm sm:p-8">
-            <div className="flex flex-wrap gap-2">
-              <Badge className="rounded-full bg-[#edf3ea] px-3 py-1 text-[#3f5f4a] hover:bg-[#edf3ea]">
-                {vacancy.stack}
-              </Badge>
-              {vacancy.employer?.verified ? (
-                <Badge
-                  variant="outline"
-                  className="rounded-full border-amber-200 bg-amber-50 px-3 py-1 text-amber-700"
-                >
-                  Проверенный работодатель
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-wrap gap-2">
+                <Badge className="rounded-full bg-[#edf3ea] px-3 py-1 text-[#3f5f4a] hover:bg-[#edf3ea]">
+                  {vacancy.direction}
                 </Badge>
-              ) : null}
+                {isArchived ? (
+                  <Badge
+                    variant="outline"
+                    className="rounded-full border-amber-200 bg-amber-50 px-3 py-1 text-amber-700"
+                  >
+                    Архив
+                  </Badge>
+                ) : null}
+                {vacancy.employer?.verified ? (
+                  <Badge
+                    variant="outline"
+                    className="rounded-full border-amber-200 bg-amber-50 px-3 py-1 text-amber-700"
+                  >
+                    Проверенный работодатель
+                  </Badge>
+                ) : null}
+              </div>
+
+              <div className="inline-flex w-fit items-center gap-2 rounded-full border border-[#161616]/10 bg-[#f7f7f3] px-3 py-1 text-sm font-semibold text-[#4c4c4c]">
+                <Eye className="h-4 w-4 text-[#777]" />
+                <span>
+                  {(vacancy.viewCount ?? 0).toLocaleString("ru-RU")} просмотров
+                </span>
+                <span className="text-[#777]">
+                  ({(vacancy.todayViewCount ?? 0).toLocaleString("ru-RU")} сегодня)
+                </span>
+              </div>
             </div>
 
             <h1 className="mt-4 text-3xl font-black leading-tight text-[#111] sm:text-4xl">
@@ -417,6 +447,7 @@ export function VacancyDetailsPage() {
             hasActiveResume={activeCandidateResumes.length > 0}
             hasInternalApply={hasInternalApply}
             hasApplied={hasApplied}
+            isArchived={Boolean(isArchived)}
             isAuthenticated={isAuthenticated}
             isResumeLoading={isResumeLoading}
             isSubmitting={isSubmitting}
@@ -466,16 +497,34 @@ export function VacancyDetailsPage() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-[#d7e8d7] bg-[#edf3ea] p-5 text-sm leading-6 text-[#34533a]">
-              <CheckCircle2 className="h-5 w-5" />
-              <p className="mt-3">
-                Сначала выберите способ отклика сверху: отправьте заявку внутри
-                Intern Hub или перейдите на внешний ресурс работодателя.
-              </p>
-            </div>
+            {!isArchived ? (
+              <div className="rounded-2xl border border-[#d7e8d7] bg-[#edf3ea] p-5 text-sm leading-6 text-[#34533a]">
+                <CheckCircle2 className="h-5 w-5" />
+                <p className="mt-3">
+                  Сначала выберите способ отклика сверху: отправьте заявку внутри
+                  Intern Hub или перейдите на внешний ресурс работодателя.
+                </p>
+              </div>
+            ) : null}
           </aside>
         </section>
       </div>
     </main>
   );
+}
+
+function getVacancyLoadErrorMessage(loadError: unknown) {
+  if (loadError instanceof ApiError) {
+    if (loadError.status === 403) {
+      return "У вас нет доступа к этой вакансии.";
+    }
+
+    if (loadError.status === 404) {
+      return "Вакансия не найдена.";
+    }
+  }
+
+  return loadError instanceof Error
+    ? loadError.message
+    : "Не удалось загрузить вакансию.";
 }
