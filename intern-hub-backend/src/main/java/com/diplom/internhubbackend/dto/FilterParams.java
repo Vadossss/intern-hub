@@ -19,8 +19,6 @@ public class FilterParams {
 
     private List<VacancySource> source;
 
-    private Stack stack;
-
     private List<String> direction;
 
     private String city;

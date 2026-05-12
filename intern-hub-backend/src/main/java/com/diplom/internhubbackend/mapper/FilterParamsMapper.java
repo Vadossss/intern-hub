@@ -18,7 +18,6 @@ import java.util.stream.Collectors;
 public class FilterParamsMapper {
 
     private final VacancySourceService vacancySourceService;
-    private final StackService stackService;
     private final WorkFormatService workFormatService;
     private final EmploymentService employmentService;
     private final ExperienceService experienceService;
@@ -32,11 +31,6 @@ public class FilterParamsMapper {
                                 .stream()
                                 .map(Enum::name)
                                 .collect(Collectors.toList()));
-
-        Stack stack = filterParams.getPosition() == null ?
-                null :
-                stackService
-                        .getStackById(stackIdForPosition(filterParams.getPosition()));
 
         List<String> direction = filterParams.getDirection() == null || filterParams.getDirection().isEmpty() ?
                 null :
@@ -79,7 +73,6 @@ public class FilterParamsMapper {
 
         return FilterParams.builder()
                 .source(source)
-                .stack(stack)
                 .direction(direction)
                 .city(filterParams.getCity())
                 .companyName(filterParams.getCompanyName())
@@ -96,18 +89,5 @@ public class FilterParamsMapper {
                 .sortBy(filterParams.getSortBy())
                 .sortDirection(filterParams.getSortDirection())
                 .build();
-    }
-
-    private String stackIdForPosition(com.diplom.internhubbackend.enums.PositionsEnum position) {
-        return switch (position) {
-            case JAVASCRIPT -> "javascript";
-            case JAVA -> "java";
-            case PYTHON -> "python";
-            case CSHARP -> "csharp";
-            case DATASCIENCE -> "datascience";
-            case GO -> "go";
-            case QA -> "qa";
-            case DESIGN -> "design";
-        };
     }
 }
