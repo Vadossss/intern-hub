@@ -77,7 +77,9 @@ function BlogContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
-  const [editingArticle, setEditingArticle] = useState<BlogArticle | null>(null);
+  const [editingArticle, setEditingArticle] = useState<BlogArticle | null>(
+    null,
+  );
 
   useEffect(() => {
     setSearchValue(filters.query);
@@ -180,7 +182,9 @@ function BlogContent() {
 
     try {
       await deleteBlogArticle(article.id);
-      setArticles((current) => current.filter((item) => item.id !== article.id));
+      setArticles((current) =>
+        current.filter((item) => item.id !== article.id),
+      );
       toast.success("Статья удалена.");
     } catch (deleteError) {
       console.error("Failed to delete blog article:", deleteError);
@@ -204,7 +208,7 @@ function BlogContent() {
 
   return (
     <main className="min-h-screen bg-[#f4f1e9] px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
+      <div className="mx-auto max-w-7xl space-y-6 px-4 sm:px-6 lg:px-8">
         <nav className="flex flex-wrap items-center gap-2 text-sm font-bold text-[#777]">
           <Link href="/" className="transition hover:text-[#171717]">
             Главная
@@ -493,7 +497,8 @@ function BlogArticleDialog({
             {article ? "Редактирование статьи" : "Новая статья"}
           </DialogTitle>
           <DialogDescription>
-            Добавьте заголовок, изображение и текст. Публиковать статьи может только администратор.
+            Добавьте заголовок, изображение и текст. Публиковать статьи может
+            только администратор.
           </DialogDescription>
         </DialogHeader>
 
@@ -544,7 +549,9 @@ function BlogArticleDialog({
                   accept="image/*"
                   className="rounded-xl bg-white"
                   disabled={uploading}
-                  onChange={(event) => void uploadCover(event.target.files?.[0])}
+                  onChange={(event) =>
+                    void uploadCover(event.target.files?.[0])
+                  }
                 />
               </div>
             </div>
@@ -655,9 +662,7 @@ function Pagination({
 
   const pages = Array.from({ length: totalPages }, (_, index) => index).filter(
     (page) =>
-      Math.abs(page - pageNumber) <= 2 ||
-      page === 0 ||
-      page === totalPages - 1,
+      Math.abs(page - pageNumber) <= 2 || page === 0 || page === totalPages - 1,
   );
 
   return (
