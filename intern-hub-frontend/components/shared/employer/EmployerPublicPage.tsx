@@ -27,6 +27,7 @@ import {
   getEmployerVacanciesById,
   type PublicEmployerProfile,
 } from "@/lib/api/employers";
+import { ApiError } from "@/lib/api/client";
 import { resolveAssetUrl } from "@/lib/assets";
 
 type EmployerTab = "about" | "vacancies";
@@ -83,11 +84,7 @@ export function EmployerPublicPage() {
           return;
         }
 
-        setError(
-          loadError instanceof Error
-            ? loadError.message
-            : "Не удалось загрузить страницу работодателя.",
-        );
+        setError(getEmployerLoadErrorMessage(loadError));
       } finally {
         if (active) {
           setLoading(false);
@@ -265,4 +262,22 @@ function getEmployerTabFromSection(section: string | null): EmployerTab {
 
 function isEmployerTabSection(section: string | null) {
   return section === "about" || section === "vacancies";
+}
+
+function getEmployerLoadErrorMessage(error: unknown) {
+  if (error instanceof ApiError) {
+    if (error.status === 403) {
+      return "Этот работодатель заблокирован или временно недоступен. Его страница скрыта для пользователей.";
+    }
+
+    if (error.status === 404) {
+      return "Работодатель не найден.";
+    }
+
+    return "Не удалось загрузить страницу работодателя. Попробуйте позже.";
+  }
+
+  return error instanceof Error
+    ? error.message
+    : "Не удалось загрузить страницу работодателя.";
 }

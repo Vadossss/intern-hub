@@ -2,12 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
-import {
-  Search,
-  SlidersHorizontal,
-} from "lucide-react";
+import { Search, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 
+import { CityAutocompleteInput } from "@/components/shared/CityAutocompleteInput";
 import { SkillsSelector } from "@/components/shared/SkillsSelector";
 import {
   CandidateSearchCard,
@@ -21,23 +19,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import type { SkillOption } from "@/lib/api/dictionaries";
 import {
-  type CandidateProfile,
+  type CandidateResumeSearchResult,
   searchEmployerCandidates,
 } from "@/lib/api/profile";
-
-type OpenToWorkFilter = "all" | "true" | "false";
 
 interface CandidateFilters {
   query: string;
   city: string;
-  openToWork: OpenToWorkFilter;
   skillIds: number[];
 }
 
 const emptyFilters: CandidateFilters = {
   query: "",
   city: "",
-  openToWork: "true",
   skillIds: [],
 };
 
@@ -48,20 +42,21 @@ export function EmployerCandidatesSection({
   onOpenCandidate,
 }: {
   skillOptions: SkillOption[];
-  onOpenCandidate: (candidateId: number) => void;
+  onOpenCandidate: (candidate: CandidateResumeSearchResult) => void;
 }) {
   const [filters, setFilters] = useState<CandidateFilters>(emptyFilters);
   const [appliedFilters, setAppliedFilters] =
     useState<CandidateFilters>(emptyFilters);
-  const [candidates, setCandidates] = useState<CandidateProfile[]>([]);
+  const [candidates, setCandidates] = useState<CandidateResumeSearchResult[]>(
+    [],
+  );
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
 
   const selectedSkills = useMemo(
-    () =>
-      skillOptions.filter((skill) => filters.skillIds.includes(skill.id)),
+    () => skillOptions.filter((skill) => filters.skillIds.includes(skill.id)),
     [filters.skillIds, skillOptions],
   );
 
@@ -71,10 +66,6 @@ export function EmployerCandidatesSection({
       const response = await searchEmployerCandidates({
         query: appliedFilters.query.trim() || undefined,
         city: appliedFilters.city.trim() || undefined,
-        openToWork:
-          appliedFilters.openToWork === "all"
-            ? undefined
-            : appliedFilters.openToWork === "true",
         skillIds: appliedFilters.skillIds,
         page,
         size: pageSize,
@@ -114,7 +105,8 @@ export function EmployerCandidatesSection({
           <div>
             <CardTitle>Поиск соискателей</CardTitle>
             <p className="mt-2 text-sm leading-6 text-[#626262]">
-              Ищите кандидатов по имени, городу, описанию и навыкам.
+              Ищите открытых к предложениям соискателей по названию резюме,
+              описанию, городу и навыкам.
             </p>
           </div>
           <Badge variant="outline" className="w-fit rounded-lg bg-[#f7f7f3]">
@@ -127,7 +119,7 @@ export function EmployerCandidatesSection({
           className="space-y-4 rounded-2xl border border-[#161616]/10 bg-[#f7f7f3] p-4"
           onSubmit={handleSubmit}
         >
-          <div className="grid gap-3 lg:grid-cols-[1fr_15rem_13rem]">
+          <div className="grid gap-3 lg:grid-cols-[1fr_16rem]">
             <label className="block">
               <span className="text-sm font-semibold text-[#171717]">
                 Поиск
@@ -136,7 +128,7 @@ export function EmployerCandidatesSection({
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#777]" />
                 <Input
                   value={filters.query}
-                  placeholder="Имя, email, навык или текст профиля"
+                  placeholder="Название резюме или описание"
                   className="bg-white pl-9"
                   onChange={(event) =>
                     setFilters((current) => ({
@@ -152,37 +144,18 @@ export function EmployerCandidatesSection({
               <span className="text-sm font-semibold text-[#171717]">
                 Город
               </span>
-              <Input
+              <CityAutocompleteInput
+                name="candidateCity"
                 value={filters.city}
                 placeholder="Москва"
-                className="mt-2 bg-white"
-                onChange={(event) =>
+                className="mt-2"
+                onValueChange={(city) =>
                   setFilters((current) => ({
                     ...current,
-                    city: event.target.value,
+                    city,
                   }))
                 }
               />
-            </label>
-
-            <label className="block">
-              <span className="text-sm font-semibold text-[#171717]">
-                Статус
-              </span>
-              <select
-                value={filters.openToWork}
-                className="mt-2 h-10 w-full rounded-md border border-input bg-white px-3 text-sm outline-none"
-                onChange={(event) =>
-                  setFilters((current) => ({
-                    ...current,
-                    openToWork: event.target.value as OpenToWorkFilter,
-                  }))
-                }
-              >
-                <option value="true">Открыты к предложениям</option>
-                <option value="all">Все соискатели</option>
-                <option value="false">Не ищут работу</option>
-              </select>
             </label>
           </div>
 
@@ -238,7 +211,7 @@ export function EmployerCandidatesSection({
           ) : candidates.length ? (
             candidates.map((candidate) => (
               <CandidateSearchCard
-                key={candidate.userId}
+                key={`${candidate.userId}-${candidate.resume.id}`}
                 candidate={candidate}
                 onOpenCandidate={onOpenCandidate}
               />

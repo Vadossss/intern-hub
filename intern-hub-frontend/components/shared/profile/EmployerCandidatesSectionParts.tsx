@@ -5,7 +5,7 @@ import { RichTextContent } from "@/components/shared/RichText";
 import { formatMoney, mediaUrl } from "@/components/shared/profile/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import type { CandidateProfile } from "@/lib/api/profile";
+import type { CandidateResumeSearchResult } from "@/lib/api/profile";
 
 export function CandidatesLoadingState() {
   return (
@@ -72,16 +72,16 @@ export function CandidateSearchCard({
   candidate,
   onOpenCandidate,
 }: {
-  candidate: CandidateProfile;
-  onOpenCandidate: (candidateId: number) => void;
+  candidate: CandidateResumeSearchResult;
+  onOpenCandidate: (candidate: CandidateResumeSearchResult) => void;
 }) {
   const avatarSrc = mediaUrl(candidate.avatarUrl);
   const candidateName =
     [candidate.firstName, candidate.lastName].filter(Boolean).join(" ") ||
     candidate.email;
-  const primaryResume = candidate.resumes?.find((resume) => !resume.archived);
-  const displaySkills = primaryResume?.skills ?? [];
-  const description = primaryResume?.about;
+  const resume = candidate.resume;
+  const displaySkills = resume.skills ?? [];
+  const description = resume.about;
 
   return (
     <div className="rounded-2xl border bg-white p-4">
@@ -112,20 +112,37 @@ export function CandidateSearchCard({
                   : "Не ищет работу"}
               </Badge>
             </div>
-            {primaryResume?.profession ? (
+            {resume.profession ? (
               <p className="mt-1 text-sm font-semibold text-[#171717]">
-                {primaryResume.profession}
+                {resume.profession}
               </p>
             ) : null}
             <p className="mt-1 text-sm text-[#626262]">
-              {primaryResume?.city || "Город не указан"}
+              {resume.city || "Город не указан"}
             </p>
             <p className="mt-1 text-sm font-semibold text-[#3f5f4a]">
               {formatMoney(
-                primaryResume?.expectedSalaryFrom,
-                primaryResume?.expectedSalaryTo,
+                resume.expectedSalaryFrom,
+                resume.expectedSalaryTo,
               )}
             </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {resume.employmentName ? (
+                <Badge variant="outline" className="rounded-lg bg-[#f7f7f3]">
+                  {resume.employmentName}
+                </Badge>
+              ) : null}
+              {resume.workFormatName ? (
+                <Badge variant="outline" className="rounded-lg bg-[#f7f7f3]">
+                  {resume.workFormatName}
+                </Badge>
+              ) : null}
+              {resume.experienceName ? (
+                <Badge variant="outline" className="rounded-lg bg-[#f7f7f3]">
+                  {resume.experienceName}
+                </Badge>
+              ) : null}
+            </div>
           </div>
         </div>
 
@@ -134,7 +151,7 @@ export function CandidateSearchCard({
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => onOpenCandidate(candidate.userId)}
+            onClick={() => onOpenCandidate(candidate)}
           >
             Профиль
           </Button>
