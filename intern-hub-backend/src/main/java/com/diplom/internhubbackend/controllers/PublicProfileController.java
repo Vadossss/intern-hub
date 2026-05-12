@@ -3,10 +3,14 @@ package com.diplom.internhubbackend.controllers;
 import com.diplom.internhubbackend.dto.CandidateProfileResponseDto;
 import com.diplom.internhubbackend.dto.EmployerProfileResponseDto;
 import com.diplom.internhubbackend.dto.PageResponse;
+import com.diplom.internhubbackend.security.config.CustomUserDetails;
 import com.diplom.internhubbackend.services.CandidateProfileService;
 import com.diplom.internhubbackend.services.EmployerProfileService;
+import com.diplom.internhubbackend.services.ViewTrackingService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,6 +24,7 @@ public class PublicProfileController {
 
     private final EmployerProfileService employerProfileService;
     private final CandidateProfileService candidateProfileService;
+    private final ViewTrackingService viewTrackingService;
 
     @GetMapping("/employers")
     public PageResponse<EmployerProfileResponseDto> getEmployerProfiles(
@@ -46,8 +51,19 @@ public class PublicProfileController {
 
     @GetMapping("/candidates/{user_id}")
     public CandidateProfileResponseDto getCandidateProfile(
-            @PathVariable(name = "user_id") Integer userId
+            @AuthenticationPrincipal CustomUserDetails customUserDetails,
+            @PathVariable(name = "user_id") Integer userId,
+            HttpServletRequest request
     ) {
-        return candidateProfileService.getProfileByUserId(userId);
+        CandidateProfileResponseDto profile = candidateProfileService.getProfileByUserId(userId);
+        viewTrackingService.recordResumeViews(
+                profile.getResumes(),
+                profile.getUserId(),
+                customUserDetails == null ? null : customUserDetails.getUser(),
+                request
+        );
+        viewTrackingService.applyResumeViewCounts(profile.getResumes());
+
+        return profile;
     }
 }

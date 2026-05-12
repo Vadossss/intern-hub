@@ -19,6 +19,7 @@ import com.diplom.internhubbackend.repositories.VacancySourceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -49,6 +50,9 @@ public class EmployerProfileService {
         if (user.getRole() == null
                 || !"ROLE_EMPLOYER".equals(user.getRole().getId())) {
             throw new UserNotFoundException("Employer not found");
+        }
+        if (user.getStatus() != AccountStatus.ACTIVE) {
+            throw new AccessDeniedException("У вас нет доступа к этому работодателю");
         }
 
         EmployerProfile profile = employerProfileRepository.findByUserId(user.getId())
@@ -145,12 +149,22 @@ public class EmployerProfileService {
 
     @Transactional
     public User resolveAggregatedEmployer(AggregatedEmployerData data) {
-        if (data == null || isBlank(data.companyName())) {
+        if (data == null) {
             return null;
         }
 
         String sourceCode = trimToNull(data.sourceCode());
         String externalId = trimToNull(data.externalId());
+
+        User existingEmployer = findEmployerBySource(sourceCode, externalId);
+        if (existingEmployer != null) {
+            return existingEmployer;
+        }
+
+        if (isBlank(data.companyName())) {
+            return null;
+        }
+
         VacancySource source = sourceCode == null
                 ? null
                 : vacancySourceRepository.findByCode(sourceCode).orElse(null);
@@ -179,6 +193,18 @@ public class EmployerProfileService {
         }
 
         return user;
+    }
+
+    private User findEmployerBySource(String sourceCode, String externalId) {
+        if (isBlank(sourceCode) || isBlank(externalId)) {
+            return null;
+        }
+
+        return employerSourceRepository
+                .findExistingEmployer(sourceCode, externalId)
+                .map(EmployerSource::getEmployerProfile)
+                .map(EmployerProfile::getUser)
+                .orElse(null);
     }
 
     private EmployerProfile buildFromUser(User user) {

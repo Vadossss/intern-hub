@@ -1,6 +1,7 @@
 package com.diplom.internhubbackend.repositories;
 
 import com.diplom.internhubbackend.enums.AccountStatus;
+import com.diplom.internhubbackend.dto.projection.CandidateProfileSummaryProjection;
 import com.diplom.internhubbackend.models.CandidateProfile;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -16,7 +17,18 @@ public interface CandidateProfileRepository extends JpaRepository<CandidateProfi
 
     @Query(
             value = """
-                    SELECT cp FROM CandidateProfile cp
+                    SELECT new com.diplom.internhubbackend.dto.projection.CandidateProfileSummaryProjection(
+                        cp.id,
+                        u.id,
+                        u.email,
+                        u.phoneNumber,
+                        cp.firstName,
+                        cp.lastName,
+                        cp.birthday,
+                        u.avatarUrl,
+                        cp.openToWork
+                    )
+                    FROM CandidateProfile cp
                     JOIN cp.user u
                     WHERE u.role.id = 'ROLE_USER'
                       AND u.status = :status
@@ -143,7 +155,7 @@ public interface CandidateProfileRepository extends JpaRepository<CandidateProfi
                       )
                     """
     )
-    Page<CandidateProfile> searchCandidates(
+    Page<CandidateProfileSummaryProjection> searchCandidates(
             @Param("searchPattern") String searchPattern,
             @Param("cityPattern") String cityPattern,
             @Param("openToWork") Boolean openToWork,
