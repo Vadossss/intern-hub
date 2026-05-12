@@ -1,10 +1,12 @@
 package com.diplom.internhubbackend.services;
 
 import com.diplom.internhubbackend.dto.VacancyResponseDto;
+import com.diplom.internhubbackend.dto.projection.VacancyListProjection;
 import com.diplom.internhubbackend.enums.VacancyStatus;
 import com.diplom.internhubbackend.exception.VacancyNotFoundException;
 import com.diplom.internhubbackend.mapper.VacancyMapper;
-import com.diplom.internhubbackend.models.Vacancy;
+import com.diplom.internhubbackend.models.EmployerProfile;
+import com.diplom.internhubbackend.repositories.EmployerProfileRepository;
 import com.diplom.internhubbackend.repositories.VacancyRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,8 +16,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -23,29 +29,48 @@ import java.util.List;
 public class VacancyModerationService {
 
     private final VacancyRepository vacancyRepository;
+    private final EmployerProfileRepository employerProfileRepository;
     private final VacancyMapper vacancyMapper;
+    private final ViewTrackingService viewTrackingService;
 
 
     public Page<VacancyResponseDto> getPendingVacancies(Pageable pageable) {
-        List<Vacancy> vacancies = vacancyRepository.findAllByStatus(VacancyStatus.PENDING);
-
-        if (vacancies == null || vacancies.isEmpty()) {
-            return new PageImpl<>(new ArrayList<>());
-        }
-
-        List<VacancyResponseDto> vacancyResult = vacancyMapper.toDto(vacancies);
-
-        int startIndex = pageable.getPageNumber() * pageable.getPageSize();
-
-        if (vacancyResult == null || vacancyResult.isEmpty() || vacancyResult.size() <= startIndex) {
-            return new PageImpl<>(new ArrayList<>());
-        }
-
-        List<VacancyResponseDto> result = vacancyResult.subList(
-                startIndex, Math.min(startIndex + pageable.getPageSize(), vacancyResult.size())
+        Page<VacancyListProjection> vacancies = vacancyRepository.findModerationVacanciesByStatus(
+                VacancyStatus.PENDING,
+                pageable
         );
 
-        return new PageImpl<>(result, pageable, vacancyResult.size());
+        if (vacancies.isEmpty()) {
+            return new PageImpl<>(Collections.emptyList(), pageable, vacancies.getTotalElements());
+        }
+
+        List<VacancyResponseDto> result = vacancyMapper.toListDto(
+                vacancies.getContent(),
+                getEmployerProfiles(vacancies.getContent())
+        );
+        viewTrackingService.applyVacancyViewCounts(result);
+
+        return new PageImpl<>(result, pageable, vacancies.getTotalElements());
+    }
+
+    private Map<Integer, EmployerProfile> getEmployerProfiles(List<VacancyListProjection> vacancies) {
+        List<Integer> employerIds = vacancies.stream()
+                .map(VacancyListProjection::employerId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        if (employerIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        return employerProfileRepository.findAllByUserIdIn(employerIds).stream()
+                .collect(Collectors.toMap(
+                        profile -> profile.getUser().getId(),
+                        profile -> profile,
+                        (left, right) -> left,
+                        LinkedHashMap::new
+                ));
     }
 
     @Transactional
