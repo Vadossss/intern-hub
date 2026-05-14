@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useCallback, useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
@@ -20,6 +21,7 @@ interface Props {
   className?: string;
   title?: string;
   description?: string;
+  headerAction?: ReactNode;
 }
 
 export const VacanciesSection = memo(function VacanciesSection({
@@ -28,6 +30,7 @@ export const VacanciesSection = memo(function VacanciesSection({
   className,
   title = "Вакансии",
   description = "Подборка актуальных предложений по выбранному стеку.",
+  headerAction,
 }: Props) {
   const { isAuthenticated, user } = useAuth();
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
@@ -116,21 +119,43 @@ export const VacanciesSection = memo(function VacanciesSection({
     [isAuthenticated, user?.role],
   );
 
+  const header = (
+    <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <div>
+        <div className="flex items-center gap-3">
+          <h2 className="text-3xl font-bold uppercase tracking-tight text-[#171717]">
+            {title}
+          </h2>
+        </div>
+        <p className="mt-3 max-w-2xl text-[#5a5a5a]">{description}</p>
+      </div>
+
+      {headerAction ? (
+        <div className="flex w-full shrink-0 items-center lg:w-auto lg:justify-end">
+          {headerAction}
+        </div>
+      ) : null}
+    </div>
+  );
+
   if (vacancies.length === 0) {
     return (
       <section className={className}>
-        <div className="rounded-[2rem] border border-[#161616]/10 bg-white/70 px-6 py-16 text-center shadow-sm">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#efeee8] text-[#6b6b6b]">
-            <Sparkles className="h-6 w-6" />
-          </div>
-          <h3 className="mt-5 text-2xl font-semibold text-[#171717]">
+        <div className="rounded-[2rem] border border-[#161616]/10 bg-white/70 p-5 shadow-sm sm:p-6">
+          {header}
+          <div className="px-6 py-16 text-center">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#efeee8] text-[#6b6b6b]">
+              <Sparkles className="h-6 w-6" />
+            </div>
+            <h3 className="mt-5 text-2xl font-semibold text-[#171717]">
             Вакансии не найдены
-          </h3>
-          <p className="mx-auto mt-3 max-w-xl text-[#5a5a5a]">
+            </h3>
+            <p className="mx-auto mt-3 max-w-xl text-[#5a5a5a]">
             {selectedDirection
               ? "Для выбранного направления сейчас нет предложений. Попробуйте другой стек или вернитесь позже."
               : "Сейчас доступных вакансий нет. Попробуйте обновить страницу чуть позже."}
-          </p>
+            </p>
+          </div>
         </div>
       </section>
     );
@@ -139,7 +164,7 @@ export const VacanciesSection = memo(function VacanciesSection({
   return (
     <section className={className}>
       <div className="rounded-[2rem] border border-[#161616]/10 bg-white/70 p-5 shadow-[0_12px_40px_rgba(20,20,20,0.08)] sm:p-6">
-        <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <div className="flex items-center gap-3">
               <h2 className="text-3xl font-bold uppercase tracking-tight text-[#171717]">
@@ -148,6 +173,12 @@ export const VacanciesSection = memo(function VacanciesSection({
             </div>
             <p className="mt-3 max-w-2xl text-[#5a5a5a]">{description}</p>
           </div>
+
+          {headerAction ? (
+            <div className="flex w-full shrink-0 items-center lg:w-auto lg:justify-end">
+              {headerAction}
+            </div>
+          ) : null}
 
           {/* <div className="flex items-center gap-2">
             <Badge

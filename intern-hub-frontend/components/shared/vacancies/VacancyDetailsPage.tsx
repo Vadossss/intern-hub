@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   Clock3,
   Eye,
+  Flag,
   MapPin,
   Wallet,
 } from "lucide-react";
@@ -22,6 +23,7 @@ import {
   type VacancyResponseDto,
 } from "@/app/types/api";
 import { RichTextContent } from "@/components/shared/RichText";
+import { ComplaintDialog } from "@/components/shared/complaints";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/api/client";
@@ -64,6 +66,7 @@ export function VacancyDetailsPage() {
   const [isResumeLoading, setIsResumeLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasApplied, setHasApplied] = useState(false);
+  const [complaintOpen, setComplaintOpen] = useState(false);
 
   const isArchived = vacancy?.status === VacancyStatus.ARCHIVED;
 
@@ -371,14 +374,25 @@ export function VacancyDetailsPage() {
                 ) : null}
               </div>
 
-              <div className="inline-flex w-fit items-center gap-2 rounded-full border border-[#161616]/10 bg-[#f7f7f3] px-3 py-1 text-sm font-semibold text-[#4c4c4c]">
-                <Eye className="h-4 w-4 text-[#777]" />
-                <span>
-                  {(vacancy.viewCount ?? 0).toLocaleString("ru-RU")} просмотров
-                </span>
-                <span className="text-[#777]">
-                  ({(vacancy.todayViewCount ?? 0).toLocaleString("ru-RU")} сегодня)
-                </span>
+              <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                <div className="inline-flex w-fit items-center gap-2 rounded-full border border-[#161616]/10 bg-[#f7f7f3] px-3 py-1 text-sm font-semibold text-[#4c4c4c]">
+                  <Eye className="h-4 w-4 text-[#777]" />
+                  <span>
+                    {(vacancy.viewCount ?? 0).toLocaleString("ru-RU")} просмотров
+                  </span>
+                  <span className="text-[#777]">
+                    ({(vacancy.todayViewCount ?? 0).toLocaleString("ru-RU")} сегодня)
+                  </span>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-8 rounded-full border-[#161616]/10 bg-white px-3 text-xs font-bold text-[#5f4545] hover:bg-[#f7eeee]"
+                  onClick={() => setComplaintOpen(true)}
+                >
+                  <Flag className="h-3.5 w-3.5" />
+                  Пожаловаться
+                </Button>
               </div>
             </div>
 
@@ -509,6 +523,13 @@ export function VacancyDetailsPage() {
           </aside>
         </section>
       </div>
+      <ComplaintDialog
+        open={complaintOpen}
+        onOpenChange={setComplaintOpen}
+        targetType="VACANCY"
+        targetId={vacancy.publicId}
+        targetLabel={vacancy.title}
+      />
     </main>
   );
 }
