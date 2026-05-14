@@ -70,6 +70,10 @@ export function CandidateDialog({
                 value={candidate.phoneNumber || "Не указан"}
               />
               <InfoCard
+                title="Город"
+                value={candidate.city || "Не указан"}
+              />
+              <InfoCard
                 title="День рождения"
                 value={formatBirthday(candidate.birthday)}
               />

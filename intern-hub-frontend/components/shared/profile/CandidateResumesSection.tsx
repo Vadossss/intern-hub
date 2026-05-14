@@ -5,7 +5,6 @@ import type { FormEvent } from "react";
 import { FilePlus2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { CityAutocompleteInput } from "@/components/shared/CityAutocompleteInput";
 import { RichTextEditor } from "@/components/shared/RichText";
 import { CandidateResumeCard } from "@/components/shared/profile/CandidateResumeCard";
 import { CandidateResumePreviewDialog } from "@/components/shared/profile/CandidateResumePreviewDialog";
@@ -149,7 +148,6 @@ export function CandidateResumesSection({
     const formData = new FormData(event.currentTarget);
     const payload: CandidateResumePayload = {
       profession: textValue(formData.get("profession")),
-      city: textValue(formData.get("city")),
       expectedSalaryFrom: numberValue(formData.get("expectedSalaryFrom")),
       expectedSalaryTo: numberValue(formData.get("expectedSalaryTo")),
       employmentId: textValue(formData.get("employmentId")),
@@ -289,11 +287,6 @@ export function CandidateResumesSection({
                 />
                 <FieldError message={formErrors.profession} />
               </div>
-              <CityAutocompleteInput
-                name="city"
-                defaultValue={formResume?.city ?? ""}
-                placeholder="Город"
-              />
               <DictionarySelect
                 name="experienceId"
                 defaultValue={formResume?.experienceId}

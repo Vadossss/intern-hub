@@ -138,6 +138,7 @@ export interface CandidateResumeSearchResult {
   firstName?: string;
   lastName?: string;
   birthday?: string;
+  city?: string;
   avatarUrl?: string;
   about?: string;
   resumeUrl?: string;
@@ -148,7 +149,6 @@ export interface CandidateResumeSearchResult {
 
 export interface CandidateResumePayload {
   profession?: string;
-  city?: string;
   expectedSalaryFrom?: number | null;
   expectedSalaryTo?: number | null;
   employmentId?: string;

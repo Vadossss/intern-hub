@@ -103,6 +103,7 @@ export function CandidatePublicPage() {
     [candidate?.resumes],
   );
   const primaryResume = activeResumes[0];
+  const candidateCity = primaryResume?.city || candidate?.city;
 
   if (loading) {
     return <CandidatePageSkeleton />;
@@ -177,7 +178,7 @@ export function CandidatePublicPage() {
 
                 <div className="mt-4 flex flex-wrap gap-2 text-sm text-[#555]">
                   <InfoPill icon={<MapPin className="h-4 w-4" />}>
-                    {primaryResume?.city || "Город не указан"}
+                    {candidateCity || "Город не указан"}
                   </InfoPill>
                   <InfoPill icon={<Cake className="h-4 w-4" />}>
                     {formatBirthday(candidate.birthday)}
@@ -202,7 +203,7 @@ export function CandidatePublicPage() {
               <DarkInfo
                 icon={<MapPin className="h-4 w-4" />}
                 label="Город"
-                value={primaryResume?.city || "Не указан"}
+                value={candidateCity || "Не указан"}
               />
               <DarkInfo
                 icon={<Monitor className="h-4 w-4" />}

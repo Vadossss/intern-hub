@@ -27,7 +27,7 @@ function badgeItems(resume: CandidateResume) {
     resume.workFormatName ? { icon: BriefcaseBusiness, label: resume.workFormatName } : null,
     resume.experienceName ? { icon: Clock3, label: resume.experienceName } : null,
   ].filter(Boolean) as Array<{
-    icon: typeof MapPin;
+    icon: typeof Wallet;
     label: string;
   }>;
 }

@@ -97,6 +97,7 @@ import {
   Shield,
   User,
   UserCog,
+  Heart,
 } from "lucide-react";
 
 export function ProfilePageContent() {
@@ -142,9 +143,8 @@ export function ProfilePageContent() {
   const [isVacancySaving, setIsVacancySaving] = useState(false);
   const [isSettingsSaving, setIsSettingsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [dictionaries, setDictionaries] = useState<VacancyFormDictionaries | null>(
-    null,
-  );
+  const [dictionaries, setDictionaries] =
+    useState<VacancyFormDictionaries | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -158,12 +158,11 @@ export function ProfilePageContent() {
         }
 
         if (role === "candidate") {
-          const [profile, history, favorites] =
-            await Promise.all([
-              getCandidateProfile(),
-              getCandidateApplications(0, 10),
-              getCandidateFavorites(0, 10),
-            ]);
+          const [profile, history, favorites] = await Promise.all([
+            getCandidateProfile(),
+            getCandidateApplications(0, 10),
+            getCandidateFavorites(0, 10),
+          ]);
           if (!isMounted) return;
           const resumes = profile.resumes ?? [];
           setCandidate({ ...emptyCandidate, ...profile, resumes });
@@ -184,11 +183,10 @@ export function ProfilePageContent() {
           return;
         }
 
-        const [employerProfile, vacanciesResponse] =
-          await Promise.all([
-            getEmployerProfile(),
-            getEmployerVacancies(0, 20),
-          ]);
+        const [employerProfile, vacanciesResponse] = await Promise.all([
+          getEmployerProfile(),
+          getEmployerVacancies(0, 20),
+        ]);
         if (!isMounted) return;
         const loadedVacancies = vacanciesResponse.content;
         setVacancies(loadedVacancies);
@@ -330,10 +328,7 @@ export function ProfilePageContent() {
     });
   }
 
-  function changeCandidateFavoriteState(
-    publicId: string,
-    isFavorite: boolean,
-  ) {
+  function changeCandidateFavoriteState(publicId: string, isFavorite: boolean) {
     setCandidateFavoriteState((current) => ({
       ...current,
       [publicId]: isFavorite,
@@ -349,13 +344,19 @@ export function ProfilePageContent() {
       lastName: textValue(formData.get("lastName")).trim(),
       birthday: textValue(formData.get("birthday")) || undefined,
       phoneNumber: textValue(formData.get("phoneNumber")).trim(),
+      city: textValue(formData.get("city")).trim(),
       openToWork: formData.get("openToWork") === "on",
     };
 
     try {
       setIsSaving(true);
       const updated = await updateCandidateProfile(payload);
-      setCandidate({ ...emptyCandidate, ...updated });
+      const updatedResumes = updated.resumes ?? [];
+      setCandidate({ ...emptyCandidate, ...updated, resumes: updatedResumes });
+      setCandidateResumes(updatedResumes);
+      if (user) {
+        setUser({ ...user, city: updated.city });
+      }
       setIsCandidateEditing(false);
       toast.success("Профиль сохранен.");
     } catch (error) {
@@ -462,7 +463,9 @@ export function ProfilePageContent() {
     try {
       setIsResumeSaving(true);
       await deleteCandidateResume(resumeId);
-      setCandidateResumes((items) => items.filter((item) => item.id !== resumeId));
+      setCandidateResumes((items) =>
+        items.filter((item) => item.id !== resumeId),
+      );
       setCandidate((current) => ({
         ...current,
         resumes: (current.resumes ?? []).filter((item) => item.id !== resumeId),
@@ -630,7 +633,9 @@ export function ProfilePageContent() {
         ),
       );
       console.error("Failed to restore vacancy:", error);
-      toast.error("РќРµ СѓРґР°Р»РѕСЃСЊ РІРµСЂРЅСѓС‚СЊ РІР°РєР°РЅСЃРёСЋ РёР· Р°СЂС…РёРІР°.");
+      toast.error(
+        "РќРµ СѓРґР°Р»РѕСЃСЊ РІРµСЂРЅСѓС‚СЊ РІР°РєР°РЅСЃРёСЋ РёР· Р°СЂС…РёРІР°.",
+      );
       throw error;
     } finally {
       setIsVacancySaving(false);
@@ -779,8 +784,16 @@ export function ProfilePageContent() {
                 onChange={changeAdminSection}
                 items={[
                   { id: "overview", label: "Обзор", icon: <Shield /> },
-                  { id: "vacancies", label: "Модерация вакансий", icon: <FileWarning /> },
-                  { id: "excluded-words", label: "Стоп-слова", icon: <Shield /> },
+                  {
+                    id: "vacancies",
+                    label: "Модерация вакансий",
+                    icon: <FileWarning />,
+                  },
+                  {
+                    id: "excluded-words",
+                    label: "Стоп-слова",
+                    icon: <Shield />,
+                  },
                   { id: "complaints", label: "Жалобы", icon: <Flag /> },
                   { id: "users", label: "Пользователи", icon: <UserCog /> },
                   { id: "blog", label: "Блог", icon: <BookOpen /> },
@@ -806,7 +819,7 @@ export function ProfilePageContent() {
                   {
                     id: "favorites",
                     label: "Избранные вакансии",
-                    icon: <Bookmark />,
+                    icon: <Heart />,
                   },
                   ...(user
                     ? [

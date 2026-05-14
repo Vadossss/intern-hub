@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { Camera, Mail, Pencil, UserRound } from "lucide-react";
 
+import { CityAutocompleteInput } from "@/components/shared/CityAutocompleteInput";
 import { InfoCard } from "@/components/shared/profile/InfoCard";
 import {
   formatBirthday,
@@ -170,6 +171,16 @@ export function CandidateProfileSection({
                     type="tel"
                   />
                 </label>
+                <label className="grid gap-2">
+                  <span className="text-sm font-semibold text-[#333]">
+                    Город
+                  </span>
+                  <CityAutocompleteInput
+                    name="city"
+                    defaultValue={candidate.city ?? ""}
+                    placeholder="Город"
+                  />
+                </label>
               </div>
               <label className="flex items-center gap-3 rounded-xl border border-[#161616]/10 bg-white p-3 text-sm font-semibold text-[#333]">
                 <Checkbox
@@ -229,6 +240,10 @@ export function CandidateProfileSection({
               <InfoCard
                 title="Номер телефона"
                 value={textValue(candidate.phoneNumber) || "Не указан"}
+              />
+              <InfoCard
+                title="Город"
+                value={textValue(candidate.city) || "Не указан"}
               />
               <InfoCard
                 title="День рождения"
