@@ -229,6 +229,7 @@ export interface CandidateFavoriteVacancy {
     id?: string;
     companyName?: string;
     city?: string;
+    avatarUrl?: string;
   };
 }
 
@@ -474,7 +475,10 @@ export function getEmployerProfile(): Promise<EmployerProfileData> {
 export function updateEmployerProfile(
   data: EmployerProfileUpdate,
 ): Promise<EmployerProfileData> {
-  return apiClient.put<EmployerProfileData>(API_ENDPOINTS.employerProfile, data);
+  return apiClient.put<EmployerProfileData>(
+    API_ENDPOINTS.employerProfile,
+    data,
+  );
 }
 
 export async function uploadEmployerProfilePhoto(
@@ -516,7 +520,9 @@ export function searchEmployerCandidates({
   skillIds,
   page = 0,
   size = 10,
-}: EmployerCandidateSearchParams): Promise<PageResponse<CandidateResumeSearchResult>> {
+}: EmployerCandidateSearchParams): Promise<
+  PageResponse<CandidateResumeSearchResult>
+> {
   return apiClient.get<PageResponse<CandidateResumeSearchResult>>(
     API_ENDPOINTS.employerCandidates,
     {

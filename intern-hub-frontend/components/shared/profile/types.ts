@@ -23,6 +23,7 @@ export type AdminSection =
   | "overview"
   | "vacancies"
   | "excluded-words"
+  | "complaints"
   | "users"
   | "blog"
   | "settings";

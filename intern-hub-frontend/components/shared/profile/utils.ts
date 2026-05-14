@@ -127,6 +127,7 @@ export function isAdminSection(value: string | null): value is AdminSection {
     value === "overview" ||
     value === "vacancies" ||
     value === "excluded-words" ||
+    value === "complaints" ||
     value === "users" ||
     value === "blog" ||
     value === "settings"

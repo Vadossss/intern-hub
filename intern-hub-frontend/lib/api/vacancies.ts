@@ -54,6 +54,20 @@ export async function getVacancies(
   });
 }
 
+export async function getRecommendedVacancies(
+  params?: GetVacanciesParams,
+): Promise<VacanciesResponse> {
+  return apiClient.get<VacanciesResponse>(
+    `${API_ENDPOINTS.vacancies}/recommendations`,
+    {
+      params: params as Record<
+        string,
+        string | number | boolean | string[] | undefined
+      >,
+    },
+  );
+}
+
 export async function getVacancyById(id: string): Promise<VacancyResponseDto> {
   return apiClient.get<VacancyResponseDto>(`${API_ENDPOINTS.vacancies}/${id}`);
 }

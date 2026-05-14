@@ -40,6 +40,7 @@ export const API_ENDPOINTS = {
   moderationVacancies: "/api/moderation/vacancies",
   moderationUsers: "/api/moderation/users",
   vacancyExcludedWords: "/api/admin/vacancy-excluded-words",
+  complaints: "/api/complaints",
   blogArticles: "/api/blog/articles",
   blogImages: "/api/blog/articles/images",
 } as const;

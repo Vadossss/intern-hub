@@ -135,7 +135,7 @@ class ApiClient {
     status: number,
     hasRetriedAuth: boolean,
   ) {
-    if (hasRetriedAuth || status !== 401) {
+    if (hasRetriedAuth || (status !== 401 && status !== 403)) {
       return false;
     }
 
