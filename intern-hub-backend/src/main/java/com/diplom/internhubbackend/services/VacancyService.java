@@ -1,34 +1,24 @@
 package com.diplom.internhubbackend.services;
 
-import com.diplom.internhubbackend.dto.FilterParams;
-import com.diplom.internhubbackend.dto.KeySkillDto;
-import com.diplom.internhubbackend.dto.NewVacancyDto;
-import com.diplom.internhubbackend.dto.VacancyContactDto;
-import com.diplom.internhubbackend.dto.VacancyFilterOptionsDto;
-import com.diplom.internhubbackend.dto.VacancyResponseDto;
-import com.diplom.internhubbackend.dto.hh.HhVacancyDetailsResponse;
-import com.diplom.internhubbackend.dto.projection.VacancyListProjection;
-import com.diplom.internhubbackend.dto.projection.VacancyProjection;
-import com.diplom.internhubbackend.dto.projection.CandidateResumeSkillProjection;
-import com.diplom.internhubbackend.dto.projection.CandidateResumeSummaryProjection;
-import com.diplom.internhubbackend.dto.projection.VacancySkillProjection;
+import com.diplom.internhubbackend.dto.*;
+import com.diplom.internhubbackend.dto.projection.*;
 import com.diplom.internhubbackend.enums.AccountStatus;
 import com.diplom.internhubbackend.enums.ContactMethod;
 import com.diplom.internhubbackend.enums.VacancyStatus;
 import com.diplom.internhubbackend.exception.VacancyNotFoundException;
 import com.diplom.internhubbackend.mapper.VacancyMapper;
 import com.diplom.internhubbackend.models.*;
-import com.diplom.internhubbackend.repositories.EmployerProfileRepository;
+import com.diplom.internhubbackend.models.Currency;
 import com.diplom.internhubbackend.repositories.CandidateResumeRepository;
+import com.diplom.internhubbackend.repositories.EmployerProfileRepository;
 import com.diplom.internhubbackend.repositories.VacancyRepository;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.TypedQuery;
 import jakarta.persistence.criteria.*;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
@@ -40,18 +30,9 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.web.client.RestClient;
-import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedHashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -65,20 +46,15 @@ public class VacancyService {
     @PersistenceContext
     private EntityManager entityManager;
 
-    private final WebClient webClient;
     private final VacancyRepository vacancyRepository;
-    private final RestClient defaultRestClient = RestClient.create();
     private final HhAggregationService hhAggregationService;
     private final SjAggregationService sjAggregationService;
-    private final HhVacancyClassificationService hhVacancyClassificationService;
     private final VacancySourceService vacancySourceService;
     private final VacancyMapper vacancyMapper;
     private final EmployerProfileRepository employerProfileRepository;
     private final CandidateResumeRepository candidateResumeRepository;
     private final VacancyDirectionService vacancyDirectionService;
     private final ViewTrackingService viewTrackingService;
-    @Qualifier("superJobWebClient")
-    private final WebClient superJobWebClient;
 
 
     @Transactional()
