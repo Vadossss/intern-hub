@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="create-vacancy-search-indexes" author="Vlad">
+        <sql>
+            CREATE INDEX IF NOT EXISTS idx_vacancy_active_title
+            ON vacancy (title ASC, id ASC)
+            WHERE status IN ('APPROVED', 'PENDING');
+
+            CREATE INDEX IF NOT EXISTS idx_vacancy_active_created_at
+            ON vacancy (created_at DESC, id ASC)
+            WHERE status IN ('APPROVED', 'PENDING');
+
+            CREATE INDEX IF NOT EXISTS idx_vacancy_active_direction_title
+            ON vacancy (direction_id, title ASC, id ASC)
+            WHERE status IN ('APPROVED', 'PENDING') AND direction_id IS NOT NULL;
+
+            CREATE INDEX IF NOT EXISTS idx_vacancy_active_source_title
+            ON vacancy (source_id, title ASC, id ASC)
+            WHERE status IN ('APPROVED', 'PENDING') AND source_id IS NOT NULL;
+
+            CREATE INDEX IF NOT EXISTS idx_vacancy_active_city_title
+            ON vacancy (LOWER(city), title ASC, id ASC)
+            WHERE status IN ('APPROVED', 'PENDING') AND city IS NOT NULL;
+
+            CREATE INDEX IF NOT EXISTS idx_vacancy_employer_created_at
+            ON vacancy (employer_id, created_at DESC)
+            WHERE employer_id IS NOT NULL;
+
+            CREATE INDEX IF NOT EXISTS idx_vacancy_aggregated_status_expires_at
+            ON vacancy (is_aggregated, status, expires_at);
+
+            CREATE INDEX IF NOT EXISTS idx_vacancy_source_external_id
+            ON vacancy (source_id, external_id)
+            WHERE source_id IS NOT NULL AND external_id IS NOT NULL;
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>
