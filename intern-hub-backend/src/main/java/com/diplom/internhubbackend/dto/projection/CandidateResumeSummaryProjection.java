@@ -6,7 +6,7 @@ public record CandidateResumeSummaryProjection(
         Long profileId,
         Long id,
         String profession,
-        String city,
+        String candidateCity,
         Long expectedSalaryFrom,
         Long expectedSalaryTo,
         String employmentId,

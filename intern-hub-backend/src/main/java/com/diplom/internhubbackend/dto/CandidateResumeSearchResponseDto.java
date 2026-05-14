@@ -15,6 +15,7 @@ public class CandidateResumeSearchResponseDto {
     private String firstName;
     private String lastName;
     private LocalDate birthday;
+    private String city;
     private String avatarUrl;
     private String about;
     private String resumeUrl;

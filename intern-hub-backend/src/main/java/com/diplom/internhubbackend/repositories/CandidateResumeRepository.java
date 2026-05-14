@@ -51,7 +51,7 @@ public interface CandidateResumeRepository extends JpaRepository<CandidateResume
                 profile.id,
                 resume.id,
                 resume.profession,
-                resume.city,
+                profile.city,
                 resume.expectedSalaryFrom,
                 resume.expectedSalaryTo,
                 employment.id,
@@ -83,7 +83,7 @@ public interface CandidateResumeRepository extends JpaRepository<CandidateResume
                 profile.id,
                 resume.id,
                 resume.profession,
-                resume.city,
+                profile.city,
                 resume.expectedSalaryFrom,
                 resume.expectedSalaryTo,
                 employment.id,
@@ -114,7 +114,7 @@ public interface CandidateResumeRepository extends JpaRepository<CandidateResume
                 profile.id,
                 resume.id,
                 resume.profession,
-                resume.city,
+                profile.city,
                 resume.expectedSalaryFrom,
                 resume.expectedSalaryTo,
                 employment.id,
@@ -146,7 +146,7 @@ public interface CandidateResumeRepository extends JpaRepository<CandidateResume
                 profile.id,
                 resume.id,
                 resume.profession,
-                resume.city,
+                profile.city,
                 resume.expectedSalaryFrom,
                 resume.expectedSalaryTo,
                 employment.id,
@@ -190,7 +190,7 @@ public interface CandidateResumeRepository extends JpaRepository<CandidateResume
                         profile.openToWork,
                         resume.id,
                         resume.profession,
-                        resume.city,
+                        profile.city,
                         resume.expectedSalaryFrom,
                         resume.expectedSalaryTo,
                         employment.id,
@@ -214,7 +214,7 @@ public interface CandidateResumeRepository extends JpaRepository<CandidateResume
                       AND u.status = :status
                       AND (resume.archived IS NULL OR resume.archived = false)
                       AND (:openToWork IS NULL OR profile.openToWork = :openToWork)
-                      AND (:cityPattern IS NULL OR LOWER(resume.city) LIKE :cityPattern)
+                      AND (:cityPattern IS NULL OR LOWER(profile.city) LIKE :cityPattern)
                       AND (
                             :searchPattern IS NULL
                             OR LOWER(resume.profession) LIKE :searchPattern
@@ -241,7 +241,7 @@ public interface CandidateResumeRepository extends JpaRepository<CandidateResume
                       AND u.status = :status
                       AND (resume.archived IS NULL OR resume.archived = false)
                       AND (:openToWork IS NULL OR profile.openToWork = :openToWork)
-                      AND (:cityPattern IS NULL OR LOWER(resume.city) LIKE :cityPattern)
+                      AND (:cityPattern IS NULL OR LOWER(profile.city) LIKE :cityPattern)
                       AND (
                             :searchPattern IS NULL
                             OR LOWER(resume.profession) LIKE :searchPattern

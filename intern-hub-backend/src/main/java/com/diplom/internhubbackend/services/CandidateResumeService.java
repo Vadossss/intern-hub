@@ -58,7 +58,6 @@ public class CandidateResumeService {
         CandidateResume resume = CandidateResume.builder()
                 .candidateProfile(profile)
                 .profession(DEFAULT_RESUME_PROFESSION)
-                .city(profile.getPreferredCity())
                 .about(profile.getAbout())
                 .expectedSalaryFrom(profile.getExpectedSalaryFrom())
                 .expectedSalaryTo(profile.getExpectedSalaryTo())
@@ -175,7 +174,6 @@ public class CandidateResumeService {
 
     private void applyRequest(CandidateResume resume, CandidateResumeUpsertDto request) {
         resume.setProfession(normalizeProfession(request.getProfession()));
-        resume.setCity(request.getCity());
         resume.setExpectedSalaryFrom(request.getExpectedSalaryFrom());
         resume.setExpectedSalaryTo(request.getExpectedSalaryTo());
         resume.setEmployment(isBlank(request.getEmploymentId()) ? null : employmentService.getEmploymentById(request.getEmploymentId()));

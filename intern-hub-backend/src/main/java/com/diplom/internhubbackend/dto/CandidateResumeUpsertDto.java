@@ -10,7 +10,6 @@ import java.util.Set;
 @Setter
 public class CandidateResumeUpsertDto {
     private String profession;
-    private String city;
     private Long expectedSalaryFrom;
     private Long expectedSalaryTo;
     private String employmentId;

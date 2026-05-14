@@ -146,7 +146,9 @@ public class AuthController {
                 candidateProfile != null ? candidateProfile.getFirstName() : null,
                 candidateProfile != null ? candidateProfile.getLastName() : null,
                 employerProfile != null ? employerProfile.getCompanyName() : null,
-                employerProfile != null ? employerProfile.getCity() : null
+                candidateProfile != null
+                        ? candidateProfile.getCity()
+                        : employerProfile != null ? employerProfile.getCity() : null
         ));
     }
 
@@ -184,7 +186,9 @@ public class AuthController {
                 candidateProfile != null ? candidateProfile.getFirstName() : null,
                 candidateProfile != null ? candidateProfile.getLastName() : null,
                 employerProfile != null ? employerProfile.getCompanyName() : null,
-                employerProfile != null ? employerProfile.getCity() : null
+                candidateProfile != null
+                        ? candidateProfile.getCity()
+                        : employerProfile != null ? employerProfile.getCity() : null
         ));
     }
 

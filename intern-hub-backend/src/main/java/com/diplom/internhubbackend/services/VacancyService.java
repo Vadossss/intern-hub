@@ -334,7 +334,7 @@ public class VacancyService {
         return summaries.stream()
                 .map(resume -> new RecommendedResume(
                         resume.profession(),
-                        resume.city(),
+                        resume.candidateCity(),
                         resume.expectedSalaryFrom(),
                         resume.expectedSalaryTo(),
                         resume.employmentId(),
@@ -473,7 +473,7 @@ public class VacancyService {
                 score += 35;
             }
 
-            if (matchesText(vacancy.city(), resume.city())) {
+            if (matchesText(vacancy.city(), resume.candidateCity())) {
                 score += 15;
             }
 
@@ -925,7 +925,7 @@ public class VacancyService {
 
     private record RecommendedResume(
             String profession,
-            String city,
+            String candidateCity,
             Long expectedSalaryFrom,
             Long expectedSalaryTo,
             String employmentId,

@@ -18,7 +18,7 @@ public record CandidateResumeSearchProjection(
         Boolean openToWork,
         Long resumeId,
         String profession,
-        String city,
+        String candidateCity,
         Long expectedSalaryFrom,
         Long expectedSalaryTo,
         String employmentId,

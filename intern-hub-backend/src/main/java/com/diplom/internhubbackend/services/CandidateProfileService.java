@@ -67,6 +67,9 @@ public class CandidateProfileService {
         if (request.getBirthday() != null) {
             profile.setBirthday(request.getBirthday());
         }
+        if (request.getCity() != null) {
+            profile.setCity(request.getCity());
+        }
         if (request.getPhoneNumber() != null) {
             user.setPhoneNumber(request.getPhoneNumber().isBlank()
                     ? null
@@ -197,7 +200,7 @@ public class CandidateProfileService {
                 .firstName(profile.getFirstName())
                 .lastName(profile.getLastName())
                 .birthday(profile.getBirthday())
-                .city(null)
+                .city(profile.getCity())
                 .avatarUrl(user.getAvatarUrl())
                 .about(profile.getAbout())
                 .resumeUrl(profile.getResumeUrl())

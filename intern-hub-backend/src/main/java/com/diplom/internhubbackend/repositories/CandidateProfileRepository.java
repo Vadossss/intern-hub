@@ -44,18 +44,13 @@ public interface CandidateProfileRepository extends JpaRepository<CandidateProfi
                       )
                       AND (
                             :cityPattern IS NULL
-                            OR EXISTS (
-                                SELECT cityResume.id
-                                FROM CandidateResume cityResume
-                                WHERE cityResume.candidateProfile = cp
-                                  AND (cityResume.archived IS NULL OR cityResume.archived = false)
-                                  AND LOWER(cityResume.city) LIKE :cityPattern
-                            )
+                            OR LOWER(cp.city) LIKE :cityPattern
                       )
                       AND (
                             :searchPattern IS NULL
                             OR LOWER(cp.firstName) LIKE :searchPattern
                             OR LOWER(cp.lastName) LIKE :searchPattern
+                            OR LOWER(cp.city) LIKE :searchPattern
                             OR LOWER(u.email) LIKE :searchPattern
                             OR LOWER(u.phoneNumber) LIKE :searchPattern
                             OR EXISTS (
@@ -65,7 +60,6 @@ public interface CandidateProfileRepository extends JpaRepository<CandidateProfi
                                   AND (resume.archived IS NULL OR resume.archived = false)
                                   AND (
                                         LOWER(resume.profession) LIKE :searchPattern
-                                        OR LOWER(resume.city) LIKE :searchPattern
                                         OR LOWER(resume.about) LIKE :searchPattern
                                   )
                             )
@@ -108,18 +102,13 @@ public interface CandidateProfileRepository extends JpaRepository<CandidateProfi
                       )
                       AND (
                             :cityPattern IS NULL
-                            OR EXISTS (
-                                SELECT cityResume.id
-                                FROM CandidateResume cityResume
-                                WHERE cityResume.candidateProfile = cp
-                                  AND (cityResume.archived IS NULL OR cityResume.archived = false)
-                                  AND LOWER(cityResume.city) LIKE :cityPattern
-                            )
+                            OR LOWER(cp.city) LIKE :cityPattern
                       )
                       AND (
                             :searchPattern IS NULL
                             OR LOWER(cp.firstName) LIKE :searchPattern
                             OR LOWER(cp.lastName) LIKE :searchPattern
+                            OR LOWER(cp.city) LIKE :searchPattern
                             OR LOWER(u.email) LIKE :searchPattern
                             OR LOWER(u.phoneNumber) LIKE :searchPattern
                             OR EXISTS (
@@ -129,7 +118,6 @@ public interface CandidateProfileRepository extends JpaRepository<CandidateProfi
                                   AND (resume.archived IS NULL OR resume.archived = false)
                                   AND (
                                         LOWER(resume.profession) LIKE :searchPattern
-                                        OR LOWER(resume.city) LIKE :searchPattern
                                         OR LOWER(resume.about) LIKE :searchPattern
                                   )
                             )

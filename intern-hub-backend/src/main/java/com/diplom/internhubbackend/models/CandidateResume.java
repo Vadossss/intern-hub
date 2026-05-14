@@ -29,8 +29,6 @@ public class CandidateResume {
     @Column(nullable = false)
     private String profession;
 
-    private String city;
-
     private Long expectedSalaryFrom;
 
     private Long expectedSalaryTo;

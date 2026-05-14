@@ -33,6 +33,8 @@ public class CandidateProfile {
 
     private LocalDate birthday;
 
+    private String city;
+
     @Column(columnDefinition = "TEXT")
     private String about;
 
