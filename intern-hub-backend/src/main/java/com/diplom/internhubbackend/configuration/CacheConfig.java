@@ -11,6 +11,7 @@ public class CacheConfig {
     public CacheManager cacheManager() {
         return new ConcurrentMapCacheManager("role", "workFormat",
                 "keySkills", "experience", "employment", "vacancySource", "currency",
-                "vacancy", "user", "languages", "language");
+                "vacancy", "vacancy_full", "user", "languages", "language",
+                "vacancy_recommendations_default", "directions");
     }
 }
