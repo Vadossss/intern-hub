@@ -2,6 +2,7 @@ package com.diplom.internhubbackend.repositories;
 
 import com.diplom.internhubbackend.dto.projection.VacancyProjection;
 import com.diplom.internhubbackend.dto.projection.VacancyListProjection;
+import com.diplom.internhubbackend.dto.projection.VacancySkillProjection;
 import com.diplom.internhubbackend.dto.KeySkillDto;
 import com.diplom.internhubbackend.dto.VacancyContactDto;
 import com.diplom.internhubbackend.enums.AccountStatus;
@@ -75,6 +76,14 @@ public interface VacancyRepository extends JpaRepository<Vacancy, Integer> {
         ORDER BY s.name
         """)
     List<KeySkillDto> findSkillDtosByPublicId(@Param("publicId") String publicId);
+
+    @Query("""
+        SELECT new com.diplom.internhubbackend.dto.projection.VacancySkillProjection(v.id, s.id)
+        FROM Vacancy v
+        JOIN v.skills s
+        WHERE v.id IN :vacancyIds
+        """)
+    List<VacancySkillProjection> findSkillDtosByVacancyIds(@Param("vacancyIds") List<Integer> vacancyIds);
 
     @Query("""
         SELECT new com.diplom.internhubbackend.dto.VacancyContactDto(c.method, c.value, c.hint)

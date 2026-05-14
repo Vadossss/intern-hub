@@ -10,6 +10,7 @@ import com.diplom.internhubbackend.repositories.EmployerProfileRepository;
 import com.diplom.internhubbackend.repositories.VacancyRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -74,11 +75,13 @@ public class VacancyModerationService {
     }
 
     @Transactional
+    @CacheEvict(value = "vacancy_recommendations_default", allEntries = true)
     public void approve(String vacancyId) {
         vacancyRepository.approve(vacancyId).orElseThrow(() -> new VacancyNotFoundException("Error"));
     }
 
     @Transactional
+    @CacheEvict(value = "vacancy_recommendations_default", allEntries = true)
     public void reject(String vacancyId) {
         vacancyRepository.reject(vacancyId).orElseThrow(() -> new VacancyNotFoundException("Error"));
     }

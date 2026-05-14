@@ -117,6 +117,62 @@ public class VacancyController {
         return ResponseEntity.ok(vacancyService.getVacancyDirections());
     }
 
+    @Operation(summary = "Получение рекомендованных вакансий по активным резюме соискателя")
+    @PreAuthorize("hasAuthority('ROLE_USER')")
+    @GetMapping("/recommendations")
+    public ResponseEntity<PageResponse<VacancyResponseDto>> getRecommendedVacancies(
+            @AuthenticationPrincipal CustomUserDetails customUserDetails,
+            @RequestParam(required = false) List<VacancySourceCode> source,
+            @RequestParam(required = false) PositionsEnum position,
+            @RequestParam(required = false) List<String> direction,
+            @RequestParam(required = false) String companyName,
+            @RequestParam(required = false) String employerId,
+            @RequestParam(required = false) String city,
+            @RequestParam(required = false) Long salaryMin,
+            @RequestParam(required = false) Long salaryMax,
+            @RequestParam(required = false) String searchText,
+            @RequestParam(required = false) List<WorkFormatEnum> workFormats,
+            @RequestParam(required = false) List<EmploymentEnum> employment,
+            @RequestParam(required = false) List<ExperienceEnum> experience,
+            @RequestParam(required = false, defaultValue = "0") Integer page,
+            @RequestParam(required = false, defaultValue = "20") Integer size,
+            @RequestParam(required = false, defaultValue = "createdAt") String sortBy,
+            @RequestParam(required = false, defaultValue = "desc") String sortDirection
+    ) {
+        FilterParamsRequest filterParams = new FilterParamsRequest();
+        filterParams.setSource(source);
+        filterParams.setPosition(position);
+        filterParams.setDirection(direction);
+        filterParams.setCity(city);
+        filterParams.setCompanyName(companyName);
+        filterParams.setEmployerId(employerId);
+        filterParams.setEmployment(employment);
+        filterParams.setExperience(experience);
+        filterParams.setSalaryMin(salaryMin);
+        filterParams.setSalaryMax(salaryMax);
+        filterParams.setSearchText(searchText);
+        filterParams.setWorkFormats(workFormats);
+        filterParams.setPage(normalizePage(page));
+        filterParams.setSize(normalizeSize(size));
+        filterParams.setSortBy(sortBy);
+        filterParams.setSortDirection(sortDirection);
+
+        Page<VacancyResponseDto> results =
+                vacancyService.getRecommendedVacancies(
+                        customUserDetails.getUser(),
+                        filterParamsMapper.toDto(filterParams)
+                );
+
+        return ResponseEntity.ok(
+                PageResponse.of(
+                        results.getContent(),
+                        results.getNumber(),
+                        results.getSize(),
+                        results.getTotalElements()
+                )
+        );
+    }
+
     @Operation(summary = "Расширенный поиск вакансий")
     @GetMapping
     public ResponseEntity<PageResponse<VacancyResponseDto>> searchVacancies(

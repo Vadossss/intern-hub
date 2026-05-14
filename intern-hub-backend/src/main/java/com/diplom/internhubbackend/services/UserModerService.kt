@@ -7,6 +7,7 @@ import com.diplom.internhubbackend.models.Role
 import com.diplom.internhubbackend.models.User
 import com.diplom.internhubbackend.repositories.UserRepository
 import org.springframework.cache.annotation.CacheEvict
+import org.springframework.cache.annotation.Caching
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
@@ -18,7 +19,12 @@ class UserModerService(
     val roleService: UserRoleService,
 ) {
 
-    @CacheEvict(value = ["user"], key = "#userId")
+    @Caching(
+        evict = [
+            CacheEvict(value = ["user"], key = "#userId"),
+            CacheEvict(value = ["vacancy_recommendations_default"], allEntries = true),
+        ],
+    )
     @Transactional
     fun changeUserRole(userId: Int, newRole: UserRole) {
         val user: User = userRepository.findById(userId).orElseThrow { UserNotFoundException("User Not Found") }
@@ -27,7 +33,12 @@ class UserModerService(
         user.role = role
     }
 
-    @CacheEvict(value = ["user"], key = "#userId")
+    @Caching(
+        evict = [
+            CacheEvict(value = ["user"], key = "#userId"),
+            CacheEvict(value = ["vacancy_recommendations_default"], allEntries = true),
+        ],
+    )
     @Transactional
     fun blockUser(userId: Int, reason: String?, until: LocalDateTime?) {
         val user: User = userRepository.findById(userId).orElseThrow { UserNotFoundException("User Not Found") }
@@ -37,7 +48,12 @@ class UserModerService(
         user.blockedUntil = until?.takeIf { it.isAfter(LocalDateTime.now()) }
     }
 
-    @CacheEvict(value = ["user"], key = "#userId")
+    @Caching(
+        evict = [
+            CacheEvict(value = ["user"], key = "#userId"),
+            CacheEvict(value = ["vacancy_recommendations_default"], allEntries = true),
+        ],
+    )
     @Transactional
     fun unblockUser(userId: Int) {
         val user = userRepository.findById(userId)

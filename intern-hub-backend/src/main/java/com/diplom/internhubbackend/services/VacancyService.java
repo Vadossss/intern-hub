@@ -9,6 +9,9 @@ import com.diplom.internhubbackend.dto.VacancyResponseDto;
 import com.diplom.internhubbackend.dto.hh.HhVacancyDetailsResponse;
 import com.diplom.internhubbackend.dto.projection.VacancyListProjection;
 import com.diplom.internhubbackend.dto.projection.VacancyProjection;
+import com.diplom.internhubbackend.dto.projection.CandidateResumeSkillProjection;
+import com.diplom.internhubbackend.dto.projection.CandidateResumeSummaryProjection;
+import com.diplom.internhubbackend.dto.projection.VacancySkillProjection;
 import com.diplom.internhubbackend.enums.AccountStatus;
 import com.diplom.internhubbackend.enums.ContactMethod;
 import com.diplom.internhubbackend.enums.VacancyStatus;
@@ -16,6 +19,7 @@ import com.diplom.internhubbackend.exception.VacancyNotFoundException;
 import com.diplom.internhubbackend.mapper.VacancyMapper;
 import com.diplom.internhubbackend.models.*;
 import com.diplom.internhubbackend.repositories.EmployerProfileRepository;
+import com.diplom.internhubbackend.repositories.CandidateResumeRepository;
 import com.diplom.internhubbackend.repositories.VacancyRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.persistence.EntityManager;
@@ -25,6 +29,8 @@ import jakarta.persistence.criteria.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -40,6 +46,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,6 +58,9 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class VacancyService {
+
+    private static final int RECOMMENDATION_CANDIDATE_LIMIT = 600;
+    private static final int RECOMMENDATION_PATTERN_LIMIT = 12;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -64,6 +74,7 @@ public class VacancyService {
     private final VacancySourceService vacancySourceService;
     private final VacancyMapper vacancyMapper;
     private final EmployerProfileRepository employerProfileRepository;
+    private final CandidateResumeRepository candidateResumeRepository;
     private final VacancyDirectionService vacancyDirectionService;
     private final ViewTrackingService viewTrackingService;
     @Qualifier("superJobWebClient")
@@ -71,13 +82,14 @@ public class VacancyService {
 
 
     @Transactional()
-//    @Cacheable(value = "vacancy", key = "#publicId")
+    @Cacheable(value = "vacancy_full", key = "#publicId")
     public Vacancy getVacancy(String publicId) {
         return vacancyRepository.findByPublicId(publicId.toLowerCase()).orElseThrow(() ->
                 new VacancyNotFoundException("Vacancy not found"));
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "vacancy", key = "#publicId")
     public VacancyResponseDto getVacancyProjection(String publicId, User viewer, HttpServletRequest request) {
         String normalizedPublicId = publicId.toLowerCase();
         VacancyProjection vacancy = vacancyRepository.findByPublicIdProjection(normalizedPublicId).orElseThrow(() ->
@@ -183,6 +195,7 @@ public class VacancyService {
         );
     }
 
+    @Cacheable(value = "directions")
     public List<VacancyFilterOptionsDto.FilterOptionDto> getVacancyDirections() {
         return vacancyDirectionService.getDefaultDirections().stream()
                 .map(direction -> new VacancyFilterOptionsDto.FilterOptionDto(
@@ -227,6 +240,399 @@ public class VacancyService {
         Long total = entityManager.createQuery(countQuery).getSingleResult();
 
         return new PageImpl<>(vacancies, PageRequest.of(page, size), total);
+    }
+
+    @Transactional(readOnly = true)
+    @Cacheable(
+            value = "vacancy_recommendations_default",
+            key = "#root.target.recommendationCacheKey(#user, #params)",
+            condition = "#user != null && #root.target.isDefaultRecommendationFilters(#params)"
+    )
+    public Page<VacancyResponseDto> getRecommendedVacancies(User user, FilterParams params) {
+        if (user == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
+        }
+
+        int page = normalizePage(params.getPage());
+        int size = normalizeSize(params.getSize());
+        PageRequest pageRequest = PageRequest.of(page, size);
+        List<RecommendedResume> resumes = getRecommendationResumes(user.getId());
+
+        if (resumes.isEmpty()) {
+            return new PageImpl<>(Collections.emptyList(), pageRequest, 0);
+        }
+
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+
+        CriteriaQuery<VacancyListProjection> query = cb.createQuery(VacancyListProjection.class);
+        Root<Vacancy> root = query.from(Vacancy.class);
+
+        List<Predicate> predicates = buildPredicates(params, cb, query, root);
+        Predicate recommendationPredicate = buildRecommendationPredicate(resumes, cb, query, root);
+
+        if (recommendationPredicate == null) {
+            return new PageImpl<>(Collections.emptyList(), pageRequest, 0);
+        }
+
+        predicates.add(recommendationPredicate);
+        applyListProjection(query, cb, root);
+        query.where(cb.and(predicates.toArray(new Predicate[0])));
+        applySorting(params, cb, query, root);
+
+        TypedQuery<VacancyListProjection> typedQuery = entityManager.createQuery(query);
+        typedQuery.setMaxResults(RECOMMENDATION_CANDIDATE_LIMIT);
+
+        List<VacancyListProjection> rankedContent = rankRecommendedVacancies(typedQuery.getResultList(), resumes);
+        List<VacancyListProjection> pageContent = slicePage(rankedContent, page, size);
+        Map<Integer, EmployerProfile> employerProfiles = getEmployerProfiles(pageContent);
+        List<VacancyResponseDto> vacancies = vacancyMapper.toListDto(pageContent, employerProfiles);
+        viewTrackingService.applyVacancyViewCounts(vacancies);
+
+        return new PageImpl<>(vacancies, pageRequest, rankedContent.size());
+    }
+
+    public String recommendationCacheKey(User user, FilterParams params) {
+        int page = params == null ? 0 : normalizePage(params.getPage());
+        int size = params == null ? 20 : normalizeSize(params.getSize());
+        String sortBy = params == null ? "createdAt" : normalizeSortBy(params.getSortBy());
+        String sortDirection = params == null ? "desc" : normalizeSortDirection(params.getSortDirection());
+
+        return user.getId() + ":" + page + ":" + size + ":" + sortBy + ":" + sortDirection;
+    }
+
+    public boolean isDefaultRecommendationFilters(FilterParams params) {
+        if (params == null) {
+            return true;
+        }
+
+        return isEmpty(params.getSource())
+                && isEmpty(params.getDirection())
+                && !hasText(params.getCity())
+                && !hasText(params.getCompanyName())
+                && !hasText(params.getEmployerId())
+                && !hasText(params.getSchedule())
+                && isEmpty(params.getEmployment())
+                && isEmpty(params.getExperience())
+                && params.getSalaryMin() == null
+                && params.getSalaryMax() == null
+                && params.getStatus() == null
+                && !hasText(params.getSearchText())
+                && isEmpty(params.getWorkFormats());
+    }
+
+    private Predicate buildRecommendationPredicate(
+            List<RecommendedResume> resumes,
+            CriteriaBuilder cb,
+            CriteriaQuery<?> query,
+            Root<Vacancy> root
+    ) {
+        List<Predicate> signals = new ArrayList<>();
+
+        addIfPresent(signals, skillMatchPredicate(collectRecommendationSkillIds(resumes), cb, query, root));
+        addIfPresent(signals, professionMatchPredicate(collectRecommendationPatterns(resumes), cb, root));
+
+        if (signals.isEmpty()) {
+            return null;
+        }
+
+        return cb.or(signals.toArray(new Predicate[0]));
+    }
+
+    private List<RecommendedResume> getRecommendationResumes(Integer userId) {
+        List<CandidateResumeSummaryProjection> summaries = candidateResumeRepository.findActiveSummariesByUserId(userId);
+
+        if (summaries.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Long> resumeIds = summaries.stream()
+                .map(CandidateResumeSummaryProjection::id)
+                .toList();
+        Map<Long, Set<Integer>> skillsByResumeId = candidateResumeRepository.findSkillDtosByResumeIds(resumeIds)
+                .stream()
+                .collect(Collectors.groupingBy(
+                        CandidateResumeSkillProjection::resumeId,
+                        Collectors.mapping(CandidateResumeSkillProjection::skillId, Collectors.toSet())
+                ));
+
+        return summaries.stream()
+                .map(resume -> new RecommendedResume(
+                        resume.profession(),
+                        resume.city(),
+                        resume.expectedSalaryFrom(),
+                        resume.expectedSalaryTo(),
+                        resume.employmentId(),
+                        resume.workFormatId(),
+                        resume.experienceId(),
+                        skillsByResumeId.getOrDefault(resume.id(), Collections.emptySet())
+                ))
+                .toList();
+    }
+
+    private void addIfPresent(List<Predicate> predicates, Predicate predicate) {
+        if (predicate != null) {
+            predicates.add(predicate);
+        }
+    }
+
+    private Predicate skillMatchPredicate(
+            Set<Integer> skillIds,
+            CriteriaBuilder cb,
+            CriteriaQuery<?> query,
+            Root<Vacancy> root
+    ) {
+        if (skillIds.isEmpty()) {
+            return null;
+        }
+
+        Subquery<Integer> skillSubquery = query.subquery(Integer.class);
+        Root<Vacancy> vacancyRoot = skillSubquery.from(Vacancy.class);
+        Join<Vacancy, KeySkill> skill = vacancyRoot.join("skills");
+
+        skillSubquery
+                .select(vacancyRoot.get("id"))
+                .where(
+                        cb.equal(vacancyRoot.get("id"), root.get("id")),
+                        skill.get("id").in(skillIds)
+                );
+
+        return cb.exists(skillSubquery);
+    }
+
+    private Predicate professionMatchPredicate(
+            List<String> patterns,
+            CriteriaBuilder cb,
+            Root<Vacancy> root
+    ) {
+        if (patterns.isEmpty()) {
+            return null;
+        }
+
+        List<Predicate> textPredicates = new ArrayList<>();
+        Join<Vacancy, VacancyDirection> direction = root.join("direction", JoinType.LEFT);
+
+        for (String pattern : patterns) {
+            textPredicates.add(cb.like(cb.lower(root.get("title")), pattern));
+            textPredicates.add(cb.like(cb.lower(direction.get("name")), pattern));
+        }
+
+        return cb.or(textPredicates.toArray(new Predicate[0]));
+    }
+
+    private Set<Integer> collectRecommendationSkillIds(List<RecommendedResume> resumes) {
+        return resumes.stream()
+                .filter(resume -> resume.skillIds() != null)
+                .flatMap(resume -> resume.skillIds().stream())
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+    }
+
+    private List<String> collectRecommendationPatterns(List<RecommendedResume> resumes) {
+        return resumes.stream()
+                .flatMap(resume -> recommendationPatterns(resume.profession()).stream())
+                .distinct()
+                .limit(RECOMMENDATION_PATTERN_LIMIT)
+                .toList();
+    }
+
+    private List<VacancyListProjection> rankRecommendedVacancies(
+            List<VacancyListProjection> vacancies,
+            List<RecommendedResume> resumes
+    ) {
+        if (vacancies.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Map<Integer, Set<Integer>> skillIdsByVacancyId = getVacancySkillIds(vacancies);
+
+        return vacancies.stream()
+                .map(vacancy -> new ScoredVacancy(
+                        vacancy,
+                        calculateRecommendationScore(
+                                vacancy,
+                                skillIdsByVacancyId.getOrDefault(vacancy.id(), Collections.emptySet()),
+                                resumes
+                        )
+                ))
+                .filter(scoredVacancy -> scoredVacancy.score() > 0)
+                .sorted((left, right) -> Integer.compare(right.score(), left.score()))
+                .map(ScoredVacancy::vacancy)
+                .toList();
+    }
+
+    private Map<Integer, Set<Integer>> getVacancySkillIds(List<VacancyListProjection> vacancies) {
+        List<Integer> vacancyIds = vacancies.stream()
+                .map(VacancyListProjection::id)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        if (vacancyIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        return vacancyRepository.findSkillDtosByVacancyIds(vacancyIds)
+                .stream()
+                .collect(Collectors.groupingBy(
+                        VacancySkillProjection::vacancyId,
+                        Collectors.mapping(VacancySkillProjection::skillId, Collectors.toSet())
+                ));
+    }
+
+    private int calculateRecommendationScore(
+            VacancyListProjection vacancy,
+            Set<Integer> vacancySkillIds,
+            List<RecommendedResume> resumes
+    ) {
+        int bestScore = 0;
+
+        for (RecommendedResume resume : resumes) {
+            int score = 0;
+
+            if (hasSharedSkill(vacancySkillIds, resume.skillIds())) {
+                score += 50;
+            }
+
+            if (matchesProfession(vacancy, resume)) {
+                score += 35;
+            }
+
+            if (matchesText(vacancy.city(), resume.city())) {
+                score += 15;
+            }
+
+            if (matchesDictionary(vacancy.employment() == null ? null : vacancy.employment().getId(), resume.employmentId())) {
+                score += 10;
+            }
+
+            if (matchesDictionary(vacancy.workFormat() == null ? null : vacancy.workFormat().getId(), resume.workFormatId())) {
+                score += 10;
+            }
+
+            if (matchesDictionary(vacancy.experience() == null ? null : vacancy.experience().getId(), resume.experienceId())) {
+                score += 8;
+            }
+
+            if (matchesSalary(vacancy, resume)) {
+                score += 6;
+            }
+
+            bestScore = Math.max(bestScore, score);
+        }
+
+        return bestScore;
+    }
+
+    private boolean hasSharedSkill(Set<Integer> vacancySkillIds, Set<Integer> resumeSkillIds) {
+        if (vacancySkillIds == null || vacancySkillIds.isEmpty()
+                || resumeSkillIds == null || resumeSkillIds.isEmpty()) {
+            return false;
+        }
+
+        for (Integer skillId : resumeSkillIds) {
+            if (vacancySkillIds.contains(skillId)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private boolean matchesProfession(VacancyListProjection vacancy, RecommendedResume resume) {
+        Set<String> terms = recommendationTerms(resume.profession());
+
+        if (terms.isEmpty()) {
+            return false;
+        }
+
+        return containsAnyTerm(vacancy.title(), terms) || containsAnyTerm(vacancy.direction(), terms);
+    }
+
+    private boolean containsAnyTerm(String value, Set<String> terms) {
+        if (!hasText(value)) {
+            return false;
+        }
+
+        String normalizedValue = value.toLowerCase();
+
+        for (String term : terms) {
+            if (normalizedValue.contains(term)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private boolean matchesText(String vacancyValue, String resumeValue) {
+        return hasText(vacancyValue)
+                && hasText(resumeValue)
+                && vacancyValue.toLowerCase().contains(resumeValue.trim().toLowerCase());
+    }
+
+    private boolean matchesDictionary(String vacancyDictionaryId, String resumeDictionaryId) {
+        return hasText(vacancyDictionaryId)
+                && hasText(resumeDictionaryId)
+                && vacancyDictionaryId.equals(resumeDictionaryId);
+    }
+
+    private boolean matchesSalary(VacancyListProjection vacancy, RecommendedResume resume) {
+        Long expectedFrom = resume.expectedSalaryFrom();
+        Long expectedTo = resume.expectedSalaryTo();
+
+        if (expectedFrom == null && expectedTo == null) {
+            return false;
+        }
+
+        Long salaryFrom = vacancy.salaryFrom();
+        Long salaryTo = vacancy.salaryTo();
+
+        if (salaryFrom == null && salaryTo == null) {
+            return false;
+        }
+
+        boolean lowerBoundMatches = expectedFrom == null
+                || (salaryTo != null && salaryTo >= expectedFrom)
+                || (salaryTo == null && salaryFrom != null && salaryFrom >= expectedFrom);
+        boolean upperBoundMatches = expectedTo == null
+                || (salaryFrom != null && salaryFrom <= expectedTo)
+                || (salaryFrom == null && salaryTo != null && salaryTo <= expectedTo);
+
+        return lowerBoundMatches && upperBoundMatches;
+    }
+
+    private List<VacancyListProjection> slicePage(List<VacancyListProjection> vacancies, int page, int size) {
+        int fromIndex = page * size;
+
+        if (fromIndex >= vacancies.size()) {
+            return Collections.emptyList();
+        }
+
+        return vacancies.subList(fromIndex, Math.min(fromIndex + size, vacancies.size()));
+    }
+
+    private Set<String> recommendationPatterns(String value) {
+        return recommendationTerms(value).stream()
+                .map(this::likePattern)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    private Set<String> recommendationTerms(String value) {
+        if (!hasText(value)) {
+            return Collections.emptySet();
+        }
+
+        Set<String> terms = new LinkedHashSet<>();
+        String normalized = value.trim().toLowerCase();
+        terms.add(normalized);
+
+        for (String token : normalized.split("[\\s,.;:()/_-]+")) {
+            if (token.length() >= 3) {
+                terms.add(token);
+            }
+        }
+
+        return terms;
     }
 
     private void applyListProjection(
@@ -294,7 +700,7 @@ public class VacancyService {
     ) {
         String sortBy = normalizeSortBy(params.getSortBy());
 
-        if ("asc".equalsIgnoreCase(params.getSortDirection())) {
+        if ("asc".equals(normalizeSortDirection(params.getSortDirection()))) {
             query.orderBy(cb.asc(root.get(sortBy)));
         } else {
             query.orderBy(cb.desc(root.get(sortBy)));
@@ -404,8 +810,16 @@ public class VacancyService {
         return "title";
     }
 
+    private String normalizeSortDirection(String sortDirection) {
+        return "asc".equalsIgnoreCase(sortDirection) ? "asc" : "desc";
+    }
+
     private boolean hasText(String value) {
         return value != null && !value.trim().isEmpty();
+    }
+
+    private boolean isEmpty(List<?> values) {
+        return values == null || values.isEmpty();
     }
 
     private String likePattern(String value) {
@@ -417,6 +831,7 @@ public class VacancyService {
     }
 
     @Transactional
+    @CacheEvict(value = "vacancy_recommendations_default", allEntries = true)
     public void archiveVacancy(User user, String publicId) {
         int updated = vacancyRepository.archiveByPublicIdAndEmployerId(
                 publicId.toLowerCase(),
@@ -430,6 +845,7 @@ public class VacancyService {
     }
 
     @Transactional
+    @CacheEvict(value = "vacancy_recommendations_default", allEntries = true)
     public void restoreVacancy(User user, String publicId) {
         int updated = vacancyRepository.restoreByPublicIdAndEmployerId(
                 publicId.toLowerCase(),
@@ -447,6 +863,7 @@ public class VacancyService {
     }
 
     @Transactional
+    @CacheEvict(value = "vacancy_recommendations_default", allEntries = true)
     public void deleteVacancy(User user, String publicId) {
         Vacancy vacancy = vacancyRepository.findByPublicId(publicId).orElseThrow(() ->
                 new VacancyNotFoundException("Vacancy not found"));
@@ -459,6 +876,7 @@ public class VacancyService {
     }
 
     @Transactional
+    @CacheEvict(value = "vacancy_recommendations_default", allEntries = true)
     public ResponseEntity<Object> createVacancy(User user, NewVacancyDto newVacancy){
         validateSingleInternalContact(newVacancy);
 
@@ -527,6 +945,24 @@ public class VacancyService {
         } catch (Exception ex) {
             log.warn("HeadHunter aggregation failed", ex);
         }
+    }
+
+    private record RecommendedResume(
+            String profession,
+            String city,
+            Long expectedSalaryFrom,
+            Long expectedSalaryTo,
+            String employmentId,
+            String workFormatId,
+            String experienceId,
+            Set<Integer> skillIds
+    ) {
+    }
+
+    private record ScoredVacancy(
+            VacancyListProjection vacancy,
+            int score
+    ) {
     }
 
 }
