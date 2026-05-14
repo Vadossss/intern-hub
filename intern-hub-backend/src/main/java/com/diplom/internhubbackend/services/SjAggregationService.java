@@ -16,6 +16,7 @@ import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -123,6 +124,7 @@ public class SjAggregationService {
         this.vacancyExcludedWordService = vacancyExcludedWordService;
     }
 
+    @CacheEvict(value = "vacancy_recommendations_default", allEntries = true)
     public void fetchAndSave() {
         if (superJobApiKey == null || superJobApiKey.isBlank()) {
             log.warn("SuperJob aggregation skipped: superjob.api.key is empty");

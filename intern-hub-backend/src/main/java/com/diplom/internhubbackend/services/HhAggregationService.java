@@ -17,6 +17,7 @@ import com.diplom.internhubbackend.models.VacancySource;
 import com.diplom.internhubbackend.repositories.VacancyRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -120,6 +121,7 @@ public class HhAggregationService {
         this.keySkillService = keySkillService;
     }
 
+    @CacheEvict(value = "vacancy_recommendations_default", allEntries = true)
     public synchronized void fetchAndSave() {
         VacancySource vacancySource = vacancySourceService.getVacancySourceByCode("HH");
         if (vacancySource == null || !vacancySource.isActive()) {
