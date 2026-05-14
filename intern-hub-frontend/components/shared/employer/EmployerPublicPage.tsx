@@ -7,6 +7,7 @@ import {
   BriefcaseBusiness,
   Building2,
   ExternalLink,
+  Flag,
   Globe,
   MapPin,
 } from "lucide-react";
@@ -14,6 +15,7 @@ import {
 import type { VacancyResponseDto } from "@/app/types/api";
 import { RichTextContent } from "@/components/shared/RichText";
 import { VacanciesSection } from "@/components/shared/VacanciesSection";
+import { ComplaintDialog } from "@/components/shared/complaints";
 import {
   EmployerBreadcrumbs,
   EmployerPageSkeleton,
@@ -45,6 +47,7 @@ export function EmployerPublicPage() {
   const [activeTab, setActiveTab] = useState<EmployerTab>("about");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [complaintOpen, setComplaintOpen] = useState(false);
 
   useEffect(() => {
     const nextTab = getEmployerTabFromSection(section);
@@ -177,6 +180,15 @@ export function EmployerPublicPage() {
                   >
                     {vacancyTotal} вакансий
                   </Badge>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-8 rounded-full border-[#161616]/10 bg-white px-3 text-xs font-bold text-[#5f4545] hover:bg-[#f7eeee]"
+                    onClick={() => setComplaintOpen(true)}
+                  >
+                    <Flag className="h-3.5 w-3.5" />
+                    Пожаловаться
+                  </Button>
                 </div>
 
                 <h1 className="mt-4 text-3xl font-black leading-tight text-[#111] sm:text-4xl">
@@ -252,6 +264,13 @@ export function EmployerPublicPage() {
           </section>
         )}
       </div>
+      <ComplaintDialog
+        open={complaintOpen}
+        onOpenChange={setComplaintOpen}
+        targetType="EMPLOYER_PROFILE"
+        targetId={employerId}
+        targetLabel={companyName}
+      />
     </main>
   );
 }
