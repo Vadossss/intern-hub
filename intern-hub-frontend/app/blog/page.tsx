@@ -1,4 +1,4 @@
-import { BlogPage } from "@/components/shared/blog/BlogPage";
+import { BlogPage } from "@/components/shared/blog";
 
 export default function BlogRoutePage() {
   return <BlogPage />;
