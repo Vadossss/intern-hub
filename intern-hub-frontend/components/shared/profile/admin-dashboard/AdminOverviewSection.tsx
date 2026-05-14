@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, FileWarning, Shield, UserCog } from "lucide-react";
+import { BookOpen, FileWarning, Flag, Shield, UserCog } from "lucide-react";
 
 import { profileSectionHref } from "../utils";
 import { AdminHeader } from "./AdminHeader";
@@ -9,11 +9,15 @@ import { AdminWorkflowStep } from "./AdminWorkflowStep";
 
 export function AdminOverviewSection({
   activeExcludedWords,
+  complaintGroupsTotal,
   excludedWordsTotal,
+  newComplaintsTotal,
   pendingVacanciesTotal,
 }: {
   activeExcludedWords: number;
+  complaintGroupsTotal: number;
   excludedWordsTotal: number;
+  newComplaintsTotal: number;
   pendingVacanciesTotal: number;
 }) {
   return (
@@ -24,7 +28,7 @@ export function AdminOverviewSection({
         description="Все административные инструменты вынесены в отдельные разделы: модерация вакансий, правила агрегации, пользователи и блог."
       />
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
         <AdminMetricCard
           href={profileSectionHref("vacancies")}
           icon={<FileWarning className="h-5 w-5" />}
@@ -38,6 +42,13 @@ export function AdminOverviewSection({
           label="Стоп-слова"
           value={String(excludedWordsTotal)}
           detail={`${activeExcludedWords} активных правил фильтрации`}
+        />
+        <AdminMetricCard
+          href={profileSectionHref("complaints")}
+          icon={<Flag className="h-5 w-5" />}
+          label="Жалобы"
+          value={String(newComplaintsTotal)}
+          detail={`${complaintGroupsTotal} сущностей с обращениями`}
         />
         <AdminMetricCard
           href={profileSectionHref("users")}

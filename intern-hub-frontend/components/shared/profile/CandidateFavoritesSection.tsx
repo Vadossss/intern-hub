@@ -18,6 +18,7 @@ import {
   removeCandidateFavorite,
 } from "@/lib/api/profile";
 import { cn } from "@/lib/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export function CandidateFavoritesSection({
   favorites,
@@ -54,6 +55,8 @@ export function CandidateFavoritesSection({
     }
   }
 
+  console.log(favorites);
+
   return (
     <Card className="rounded-2xl border-[#161616]/10 bg-white/90">
       <CardHeader>
@@ -79,7 +82,7 @@ export function CandidateFavoritesSection({
                   <div className="min-w-0">
                     <Link
                       href={vacancyHref(favorite.publicId)}
-                      className="break-words font-semibold text-[#171717] transition hover:text-[#48644d] hover:underline"
+                      className="break-words text-lg font-semibold text-[#171717] transition hover:text-[#48644d] hover:underline"
                     >
                       {favorite.title}
                     </Link>
@@ -87,11 +90,19 @@ export function CandidateFavoritesSection({
                     {employerId ? (
                       <Link
                         href={employerUrl}
-                        className="mt-1 flex w-fit items-center gap-1 text-sm font-medium text-[#48644d] transition hover:underline"
+                        className="mt-1 flex w-fit items-center gap-1 text-md font-medium text-[#48644d] transition"
                       >
-                        <Building2 className="h-4 w-4 text-[#8a8a8a]" />
-                        {employerName ??
-                          "Компания не указана"}
+                        <Avatar>
+                          <AvatarImage
+                            src={favorite.employer?.avatarUrl}
+                          ></AvatarImage>
+                          <AvatarFallback>
+                            {employerName?.slice(0, 1)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="hover:underline">
+                          {employerName ?? "Компания не указана"}
+                        </span>
                       </Link>
                     ) : (
                       <Link
@@ -99,8 +110,7 @@ export function CandidateFavoritesSection({
                         className="mt-1 flex w-fit items-center gap-1 text-sm font-medium text-[#48644d] transition hover:underline"
                       >
                         <Building2 className="h-4 w-4 text-[#8a8a8a]" />
-                        {employerName ??
-                          "Компания не указана"}
+                        {employerName ?? "Компания не указана"}
                       </Link>
                     )}
                   </div>

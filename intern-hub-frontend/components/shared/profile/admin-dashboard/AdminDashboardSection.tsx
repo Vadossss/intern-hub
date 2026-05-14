@@ -7,22 +7,28 @@ import { toast } from "sonner";
 import type { VacancyResponseDto } from "@/app/types/api";
 import {
   type AdminUserRole,
+  type ComplaintGroup,
+  type ComplaintModerationStatus,
   type VacancyExcludedWord,
   approveModerationVacancy,
+  blockComplaintGroupOwner,
   blockModeratedUser,
   changeModeratedUserRole,
   createVacancyExcludedWord,
   deleteVacancyExcludedWord,
+  getComplaintGroups,
   getPendingVacancies,
   getVacancyExcludedWords,
   rejectModerationVacancy,
   unblockModeratedUser,
+  updateComplaintGroupStatus,
   updateVacancyExcludedWord,
 } from "@/lib/api/admin";
 
 import { AdminOverviewSection } from "./AdminOverviewSection";
 import { AdminSectionSkeleton } from "./AdminSectionSkeleton";
 import { BlogAdminSection } from "./BlogAdminSection";
+import { ComplaintsSection } from "./ComplaintsSection";
 import { ExcludedWordsSection } from "./ExcludedWordsSection";
 import { ModerationVacanciesSection } from "./ModerationVacanciesSection";
 import type { AdminWorkspaceSection } from "./types";
@@ -34,11 +40,12 @@ export function AdminDashboardSection({
 }: {
   section: AdminWorkspaceSection;
 }) {
-  const [pendingVacancies, setPendingVacancies] = useState<VacancyResponseDto[]>(
-    [],
-  );
+  const [pendingVacancies, setPendingVacancies] = useState<
+    VacancyResponseDto[]
+  >([]);
   const [pendingVacanciesTotal, setPendingVacanciesTotal] = useState(0);
   const [excludedWords, setExcludedWords] = useState<VacancyExcludedWord[]>([]);
+  const [complaintGroups, setComplaintGroups] = useState<ComplaintGroup[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [newWord, setNewWord] = useState("");
@@ -54,10 +61,12 @@ export function AdminDashboardSection({
     async function loadAdminData() {
       try {
         setIsLoading(true);
-        const [vacanciesResponse, wordsResponse] = await Promise.all([
-          getPendingVacancies(0, 10),
-          getVacancyExcludedWords(),
-        ]);
+        const [vacanciesResponse, wordsResponse, complaintGroupsResponse] =
+          await Promise.all([
+            getPendingVacancies(0, 10),
+            getVacancyExcludedWords(),
+            getComplaintGroups(),
+          ]);
 
         if (!active) {
           return;
@@ -66,6 +75,7 @@ export function AdminDashboardSection({
         setPendingVacancies(vacanciesResponse.content);
         setPendingVacanciesTotal(vacanciesResponse.totalElements);
         setExcludedWords(wordsResponse);
+        setComplaintGroups(complaintGroupsResponse);
       } catch (error) {
         console.error("Failed to load admin dashboard:", error);
         if (active) {
@@ -89,12 +99,19 @@ export function AdminDashboardSection({
     () => excludedWords.filter((word) => word.active).length,
     [excludedWords],
   );
+  const newComplaintsTotal = useMemo(
+    () => complaintGroups.reduce((total, group) => total + group.newCount, 0),
+    [complaintGroups],
+  );
 
   if (isLoading) {
     return <AdminSectionSkeleton section={section} />;
   }
 
-  async function moderateVacancy(publicId: string, action: "approve" | "reject") {
+  async function moderateVacancy(
+    publicId: string,
+    action: "approve" | "reject",
+  ) {
     try {
       setIsSaving(true);
 
@@ -177,6 +194,57 @@ export function AdminDashboardSection({
     }
   }
 
+  async function moderateComplaintGroup(
+    group: ComplaintGroup,
+    status: ComplaintModerationStatus,
+    moderationComment: string,
+  ) {
+    try {
+      setIsSaving(true);
+      const updatedGroups = await updateComplaintGroupStatus({
+        targetType: group.targetType,
+        targetId: group.targetId,
+        status,
+        moderationComment: moderationComment.trim() || undefined,
+      });
+      setComplaintGroups(updatedGroups);
+      toast.success("Статус жалоб обновлён.");
+    } catch (error) {
+      console.error("Failed to update complaint group status:", error);
+      toast.error("Не удалось обновить статус жалоб.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function blockComplaintOwner(
+    group: ComplaintGroup,
+    reason: string,
+    moderationComment: string,
+  ) {
+    if (!group.ownerId) {
+      toast.error("У этой сущности не найден владелец для блокировки.");
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      const updatedGroups = await blockComplaintGroupOwner({
+        targetType: group.targetType,
+        targetId: group.targetId,
+        reason: reason.trim() || undefined,
+        moderationComment: moderationComment.trim() || undefined,
+      });
+      setComplaintGroups(updatedGroups);
+      toast.success("Владелец заблокирован, жалобы отмечены как решённые.");
+    } catch (error) {
+      console.error("Failed to block complaint target owner:", error);
+      toast.error("Не удалось заблокировать владельца по жалобам.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
   async function changeRole() {
     const id = Number(userId);
     if (!Number.isFinite(id) || id <= 0) {
@@ -205,7 +273,11 @@ export function AdminDashboardSection({
 
     try {
       setIsSaving(true);
-      await blockModeratedUser(id, blockReason.trim(), toLocalDateTime(blockUntil));
+      await blockModeratedUser(
+        id,
+        blockReason.trim(),
+        toLocalDateTime(blockUntil),
+      );
       toast.success("Пользователь заблокирован.");
     } catch (error) {
       console.error("Failed to block user:", error);
@@ -263,6 +335,19 @@ export function AdminDashboardSection({
     );
   }
 
+  if (section === "complaints") {
+    return (
+      <ComplaintsSection
+        complaintGroups={complaintGroups}
+        isLoading={isLoading}
+        isSaving={isSaving}
+        newComplaintsTotal={newComplaintsTotal}
+        onBlockOwner={blockComplaintOwner}
+        onStatusChange={moderateComplaintGroup}
+      />
+    );
+  }
+
   if (section === "users") {
     return (
       <UsersSection
@@ -289,7 +374,9 @@ export function AdminDashboardSection({
   return (
     <AdminOverviewSection
       activeExcludedWords={activeExcludedWords}
+      complaintGroupsTotal={complaintGroups.length}
       excludedWordsTotal={excludedWords.length}
+      newComplaintsTotal={newComplaintsTotal}
       pendingVacanciesTotal={pendingVacanciesTotal}
     />
   );

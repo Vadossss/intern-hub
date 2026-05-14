@@ -10,6 +10,7 @@ import {
   Eye,
   ExternalLink,
   FileText,
+  Flag,
   Mail,
   MapPin,
   Monitor,
@@ -19,6 +20,7 @@ import {
 } from "lucide-react";
 
 import { RichTextContent } from "@/components/shared/RichText";
+import { ComplaintDialog } from "@/components/shared/complaints";
 import { ResumeExtendedDetails } from "@/components/shared/profile/ResumeExtendedDetails";
 import {
   CandidatePageSkeleton,
@@ -48,6 +50,10 @@ export function CandidatePublicPage() {
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [complaintResume, setComplaintResume] = useState<{
+    id: number;
+    label: string;
+  } | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -278,6 +284,20 @@ export function CandidatePublicPage() {
                             <Eye className="h-3.5 w-3.5" />
                             {resume.viewCount ?? 0}
                           </Badge>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="h-8 rounded-full border-[#161616]/10 bg-white px-3 text-xs font-bold text-[#5f4545] hover:bg-[#f7eeee]"
+                            onClick={() =>
+                              setComplaintResume({
+                                id: resume.id,
+                                label: resume.profession || "Резюме",
+                              })
+                            }
+                          >
+                            <Flag className="h-3.5 w-3.5" />
+                            Пожаловаться
+                          </Button>
                         </div>
                       </div>
 
@@ -344,6 +364,17 @@ export function CandidatePublicPage() {
           </aside>
         </section>
       </div>
+      <ComplaintDialog
+        open={Boolean(complaintResume)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setComplaintResume(null);
+          }
+        }}
+        targetType="CANDIDATE_RESUME"
+        targetId={complaintResume ? String(complaintResume.id) : ""}
+        targetLabel={complaintResume?.label ?? "резюме"}
+      />
     </main>
   );
 }

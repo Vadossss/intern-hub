@@ -89,6 +89,7 @@ import {
 import {
   BookOpen,
   Bookmark,
+  Flag,
   FileWarning,
   FileText,
   Send,
@@ -780,6 +781,7 @@ export function ProfilePageContent() {
                   { id: "overview", label: "Обзор", icon: <Shield /> },
                   { id: "vacancies", label: "Модерация вакансий", icon: <FileWarning /> },
                   { id: "excluded-words", label: "Стоп-слова", icon: <Shield /> },
+                  { id: "complaints", label: "Жалобы", icon: <Flag /> },
                   { id: "users", label: "Пользователи", icon: <UserCog /> },
                   { id: "blog", label: "Блог", icon: <BookOpen /> },
                   ...(user

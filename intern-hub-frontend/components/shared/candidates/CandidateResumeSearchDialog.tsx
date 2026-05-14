@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight, BriefcaseBusiness, UserRound } from "lucide-react";
+import { ArrowUpRight, BriefcaseBusiness, Flag, UserRound } from "lucide-react";
 
 import { RichTextContent } from "@/components/shared/RichText";
+import { ComplaintDialog } from "@/components/shared/complaints";
 import { InfoCard } from "@/components/shared/profile/InfoCard";
 import { ResumeExtendedDetails } from "@/components/shared/profile/ResumeExtendedDetails";
 import {
@@ -30,6 +32,7 @@ export function CandidateResumeSearchDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const [complaintOpen, setComplaintOpen] = useState(false);
   const avatarSrc = mediaUrl(candidate?.avatarUrl);
   const resume = candidate?.resume;
   const candidateName =
@@ -38,13 +41,14 @@ export function CandidateResumeSearchDialog({
     "РЎРѕРёСЃРєР°С‚РµР»СЊ";
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-[calc(100vw-2rem)] overflow-x-hidden overflow-y-auto sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>РЎРѕРёСЃРєР°С‚РµР»СЊ Рё СЂРµР·СЋРјРµ</DialogTitle>
-        </DialogHeader>
-        {candidate && resume ? (
-          <div className="min-w-0 space-y-5">
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-h-[90vh] max-w-[calc(100vw-2rem)] overflow-x-hidden overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>РЎРѕРёСЃРєР°С‚РµР»СЊ Рё СЂРµР·СЋРјРµ</DialogTitle>
+          </DialogHeader>
+          {candidate && resume ? (
+            <div className="min-w-0 space-y-5">
             <div className="flex min-w-0 items-start gap-4">
               <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#edf3ea] text-[#48644d]">
                 {avatarSrc ? (
@@ -165,10 +169,29 @@ export function CandidateResumeSearchDialog({
                   </Link>
                 </Button>
               ) : null}
+              <Button
+                type="button"
+                variant="outline"
+                className="text-[#5f4545] hover:bg-[#f7eeee]"
+                onClick={() => setComplaintOpen(true)}
+              >
+                <Flag className="h-4 w-4" />
+                Пожаловаться
+              </Button>
             </div>
-          </div>
-        ) : null}
-      </DialogContent>
-    </Dialog>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+      {resume?.id ? (
+        <ComplaintDialog
+          open={complaintOpen}
+          onOpenChange={setComplaintOpen}
+          targetType="CANDIDATE_RESUME"
+          targetId={String(resume.id)}
+          targetLabel={resume.profession || candidateName}
+        />
+      ) : null}
+    </>
   );
 }
