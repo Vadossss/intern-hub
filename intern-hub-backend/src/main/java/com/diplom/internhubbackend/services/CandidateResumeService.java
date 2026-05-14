@@ -16,6 +16,7 @@ import com.diplom.internhubbackend.models.User;
 import com.diplom.internhubbackend.models.WorkFormat;
 import com.diplom.internhubbackend.repositories.CandidateResumeRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,6 +44,7 @@ public class CandidateResumeService {
     private final ViewTrackingService viewTrackingService;
 
     @Transactional
+    @CacheEvict(value = "vacancy_recommendations_default", allEntries = true)
     public CandidateResumeResponseDto ensureDefaultResume(User user) {
         CandidateProfile profile = candidateProfileService.getOrCreateProfile(user);
 
@@ -74,6 +76,7 @@ public class CandidateResumeService {
     }
 
     @Transactional
+    @CacheEvict(value = "vacancy_recommendations_default", allEntries = true)
     public CandidateResumeResponseDto createResume(User user, CandidateResumeUpsertDto request) {
         CandidateResumeUpsertDto safeRequest = request == null ? new CandidateResumeUpsertDto() : request;
         CandidateProfile profile = candidateProfileService.getOrCreateProfile(user);
@@ -97,6 +100,7 @@ public class CandidateResumeService {
     }
 
     @Transactional
+    @CacheEvict(value = "vacancy_recommendations_default", allEntries = true)
     public CandidateResumeResponseDto updateResume(User user, Long resumeId, CandidateResumeUpsertDto request) {
         CandidateResumeUpsertDto safeRequest = request == null ? new CandidateResumeUpsertDto() : request;
         CandidateResume resume = candidateResumeRepository
@@ -112,6 +116,7 @@ public class CandidateResumeService {
     }
 
     @Transactional
+    @CacheEvict(value = "vacancy_recommendations_default", allEntries = true)
     public CandidateResumeResponseDto archiveResume(User user, Long resumeId) {
         CandidateResume resume = getOwnedResume(user, resumeId);
         resume.setArchived(true);
@@ -122,6 +127,7 @@ public class CandidateResumeService {
     }
 
     @Transactional
+    @CacheEvict(value = "vacancy_recommendations_default", allEntries = true)
     public CandidateResumeResponseDto restoreResume(User user, Long resumeId) {
         CandidateResume resume = getOwnedResume(user, resumeId);
         resume.setArchived(false);
@@ -132,6 +138,7 @@ public class CandidateResumeService {
     }
 
     @Transactional
+    @CacheEvict(value = "vacancy_recommendations_default", allEntries = true)
     public void deleteResume(User user, Long resumeId) {
         CandidateResume resume = getOwnedResume(user, resumeId);
 

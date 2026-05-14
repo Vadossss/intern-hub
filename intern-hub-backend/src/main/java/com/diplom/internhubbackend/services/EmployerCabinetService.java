@@ -21,6 +21,7 @@ import com.diplom.internhubbackend.dto.projection.CandidateResumeWorkExperienceP
 import com.diplom.internhubbackend.dto.projection.VacancyListProjection;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -71,6 +72,7 @@ public class EmployerCabinetService {
     }
 
     @Transactional
+    @CacheEvict(value = "vacancy_recommendations_default", allEntries = true)
     public VacancyResponseDto updateVacancy(User employer, String vacancyPublicId, NewVacancyDto request) {
         Vacancy vacancy = vacancyRepository.findByPublicIdAndEmployerId(vacancyPublicId.toLowerCase(), employer.getId())
                 .orElseThrow(() -> new VacancyNotFoundException("Vacancy not found"));
