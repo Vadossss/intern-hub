@@ -6,5 +6,9 @@
         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
 
     <include relativeToChangelogFile="true" file="task/create-default-entities.xml"/>
+    <include relativeToChangelogFile="true" file="task/extend-candidate-resume-details.xml"/>
+    <include relativeToChangelogFile="true" file="task/create-vacancy-search-indexes.xml"/>
+    <include relativeToChangelogFile="true" file="task/create-view-tracking.xml"/>
+    <include relativeToChangelogFile="true" file="task/create-russian-cities.xml"/>
 
 </databaseChangeLog>
