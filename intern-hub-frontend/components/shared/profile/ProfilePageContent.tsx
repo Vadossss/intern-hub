@@ -89,6 +89,8 @@ import {
 import {
   BookOpen,
   Bookmark,
+  Building2,
+  Database,
   Flag,
   FileWarning,
   FileText,
@@ -98,16 +100,18 @@ import {
   User,
   UserCog,
   Heart,
+  PlusCircle,
 } from "lucide-react";
 
 export function ProfilePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, setUser } = useAuth();
-  const role: RoleView =
-    user?.role === "ROLE_ADMIN"
+  const role: RoleView | null = !user
+    ? null
+    : user.role === "ROLE_ADMIN"
       ? "admin"
-      : user?.role === "ROLE_EMPLOYER"
+      : user.role === "ROLE_EMPLOYER"
         ? "employer"
         : "candidate";
   const [candidateSection, setCandidateSection] =
@@ -147,6 +151,11 @@ export function ProfilePageContent() {
     useState<VacancyFormDictionaries | null>(null);
 
   useEffect(() => {
+    if (!role || !user?.id) {
+      setIsLoading(true);
+      return;
+    }
+
     let isMounted = true;
 
     async function loadProfile() {
@@ -226,7 +235,7 @@ export function ProfilePageContent() {
     return () => {
       isMounted = false;
     };
-  }, [role]);
+  }, [role, user?.id]);
 
   useEffect(() => {
     const sectionParam = searchParams.get(PROFILE_SECTION_PARAM);
@@ -763,13 +772,24 @@ export function ProfilePageContent() {
       toast.success(
         status === "ACCEPTED" ? "Отклик принят." : "Отклик отклонен.",
       );
+      if (status === "ACCEPTED" && updated.chatId) {
+        openChat(updated.chatId);
+      }
     } catch (error) {
       console.error("Failed to update application:", error);
       toast.error("Не удалось обновить статус отклика.");
     }
   }
 
-  if (isLoading) {
+  function openChat(chatId: string) {
+    window.dispatchEvent(
+      new CustomEvent("intern-hub:open-chat", {
+        detail: { chatId },
+      }),
+    );
+  }
+
+  if (!role || isLoading) {
     return <ProfilePageSkeleton roleLabel={roleLabel} />;
   }
 
@@ -790,9 +810,24 @@ export function ProfilePageContent() {
                     icon: <FileWarning />,
                   },
                   {
+                    id: "manual-vacancy",
+                    label: "Добавить вакансию",
+                    icon: <PlusCircle />,
+                  },
+                  {
+                    id: "employers",
+                    label: "Добавить работодателя",
+                    icon: <Building2 />,
+                  },
+                  {
                     id: "excluded-words",
                     label: "Стоп-слова",
                     icon: <Shield />,
+                  },
+                  {
+                    id: "sources",
+                    label: "Источники вакансий",
+                    icon: <Database />,
                   },
                   { id: "complaints", label: "Жалобы", icon: <Flag /> },
                   { id: "users", label: "Пользователи", icon: <UserCog /> },
@@ -955,6 +990,7 @@ export function ProfilePageContent() {
                 onVacancyChange={changeEmployerApplicationFilter}
                 onOpenCandidate={openCandidate}
                 onStatusChange={changeApplicationStatus}
+                onOpenChat={openChat}
               />
             ) : null}
 

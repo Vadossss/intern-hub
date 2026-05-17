@@ -4,6 +4,7 @@ import type { FormEvent } from "react";
 import { Archive, Plus, RotateCcw, Save, Trash2, X } from "lucide-react";
 
 import { CityAutocompleteInput } from "@/components/shared/CityAutocompleteInput";
+import { RichTextEditor } from "@/components/shared/RichText";
 import { SkillsSelector } from "@/components/shared/SkillsSelector";
 import { statusLabel } from "@/components/shared/profile/utils";
 import { Button } from "@/components/ui/button";
@@ -166,11 +167,10 @@ export function EmployerVacancyForm({
         <Input name="link" placeholder="Внешняя ссылка" />
       </div>
 
-      <textarea
+      <RichTextEditor
         name="description"
         defaultValue={vacancy?.description}
         placeholder="Описание задач, команды и ожиданий"
-        className="min-h-40 rounded-md border bg-white px-3 py-2 text-sm"
       />
 
       <div className="grid gap-4 sm:grid-cols-3">

@@ -7,25 +7,37 @@ import { toast } from "sonner";
 import type { VacancyResponseDto } from "@/app/types/api";
 import {
   type AdminUserRole,
+  type AdminEmployerCreatePayload,
+  type AdminEmployerOption,
   type ComplaintGroup,
   type ComplaintModerationStatus,
+  type AdminVacancyPayload,
   type VacancyExcludedWord,
+  type VacancySource,
+  type VacancySourcePayload,
   approveModerationVacancy,
   blockComplaintGroupOwner,
   blockModeratedUser,
   changeModeratedUserRole,
+  createAdminEmployer,
+  createAdminVacancy,
+  createVacancySource,
   createVacancyExcludedWord,
+  deleteVacancySource,
   deleteVacancyExcludedWord,
   getComplaintGroups,
   getPendingVacancies,
+  getVacancySources,
   getVacancyExcludedWords,
   rejectModerationVacancy,
   unblockModeratedUser,
   updateComplaintGroupStatus,
+  updateVacancySource,
   updateVacancyExcludedWord,
 } from "@/lib/api/admin";
 
 import { AdminOverviewSection } from "./AdminOverviewSection";
+import { AdminEmployerCreateSection } from "./AdminEmployerCreateSection";
 import { AdminSectionSkeleton } from "./AdminSectionSkeleton";
 import { BlogAdminSection } from "./BlogAdminSection";
 import { ComplaintsSection } from "./ComplaintsSection";
@@ -33,6 +45,11 @@ import { ExcludedWordsSection } from "./ExcludedWordsSection";
 import { ModerationVacanciesSection } from "./ModerationVacanciesSection";
 import type { AdminWorkspaceSection } from "./types";
 import { UsersSection } from "./UsersSection";
+import { AdminVacancyCreateSection } from "./AdminVacancyCreateSection";
+import {
+  VacancySourcesSection,
+  type NewSourceForm,
+} from "./VacancySourcesSection";
 import { byWord, toLocalDateTime } from "./utils";
 
 export function AdminDashboardSection({
@@ -45,11 +62,20 @@ export function AdminDashboardSection({
   >([]);
   const [pendingVacanciesTotal, setPendingVacanciesTotal] = useState(0);
   const [excludedWords, setExcludedWords] = useState<VacancyExcludedWord[]>([]);
+  const [vacancySources, setVacancySources] = useState<VacancySource[]>([]);
   const [complaintGroups, setComplaintGroups] = useState<ComplaintGroup[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [newWord, setNewWord] = useState("");
   const [newWordActive, setNewWordActive] = useState(true);
+  const [newSource, setNewSource] = useState<NewSourceForm>({
+    code: "",
+    name: "",
+    baseUrl: "",
+    ttlDays: "3",
+    active: true,
+    visible: true,
+  });
   const [userId, setUserId] = useState("");
   const [selectedRole, setSelectedRole] = useState<AdminUserRole>("ROLE_USER");
   const [blockReason, setBlockReason] = useState("");
@@ -61,11 +87,17 @@ export function AdminDashboardSection({
     async function loadAdminData() {
       try {
         setIsLoading(true);
-        const [vacanciesResponse, wordsResponse, complaintGroupsResponse] =
+        const [
+          vacanciesResponse,
+          wordsResponse,
+          complaintGroupsResponse,
+          sourcesResponse,
+        ] =
           await Promise.all([
             getPendingVacancies(0, 10),
             getVacancyExcludedWords(),
             getComplaintGroups(),
+            getVacancySources(),
           ]);
 
         if (!active) {
@@ -76,6 +108,7 @@ export function AdminDashboardSection({
         setPendingVacanciesTotal(vacanciesResponse.totalElements);
         setExcludedWords(wordsResponse);
         setComplaintGroups(complaintGroupsResponse);
+        setVacancySources(sourcesResponse);
       } catch (error) {
         console.error("Failed to load admin dashboard:", error);
         if (active) {
@@ -189,6 +222,135 @@ export function AdminDashboardSection({
     } catch (error) {
       console.error("Failed to delete excluded word:", error);
       toast.error("Не удалось удалить стоп-слово.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function addVacancySource(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const code = newSource.code.trim();
+    const name = newSource.name.trim();
+    const ttlDays = Number(newSource.ttlDays);
+
+    if (!code || !name) {
+      toast.error("Укажите код и название источника вакансий.");
+      return;
+    }
+
+    if (!Number.isFinite(ttlDays) || ttlDays < 1 || ttlDays > 3650) {
+      toast.error("TTL должен быть от 1 до 3650 дней.");
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      const created = await createVacancySource({
+        code,
+        name,
+        baseUrl: newSource.baseUrl.trim(),
+        ttlDays,
+        active: newSource.active,
+        visible: newSource.visible,
+      });
+      setVacancySources((items) => [...items, created].sort(bySourceName));
+      setNewSource({
+        code: "",
+        name: "",
+        baseUrl: "",
+        ttlDays: "3",
+        active: true,
+        visible: true,
+      });
+      toast.success("Источник вакансий добавлен.");
+    } catch (error) {
+      console.error("Failed to create vacancy source:", error);
+      toast.error("Не удалось добавить источник вакансий.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function addAdminVacancy(
+    payload: AdminVacancyPayload,
+  ): Promise<boolean> {
+    try {
+      setIsSaving(true);
+      const created = await createAdminVacancy(payload);
+      toast.success(`Вакансия опубликована: ${created.publicId}`);
+      return true;
+    } catch (error) {
+      console.error("Failed to create admin vacancy:", error);
+      toast.error("Не удалось создать вакансию.");
+      return false;
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function addAdminEmployer(
+    payload: AdminEmployerCreatePayload,
+  ): Promise<AdminEmployerOption | null> {
+    if (!payload.companyName) {
+      toast.error("Укажите название компании.");
+      return null;
+    }
+
+    if (payload.password && !payload.email) {
+      toast.error("Чтобы задать пароль, укажите почту работодателя.");
+      return null;
+    }
+
+    try {
+      setIsSaving(true);
+      const created = await createAdminEmployer(payload);
+      toast.success(`Работодатель создан: ${created.companyName ?? created.email}`);
+      return created;
+    } catch (error) {
+      console.error("Failed to create admin employer:", error);
+      toast.error("Не удалось создать работодателя.");
+      return null;
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function toggleVacancySource(
+    source: VacancySource,
+    patch: VacancySourcePayload,
+  ): Promise<boolean> {
+    try {
+      setIsSaving(true);
+      const updated = await updateVacancySource(source.id, patch);
+      setVacancySources((items) =>
+        items
+          .map((item) => (item.id === updated.id ? updated : item))
+          .sort(bySourceName),
+      );
+      toast.success("Источник вакансий обновлён.");
+      return true;
+    } catch (error) {
+      console.error("Failed to update vacancy source:", error);
+      toast.error("Не удалось обновить источник вакансий.");
+      return false;
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function removeVacancySource(sourceId: number) {
+    try {
+      setIsSaving(true);
+      await deleteVacancySource(sourceId);
+      setVacancySources((items) =>
+        items.filter((item) => item.id !== sourceId),
+      );
+      toast.success("Источник вакансий удалён.");
+    } catch (error) {
+      console.error("Failed to delete vacancy source:", error);
+      toast.error(
+        "Не удалось удалить источник. Сначала отвяжите от него вакансии и работодателей.",
+      );
     } finally {
       setIsSaving(false);
     }
@@ -335,6 +497,40 @@ export function AdminDashboardSection({
     );
   }
 
+  if (section === "manual-vacancy") {
+    return (
+      <AdminVacancyCreateSection
+        sources={vacancySources}
+        isSaving={isSaving}
+        onCreate={addAdminVacancy}
+      />
+    );
+  }
+
+  if (section === "employers") {
+    return (
+      <AdminEmployerCreateSection
+        isSaving={isSaving}
+        onCreate={addAdminEmployer}
+      />
+    );
+  }
+
+  if (section === "sources") {
+    return (
+      <VacancySourcesSection
+        sources={vacancySources}
+        isLoading={isLoading}
+        isSaving={isSaving}
+        newSource={newSource}
+        onAdd={addVacancySource}
+        onDelete={removeVacancySource}
+        onNewSourceChange={setNewSource}
+        onUpdate={toggleVacancySource}
+      />
+    );
+  }
+
   if (section === "complaints") {
     return (
       <ComplaintsSection
@@ -379,5 +575,12 @@ export function AdminDashboardSection({
       newComplaintsTotal={newComplaintsTotal}
       pendingVacanciesTotal={pendingVacanciesTotal}
     />
+  );
+}
+
+function bySourceName(left: VacancySource, right: VacancySource) {
+  return (
+    left.name.localeCompare(right.name, "ru") ||
+    left.code.localeCompare(right.code, "ru")
   );
 }

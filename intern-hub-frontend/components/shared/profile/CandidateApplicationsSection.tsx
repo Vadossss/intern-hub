@@ -2,12 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Clock3, MapPin } from "lucide-react";
+import { Clock3, MapPin, MessageCircle } from "lucide-react";
 
 import {
   employerHref,
   formatDate,
-  formatMoney,
   statusLabel,
   vacancyHref,
 } from "@/components/shared/profile/utils";
@@ -15,9 +14,30 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { CandidateApplicationHistory } from "@/lib/api/profile";
-import { Georama } from "next/font/google";
 
-type ApplicationsView = "active" | "archive";
+type ApplicationsView = "active" | "accepted" | "rejected";
+
+const applicationTabs: Array<{
+  id: ApplicationsView;
+  label: string;
+  empty: string;
+}> = [
+  {
+    id: "active",
+    label: "Активные",
+    empty: "Активных откликов пока нет.",
+  },
+  {
+    id: "accepted",
+    label: "Приняты",
+    empty: "Принятых откликов пока нет.",
+  },
+  {
+    id: "rejected",
+    label: "Отказано",
+    empty: "Отказов пока нет.",
+  },
+];
 
 export function CandidateApplicationsSection({
   applications,
@@ -25,20 +45,16 @@ export function CandidateApplicationsSection({
   applications: CandidateApplicationHistory[];
 }) {
   const [view, setView] = useState<ApplicationsView>("active");
-  const activeApplications = applications.filter(
-    (application) =>
-      !application.archived &&
-      application.status !== "ACCEPTED" &&
-      application.status !== "REJECTED",
-  );
-  const archivedApplications = applications.filter(
-    (application) =>
-      application.archived ||
-      application.status === "ACCEPTED" ||
-      application.status === "REJECTED",
-  );
-  const visibleApplications =
-    view === "active" ? activeApplications : archivedApplications;
+  const applicationGroups: Record<
+    ApplicationsView,
+    CandidateApplicationHistory[]
+  > = {
+    active: applications.filter(isActiveApplication),
+    accepted: applications.filter(isAcceptedApplication),
+    rejected: applications.filter(isRejectedApplication),
+  };
+  const visibleApplications = applicationGroups[view];
+  const activeTab = applicationTabs.find((tab) => tab.id === view);
 
   return (
     <Card className="rounded-2xl border-[#161616]/10 bg-white/90">
@@ -50,14 +66,14 @@ export function CandidateApplicationsSection({
           <>
             <ApplicationsSwitch
               view={view}
-              activeCount={activeApplications.length}
-              archiveCount={archivedApplications.length}
+              groups={applicationGroups}
               onChange={setView}
             />
             <ApplicationGroup
-              title={view === "active" ? "Активные отклики" : "Архив откликов"}
+              title={activeTab?.label ?? "Отклики"}
               applications={visibleApplications}
-              archived={view === "archive"}
+              empty={activeTab?.empty ?? "Откликов пока нет."}
+              resolved={view !== "active"}
             />
           </>
         ) : (
@@ -72,41 +88,36 @@ export function CandidateApplicationsSection({
 
 function ApplicationsSwitch({
   view,
-  activeCount,
-  archiveCount,
+  groups,
   onChange,
 }: {
   view: ApplicationsView;
-  activeCount: number;
-  archiveCount: number;
+  groups: Record<ApplicationsView, CandidateApplicationHistory[]>;
   onChange: (view: ApplicationsView) => void;
 }) {
   return (
-    <div className="inline-flex rounded-xl border bg-white p-1">
-      <Button
-        type="button"
-        size="sm"
-        variant={view === "active" ? "default" : "ghost"}
-        className={view === "active" ? "bg-[#171717] text-white" : ""}
-        onClick={() => onChange("active")}
-      >
-        Активные
-        <Badge variant="outline" className="ml-2 rounded-lg bg-white/80">
-          {activeCount}
-        </Badge>
-      </Button>
-      <Button
-        type="button"
-        size="sm"
-        variant={view === "archive" ? "default" : "ghost"}
-        className={view === "archive" ? "bg-[#171717] text-white" : ""}
-        onClick={() => onChange("archive")}
-      >
-        Архив
-        <Badge variant="outline" className="ml-2 rounded-lg bg-white/80">
-          {archiveCount}
-        </Badge>
-      </Button>
+    <div className="grid gap-2 rounded-2xl border border-[#161616]/10 bg-[#f7f7f3] p-1 sm:grid-cols-3">
+      {applicationTabs.map((tab) => (
+        <button
+          key={tab.id}
+          type="button"
+          className={`rounded-xl px-4 py-3 text-left transition ${
+            view === tab.id
+              ? "bg-[#171717] text-white shadow-sm"
+              : "text-[#555] hover:bg-white"
+          }`}
+          onClick={() => onChange(tab.id)}
+        >
+          <span className="block text-sm font-extrabold">{tab.label}</span>
+          <span
+            className={`mt-1 block text-xs ${
+              view === tab.id ? "text-white/65" : "text-[#777]"
+            }`}
+          >
+            {groups[tab.id].length} откликов
+          </span>
+        </button>
+      ))}
     </div>
   );
 }
@@ -114,11 +125,13 @@ function ApplicationsSwitch({
 function ApplicationGroup({
   title,
   applications,
-  archived = false,
+  empty,
+  resolved = false,
 }: {
   title: string;
   applications: CandidateApplicationHistory[];
-  archived?: boolean;
+  empty: string;
+  resolved?: boolean;
 }) {
   return (
     <div className="space-y-3">
@@ -136,14 +149,12 @@ function ApplicationGroup({
           <ApplicationCard
             key={application.applicationId}
             application={application}
-            archived={archived}
+            resolved={resolved}
           />
         ))
       ) : (
         <p className="rounded-2xl border border-dashed bg-white p-5 text-sm text-[#626262]">
-          {archived
-            ? "Работодатель пока не ответил ни на один отклик."
-            : "Активных откликов пока нет."}
+          {empty}
         </p>
       )}
     </div>
@@ -152,10 +163,10 @@ function ApplicationGroup({
 
 function ApplicationCard({
   application,
-  archived,
+  resolved,
 }: {
   application: CandidateApplicationHistory;
-  archived: boolean;
+  resolved: boolean;
 }) {
   const employerName = application.employer?.companyName || "Работодатель";
   const employerUrl = application.employer?.id
@@ -182,7 +193,7 @@ function ApplicationCard({
         <Badge
           variant="outline"
           className={
-            archived
+            resolved
               ? "rounded-lg bg-[#f7f7f3] text-[#777]"
               : "rounded-lg bg-white"
           }
@@ -211,6 +222,23 @@ function ApplicationCard({
             {badge}
           </Badge>
         ))}
+        {application.chatId ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              window.dispatchEvent(
+                new CustomEvent("intern-hub:open-chat", {
+                  detail: { chatId: application.chatId },
+                }),
+              )
+            }
+          >
+            <MessageCircle className="h-4 w-4" />
+            Открыть чат
+          </Button>
+        ) : null}
       </div>
     </div>
   );
@@ -223,4 +251,21 @@ function applicationBadgeLabels(application: CandidateApplicationHistory) {
     application.workFormat?.name,
     application.employment?.name,
   ].filter((value): value is string => Boolean(value));
+}
+
+function isAcceptedApplication(application: CandidateApplicationHistory) {
+  return application.status === "ACCEPTED";
+}
+
+function isRejectedApplication(application: CandidateApplicationHistory) {
+  return (
+    application.status === "REJECTED" ||
+    (Boolean(application.archived) && application.status !== "ACCEPTED")
+  );
+}
+
+function isActiveApplication(application: CandidateApplicationHistory) {
+  return (
+    !isAcceptedApplication(application) && !isRejectedApplication(application)
+  );
 }

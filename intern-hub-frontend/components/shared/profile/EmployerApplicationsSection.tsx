@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight, Check, Search, X } from "lucide-react";
+import { ArrowUpRight, Check, MessageCircle, Search, X } from "lucide-react";
 
 import { ALL_VACANCIES_FILTER } from "@/components/shared/profile/constants";
 import { statusLabel, vacancyHref } from "@/components/shared/profile/utils";
@@ -11,7 +11,29 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { EmployerApplication, EmployerVacancy } from "@/lib/api/profile";
 
-type ApplicationsView = "active" | "archive";
+type ApplicationsView = "active" | "accepted" | "rejected";
+
+const applicationTabs: Array<{
+  id: ApplicationsView;
+  label: string;
+  empty: string;
+}> = [
+  {
+    id: "active",
+    label: "Активные",
+    empty: "Активных откликов по выбранному фильтру пока нет.",
+  },
+  {
+    id: "accepted",
+    label: "Приняты",
+    empty: "Принятых откликов по выбранному фильтру пока нет.",
+  },
+  {
+    id: "rejected",
+    label: "Отказано",
+    empty: "Отказов по выбранному фильтру пока нет.",
+  },
+];
 
 export function EmployerApplicationsSection({
   applications,
@@ -20,6 +42,7 @@ export function EmployerApplicationsSection({
   onVacancyChange,
   onOpenCandidate,
   onStatusChange,
+  onOpenChat,
 }: {
   applications: EmployerApplication[];
   vacancies: EmployerVacancy[];
@@ -30,6 +53,7 @@ export function EmployerApplicationsSection({
     applicationId: number,
     status: "ACCEPTED" | "REJECTED",
   ) => void;
+  onOpenChat?: (chatId: string) => void;
 }) {
   const [view, setView] = useState<ApplicationsView>("active");
   const vacancyById = new Map(
@@ -41,20 +65,13 @@ export function EmployerApplicationsSection({
       : applications.filter(
           (application) => application.vacancyPublicId === selectedVacancy,
         );
-  const activeApplications = filteredApplications.filter(
-    (application) =>
-      !application.archived &&
-      application.status !== "ACCEPTED" &&
-      application.status !== "REJECTED",
-  );
-  const archivedApplications = filteredApplications.filter(
-    (application) =>
-      application.archived ||
-      application.status === "ACCEPTED" ||
-      application.status === "REJECTED",
-  );
-  const visibleApplications =
-    view === "active" ? activeApplications : archivedApplications;
+  const applicationGroups: Record<ApplicationsView, EmployerApplication[]> = {
+    active: filteredApplications.filter(isActiveApplication),
+    accepted: filteredApplications.filter(isAcceptedApplication),
+    rejected: filteredApplications.filter(isRejectedApplication),
+  };
+  const visibleApplications = applicationGroups[view];
+  const activeTab = applicationTabs.find((tab) => tab.id === view);
 
   return (
     <Card className="rounded-2xl border-[#161616]/10 bg-white/90">
@@ -76,38 +93,37 @@ export function EmployerApplicationsSection({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="inline-flex rounded-xl border bg-white p-1">
-          <Button
-            type="button"
-            size="sm"
-            variant={view === "active" ? "default" : "ghost"}
-            className={view === "active" ? "bg-[#171717] text-white" : ""}
-            onClick={() => setView("active")}
-          >
-            Активные
-            <Badge variant="outline" className="ml-2 rounded-lg bg-white/80">
-              {activeApplications.length}
-            </Badge>
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={view === "archive" ? "default" : "ghost"}
-            className={view === "archive" ? "bg-[#171717] text-white" : ""}
-            onClick={() => setView("archive")}
-          >
-            Архив
-            <Badge variant="outline" className="ml-2 rounded-lg bg-white/80">
-              {archivedApplications.length}
-            </Badge>
-          </Button>
+        <div className="grid gap-2 rounded-2xl border border-[#161616]/10 bg-[#f7f7f3] p-1 sm:grid-cols-3">
+          {applicationTabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              className={`rounded-xl px-4 py-3 text-left transition ${
+                view === tab.id
+                  ? "bg-[#171717] text-white shadow-sm"
+                  : "text-[#555] hover:bg-white"
+              }`}
+              onClick={() => setView(tab.id)}
+            >
+              <span className="block text-sm font-extrabold">
+                {tab.label}
+              </span>
+              <span
+                className={`mt-1 block text-xs ${
+                  view === tab.id ? "text-white/65" : "text-[#777]"
+                }`}
+              >
+                {applicationGroups[tab.id].length} откликов
+              </span>
+            </button>
+          ))}
         </div>
 
         {visibleApplications.length > 0 ? (
           visibleApplications.map((application) => {
             const vacancy = vacancyById.get(application.vacancyPublicId);
-            const isArchived =
-              view === "archive" ||
+            const isResolved =
+              view !== "active" ||
               application.archived ||
               application.status === "ACCEPTED" ||
               application.status === "REJECTED";
@@ -170,7 +186,17 @@ export function EmployerApplicationsSection({
                     <Search className="h-4 w-4" />
                     Профиль
                   </Button>
-                  {!isArchived ? (
+                  {application.chatId ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onOpenChat?.(application.chatId as string)}
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                      Открыть чат
+                    </Button>
+                  ) : null}
+                  {!isResolved ? (
                     <>
                       <Button
                         size="sm"
@@ -200,12 +226,27 @@ export function EmployerApplicationsSection({
           })
         ) : (
           <p className="rounded-2xl border border-dashed bg-white p-5 text-sm text-[#626262]">
-            {view === "active"
-              ? "Активных откликов по выбранному фильтру пока нет."
-              : "В архиве по выбранному фильтру пока нет откликов."}
+            {activeTab?.empty ?? "Откликов по выбранному фильтру пока нет."}
           </p>
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function isAcceptedApplication(application: EmployerApplication) {
+  return application.status === "ACCEPTED";
+}
+
+function isRejectedApplication(application: EmployerApplication) {
+  return (
+    application.status === "REJECTED" ||
+    (Boolean(application.archived) && application.status !== "ACCEPTED")
+  );
+}
+
+function isActiveApplication(application: EmployerApplication) {
+  return (
+    !isAcceptedApplication(application) && !isRejectedApplication(application)
   );
 }

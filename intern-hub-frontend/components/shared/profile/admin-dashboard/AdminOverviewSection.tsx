@@ -1,6 +1,13 @@
 "use client";
 
-import { BookOpen, FileWarning, Flag, Shield, UserCog } from "lucide-react";
+import {
+  BookOpen,
+  Building2,
+  FileWarning,
+  Flag,
+  Shield,
+  UserCog,
+} from "lucide-react";
 
 import { profileSectionHref } from "../utils";
 import { AdminHeader } from "./AdminHeader";
@@ -28,7 +35,7 @@ export function AdminOverviewSection({
         description="Все административные инструменты вынесены в отдельные разделы: модерация вакансий, правила агрегации, пользователи и блог."
       />
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
         <AdminMetricCard
           href={profileSectionHref("vacancies")}
           icon={<FileWarning className="h-5 w-5" />}
@@ -56,6 +63,13 @@ export function AdminOverviewSection({
           label="Пользователи"
           value="Роли"
           detail="Смена ролей, блокировка и разблокировка"
+        />
+        <AdminMetricCard
+          href={profileSectionHref("employers")}
+          icon={<Building2 className="h-5 w-5" />}
+          label="Работодатели"
+          value="Создать"
+          detail="Ручное добавление аккаунта компании"
         />
         <AdminMetricCard
           href={profileSectionHref("blog")}
