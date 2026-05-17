@@ -11,8 +11,8 @@ import { CandidateFavoritesSection } from "@/components/shared/profile/Candidate
 import { CandidateProfileSection } from "@/components/shared/profile/CandidateProfileSection";
 import { CandidateResumesSection } from "@/components/shared/profile/CandidateResumesSection";
 import { AccountSettingsSection } from "@/components/shared/profile/AccountSettingsSection";
+import { AdminDashboardSection } from "@/components/shared/profile/admin-dashboard";
 import { EmployerApplicationsSection } from "@/components/shared/profile/EmployerApplicationsSection";
-import { EmployerCandidatesSection } from "@/components/shared/profile/EmployerCandidatesSection";
 import { EmployerProfileSection } from "@/components/shared/profile/EmployerProfileSection";
 import { EmployerVacanciesSection } from "@/components/shared/profile/EmployerVacanciesSection";
 import { ProfilePageSkeleton } from "@/components/shared/profile/ProfilePageSkeleton";
@@ -28,22 +28,22 @@ import {
   demoVacancies,
   emptyCandidate,
   emptyEmployer,
+  type AdminSection,
   type CandidateSection,
   type EmployerSection,
   type EmployerProfile,
   type RoleView,
 } from "@/components/shared/profile/types";
 import {
+  isAdminSection,
   isCandidateSection,
   isEmployerSection,
   profileSectionHref,
   textValue,
 } from "@/components/shared/profile/utils";
-import { Badge } from "@/components/ui/badge";
 import {
-  getVacancyDictionaries,
-  type SkillOption,
-  type VacancyDictionaries,
+  getVacancyFormDictionaries,
+  type VacancyFormDictionaries,
 } from "@/lib/api/dictionaries";
 import { useAuth } from "@/lib/auth/context";
 import { ApiError } from "@/lib/api/client";
@@ -61,17 +61,22 @@ import {
   type CandidateResumePayload,
   type EmployerApplication,
   type EmployerVacancy,
+  type VacancyPayload,
   archiveCandidateResume,
+  archiveVacancy,
   createCandidateResume,
+  createVacancy,
   deleteCandidateResume,
+  deleteVacancy,
   getCandidateApplications,
   getCandidateFavorites,
   getCandidateProfile,
   getCandidateProfileById,
-  getCandidateResumes,
   getEmployerProfile,
   getEmployerVacancies,
   getEmployerVacancyApplications,
+  getVacancy,
+  restoreVacancy,
   uploadCandidateProfilePhoto,
   uploadEmployerProfilePhoto,
   restoreCandidateResume,
@@ -79,19 +84,37 @@ import {
   updateCandidateProfile,
   updateEmployerProfile,
   updateEmployerApplicationStatus,
+  updateEmployerVacancy,
 } from "@/lib/api/profile";
-import { Bookmark, FileText, Search, Send, Settings, User } from "lucide-react";
+import {
+  BookOpen,
+  Bookmark,
+  Flag,
+  FileWarning,
+  FileText,
+  Send,
+  Settings,
+  Shield,
+  User,
+  UserCog,
+  Heart,
+} from "lucide-react";
 
 export function ProfilePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, setUser } = useAuth();
   const role: RoleView =
-    user?.role === "ROLE_EMPLOYER" ? "employer" : "candidate";
+    user?.role === "ROLE_ADMIN"
+      ? "admin"
+      : user?.role === "ROLE_EMPLOYER"
+        ? "employer"
+        : "candidate";
   const [candidateSection, setCandidateSection] =
     useState<CandidateSection>("profile");
   const [employerSection, setEmployerSection] =
     useState<EmployerSection>("profile");
+  const [adminSection, setAdminSection] = useState<AdminSection>("overview");
   const [candidate, setCandidate] = useState<CandidateProfile>(emptyCandidate);
   const [employer, setEmployer] = useState<EmployerProfile>(emptyEmployer);
   const [isCandidateEditing, setIsCandidateEditing] = useState(false);
@@ -117,12 +140,11 @@ export function ProfilePageContent() {
   const [isCandidateDialogOpen, setIsCandidateDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isResumeSaving, setIsResumeSaving] = useState(false);
+  const [isVacancySaving, setIsVacancySaving] = useState(false);
   const [isSettingsSaving, setIsSettingsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [skillOptions, setSkillOptions] = useState<SkillOption[]>([]);
-  const [dictionaries, setDictionaries] = useState<VacancyDictionaries | null>(
-    null,
-  );
+  const [dictionaries, setDictionaries] =
+    useState<VacancyFormDictionaries | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -131,16 +153,18 @@ export function ProfilePageContent() {
       try {
         setIsLoading(true);
 
+        if (role === "admin") {
+          return;
+        }
+
         if (role === "candidate") {
-          const [profile, resumes, history, favorites, loadedDictionaries] =
-            await Promise.all([
-              getCandidateProfile(),
-              getCandidateResumes(),
-              getCandidateApplications(0, 10),
-              getCandidateFavorites(0, 10),
-              getVacancyDictionaries().catch(() => null),
-            ]);
+          const [profile, history, favorites] = await Promise.all([
+            getCandidateProfile(),
+            getCandidateApplications(0, 10),
+            getCandidateFavorites(0, 10),
+          ]);
           if (!isMounted) return;
+          const resumes = profile.resumes ?? [];
           setCandidate({ ...emptyCandidate, ...profile, resumes });
           setCandidateResumes(resumes);
           setCandidateApplications(history.content);
@@ -156,22 +180,16 @@ export function ProfilePageContent() {
 
             return next;
           });
-          setDictionaries(loadedDictionaries);
-          setSkillOptions(loadedDictionaries?.skills ?? []);
           return;
         }
 
-        const [employerProfile, vacanciesResponse, loadedDictionaries] =
-          await Promise.all([
-            getEmployerProfile(),
-            getEmployerVacancies(0, 20),
-            getVacancyDictionaries().catch(() => null),
-          ]);
+        const [employerProfile, vacanciesResponse] = await Promise.all([
+          getEmployerProfile(),
+          getEmployerVacancies(0, 20),
+        ]);
         if (!isMounted) return;
         const loadedVacancies = vacanciesResponse.content;
         setVacancies(loadedVacancies);
-        setDictionaries(loadedDictionaries);
-        setSkillOptions(loadedDictionaries?.skills ?? []);
         setEmployer({
           ...emptyEmployer,
           ...employerProfile,
@@ -221,6 +239,11 @@ export function ProfilePageContent() {
       return;
     }
 
+    if (role === "admin") {
+      setAdminSection(isAdminSection(sectionParam) ? sectionParam : "overview");
+      return;
+    }
+
     const nextSection = isEmployerSection(sectionParam)
       ? sectionParam
       : "profile";
@@ -232,9 +255,46 @@ export function ProfilePageContent() {
     );
   }, [role, searchParams]);
 
-  const profileTitle =
-    role === "candidate" ? candidate.email : employer.companyName;
-  const roleLabel = role === "candidate" ? "Соискатель" : "Работодатель";
+  useEffect(() => {
+    const shouldLoadDictionaries =
+      (role === "candidate" && candidateSection === "resumes") ||
+      (role === "employer" && employerSection === "vacancies");
+
+    if (!shouldLoadDictionaries || dictionaries) {
+      return;
+    }
+
+    let isMounted = true;
+
+    async function loadDictionariesForCurrentSection() {
+      try {
+        const loadedDictionaries = await getVacancyFormDictionaries();
+        if (!isMounted) {
+          return;
+        }
+
+        setDictionaries(loadedDictionaries);
+      } catch (error) {
+        console.error("Failed to load profile dictionaries:", error);
+        if (isMounted) {
+          toast.error("Не удалось загрузить справочники для этого раздела.");
+        }
+      }
+    }
+
+    loadDictionariesForCurrentSection();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [candidateSection, dictionaries, employerSection, role]);
+
+  const roleLabel =
+    role === "admin"
+      ? "Администратор"
+      : role === "candidate"
+        ? "Соискатель"
+        : "Работодатель";
 
   function loadApplications(publicId: string) {
     setSelectedVacancy(publicId);
@@ -255,6 +315,11 @@ export function ProfilePageContent() {
     router.push(profileSectionHref(section), { scroll: false });
   }
 
+  function changeAdminSection(section: AdminSection) {
+    setAdminSection(section);
+    router.push(profileSectionHref(section), { scroll: false });
+  }
+
   function changeEmployerApplicationFilter(publicId: string) {
     setSelectedVacancy(publicId);
     setEmployerSection("applications");
@@ -263,10 +328,7 @@ export function ProfilePageContent() {
     });
   }
 
-  function changeCandidateFavoriteState(
-    publicId: string,
-    isFavorite: boolean,
-  ) {
+  function changeCandidateFavoriteState(publicId: string, isFavorite: boolean) {
     setCandidateFavoriteState((current) => ({
       ...current,
       [publicId]: isFavorite,
@@ -282,13 +344,19 @@ export function ProfilePageContent() {
       lastName: textValue(formData.get("lastName")).trim(),
       birthday: textValue(formData.get("birthday")) || undefined,
       phoneNumber: textValue(formData.get("phoneNumber")).trim(),
+      city: textValue(formData.get("city")).trim(),
       openToWork: formData.get("openToWork") === "on",
     };
 
     try {
       setIsSaving(true);
       const updated = await updateCandidateProfile(payload);
-      setCandidate({ ...emptyCandidate, ...updated });
+      const updatedResumes = updated.resumes ?? [];
+      setCandidate({ ...emptyCandidate, ...updated, resumes: updatedResumes });
+      setCandidateResumes(updatedResumes);
+      if (user) {
+        setUser({ ...user, city: updated.city });
+      }
       setIsCandidateEditing(false);
       toast.success("Профиль сохранен.");
     } catch (error) {
@@ -395,7 +463,9 @@ export function ProfilePageContent() {
     try {
       setIsResumeSaving(true);
       await deleteCandidateResume(resumeId);
-      setCandidateResumes((items) => items.filter((item) => item.id !== resumeId));
+      setCandidateResumes((items) =>
+        items.filter((item) => item.id !== resumeId),
+      );
       setCandidate((current) => ({
         ...current,
         resumes: (current.resumes ?? []).filter((item) => item.id !== resumeId),
@@ -459,6 +529,139 @@ export function ProfilePageContent() {
     }
   }
 
+  async function handleCreateVacancy(payload: VacancyPayload) {
+    try {
+      setIsVacancySaving(true);
+      const created = await createVacancy(payload);
+      setVacancies((items) => [created, ...items]);
+      toast.success("Вакансия создана.");
+      return created;
+    } catch (error) {
+      console.error("Failed to create vacancy:", error);
+      toast.error("Не удалось создать вакансию.");
+      throw error;
+    } finally {
+      setIsVacancySaving(false);
+    }
+  }
+
+  async function handleUpdateVacancy(
+    publicId: string,
+    payload: VacancyPayload,
+  ) {
+    try {
+      setIsVacancySaving(true);
+      const updated = await updateEmployerVacancy(publicId, payload);
+      setVacancies((items) =>
+        items.map((item) => (item.publicId === publicId ? updated : item)),
+      );
+      toast.success("Вакансия сохранена.");
+      return updated;
+    } catch (error) {
+      console.error("Failed to update vacancy:", error);
+      toast.error("Не удалось сохранить вакансию.");
+      throw error;
+    } finally {
+      setIsVacancySaving(false);
+    }
+  }
+
+  async function handleArchiveVacancy(vacancy: EmployerVacancy) {
+    const previousStatus = vacancy.status;
+
+    try {
+      setIsVacancySaving(true);
+      setVacancies((items) =>
+        items.map((item) =>
+          item.publicId === vacancy.publicId
+            ? { ...item, status: "ARCHIVED" }
+            : item,
+        ),
+      );
+      await archiveVacancy(vacancy.publicId);
+      setVacancies((items) =>
+        items.map((item) =>
+          item.publicId === vacancy.publicId
+            ? { ...item, status: "ARCHIVED" }
+            : item,
+        ),
+      );
+      toast.success("Вакансия архивирована.");
+    } catch (error) {
+      setVacancies((items) =>
+        items.map((item) =>
+          item.publicId === vacancy.publicId
+            ? { ...item, status: previousStatus }
+            : item,
+        ),
+      );
+      console.error("Failed to archive vacancy:", error);
+      toast.error("Не удалось архивировать вакансию.");
+      throw error;
+    } finally {
+      setIsVacancySaving(false);
+    }
+  }
+
+  async function handleRestoreVacancy(vacancy: EmployerVacancy) {
+    const previousStatus = vacancy.status;
+
+    try {
+      setIsVacancySaving(true);
+      setVacancies((items) =>
+        items.map((item) =>
+          item.publicId === vacancy.publicId
+            ? { ...item, status: "APPROVED" }
+            : item,
+        ),
+      );
+      await restoreVacancy(vacancy.publicId);
+      setVacancies((items) =>
+        items.map((item) =>
+          item.publicId === vacancy.publicId
+            ? { ...item, status: "APPROVED" }
+            : item,
+        ),
+      );
+      toast.success("Р’Р°РєР°РЅСЃРёСЏ СЃРЅРѕРІР° Р°РєС‚РёРІРЅР°.");
+    } catch (error) {
+      setVacancies((items) =>
+        items.map((item) =>
+          item.publicId === vacancy.publicId
+            ? { ...item, status: previousStatus }
+            : item,
+        ),
+      );
+      console.error("Failed to restore vacancy:", error);
+      toast.error(
+        "РќРµ СѓРґР°Р»РѕСЃСЊ РІРµСЂРЅСѓС‚СЊ РІР°РєР°РЅСЃРёСЋ РёР· Р°СЂС…РёРІР°.",
+      );
+      throw error;
+    } finally {
+      setIsVacancySaving(false);
+    }
+  }
+
+  async function handleDeleteVacancy(vacancy: EmployerVacancy) {
+    try {
+      setIsVacancySaving(true);
+      await deleteVacancy(vacancy.publicId);
+      setVacancies((items) =>
+        items.filter((item) => item.publicId !== vacancy.publicId),
+      );
+      setEmployerApplications((items) =>
+        items.filter((item) => item.vacancyPublicId !== vacancy.publicId),
+      );
+      toast.success("Вакансия удалена.");
+    } catch (error) {
+      console.error("Failed to delete vacancy:", error);
+      toast.error("Не удалось удалить вакансию.");
+      throw error;
+    } finally {
+      setIsVacancySaving(false);
+    }
+  }
+
   async function handleResendVerification() {
     if (!user?.email) return;
 
@@ -511,7 +714,7 @@ export function ProfilePageContent() {
 
       if (role === "candidate") {
         setCandidate((current) => ({ ...current, email: updatedUser.email }));
-      } else {
+      } else if (role === "employer") {
         setEmployer((current) => ({ ...current, email: updatedUser.email }));
       }
 
@@ -575,31 +778,37 @@ export function ProfilePageContent() {
       <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <div className="grid gap-6 lg:grid-cols-[260px_1fr] lg:items-start">
           <div className="space-y-4 lg:sticky">
-            <div className="rounded-2xl border border-[#161616]/10 bg-white/85 p-5 shadow-sm">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#777]">
-                Личный кабинет
-              </p>
-              <h1 className="mt-2 break-words text-2xl font-bold leading-tight text-[#171717]">
-                {profileTitle}
-              </h1>
-              <Badge variant="outline" className="mt-4 rounded-lg bg-[#f7f7f3]">
-                {roleLabel}
-              </Badge>
-              {user && user.verified === false ? (
-                <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                  <p className="font-semibold">Почта не подтверждена</p>
-                  <button
-                    type="button"
-                    className="mt-2 text-sm font-semibold text-amber-900 underline"
-                    onClick={handleResendVerification}
-                  >
-                    Отправить письмо ещё раз
-                  </button>
-                </div>
-              ) : null}
-            </div>
-
-            {role === "candidate" ? (
+            {role === "admin" ? (
+              <SectionMenu<AdminSection>
+                active={adminSection}
+                onChange={changeAdminSection}
+                items={[
+                  { id: "overview", label: "Обзор", icon: <Shield /> },
+                  {
+                    id: "vacancies",
+                    label: "Модерация вакансий",
+                    icon: <FileWarning />,
+                  },
+                  {
+                    id: "excluded-words",
+                    label: "Стоп-слова",
+                    icon: <Shield />,
+                  },
+                  { id: "complaints", label: "Жалобы", icon: <Flag /> },
+                  { id: "users", label: "Пользователи", icon: <UserCog /> },
+                  { id: "blog", label: "Блог", icon: <BookOpen /> },
+                  ...(user
+                    ? [
+                        {
+                          id: "settings",
+                          label: "Настройки",
+                          icon: <Settings />,
+                        } as const,
+                      ]
+                    : []),
+                ]}
+              />
+            ) : role === "candidate" ? (
               <SectionMenu<CandidateSection>
                 active={candidateSection}
                 onChange={changeCandidateSection}
@@ -610,7 +819,7 @@ export function ProfilePageContent() {
                   {
                     id: "favorites",
                     label: "Избранные вакансии",
-                    icon: <Bookmark />,
+                    icon: <Heart />,
                   },
                   ...(user
                     ? [
@@ -629,7 +838,6 @@ export function ProfilePageContent() {
                 onChange={changeEmployerSection}
                 items={[
                   { id: "profile", label: "Профиль", icon: <User /> },
-                  { id: "candidates", label: "Соискатели", icon: <Search /> },
                   { id: "vacancies", label: "Вакансии", icon: <Send /> },
                   { id: "applications", label: "Отклики", icon: <Bookmark /> },
                   ...(user
@@ -647,6 +855,20 @@ export function ProfilePageContent() {
           </div>
 
           <div className="min-w-0 space-y-6">
+            {role === "admin" && adminSection !== "settings" ? (
+              <AdminDashboardSection section={adminSection} />
+            ) : null}
+
+            {user && role === "admin" && adminSection === "settings" ? (
+              <AccountSettingsSection
+                user={user}
+                isSaving={isSettingsSaving}
+                onEmailChange={handleEmailChange}
+                onPasswordResetRequest={handlePasswordResetRequest}
+                onResendVerification={handleResendVerification}
+              />
+            ) : null}
+
             {role === "candidate" && candidateSection === "profile" ? (
               <CandidateProfileSection
                 candidate={candidate}
@@ -713,14 +935,15 @@ export function ProfilePageContent() {
             {role === "employer" && employerSection === "vacancies" ? (
               <EmployerVacanciesSection
                 vacancies={vacancies}
+                dictionaries={dictionaries}
+                isSaving={isVacancySaving}
+                onCreate={handleCreateVacancy}
+                onUpdate={handleUpdateVacancy}
+                onArchive={handleArchiveVacancy}
+                onRestore={handleRestoreVacancy}
+                onDelete={handleDeleteVacancy}
+                onLoadVacancy={getVacancy}
                 onOpenApplications={loadApplications}
-              />
-            ) : null}
-
-            {role === "employer" && employerSection === "candidates" ? (
-              <EmployerCandidatesSection
-                skillOptions={skillOptions}
-                onOpenCandidate={openCandidate}
               />
             ) : null}
 

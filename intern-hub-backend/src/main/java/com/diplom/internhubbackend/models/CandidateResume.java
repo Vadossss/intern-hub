@@ -5,7 +5,9 @@ import lombok.*;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @Entity
@@ -26,8 +28,6 @@ public class CandidateResume {
 
     @Column(nullable = false)
     private String profession;
-
-    private String city;
 
     private Long expectedSalaryFrom;
 
@@ -52,12 +52,27 @@ public class CandidateResume {
     private Boolean archived = false;
 
     @Builder.Default
-    @ManyToMany(fetch = FetchType.EAGER)
+    @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
             name = "candidate_resume_skill",
             joinColumns = @JoinColumn(name = "candidate_resume_id"),
             inverseJoinColumns = @JoinColumn(name = "skill_id"))
     private Set<KeySkill> skills = new HashSet<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "resume", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("sortOrder ASC, id ASC")
+    private List<CandidateResumeLanguage> languages = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "resume", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("sortOrder ASC, id ASC")
+    private List<CandidateResumeEducation> education = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "resume", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("sortOrder ASC, id ASC")
+    private List<CandidateResumeWorkExperience> workExperience = new ArrayList<>();
 
     @Column(nullable = false, updatable = false)
     @Builder.Default

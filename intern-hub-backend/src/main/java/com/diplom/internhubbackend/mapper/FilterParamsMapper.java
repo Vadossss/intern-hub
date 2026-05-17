@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Component
@@ -17,7 +18,6 @@ import java.util.stream.Collectors;
 public class FilterParamsMapper {
 
     private final VacancySourceService vacancySourceService;
-    private final StackService stackService;
     private final WorkFormatService workFormatService;
     private final EmploymentService employmentService;
     private final ExperienceService experienceService;
@@ -32,11 +32,15 @@ public class FilterParamsMapper {
                                 .map(Enum::name)
                                 .collect(Collectors.toList()));
 
-        Stack stack = filterParams.getPosition() == null ?
+        List<String> direction = filterParams.getDirection() == null || filterParams.getDirection().isEmpty() ?
                 null :
-                stackService
-                        .getStackById(stackIdForPosition(filterParams.getPosition()));
-
+                filterParams.getDirection()
+                        .stream()
+                        .filter(Objects::nonNull)
+                        .map(String::trim)
+                        .filter(directionId -> !directionId.isEmpty())
+                        .distinct()
+                        .collect(Collectors.toList());
 
         List<WorkFormat> workFormat = filterParams.getWorkFormats() == null || filterParams.getWorkFormats().isEmpty() ?
                 null :
@@ -69,7 +73,7 @@ public class FilterParamsMapper {
 
         return FilterParams.builder()
                 .source(source)
-                .stack(stack)
+                .direction(direction)
                 .city(filterParams.getCity())
                 .companyName(filterParams.getCompanyName())
                 .employerId(filterParams.getEmployerId())
@@ -85,18 +89,5 @@ public class FilterParamsMapper {
                 .sortBy(filterParams.getSortBy())
                 .sortDirection(filterParams.getSortDirection())
                 .build();
-    }
-
-    private String stackIdForPosition(com.diplom.internhubbackend.enums.PositionsEnum position) {
-        return switch (position) {
-            case JAVASCRIPT -> "javascript";
-            case JAVA -> "java";
-            case PYTHON -> "python";
-            case CSHARP -> "csharp";
-            case DATASCIENCE -> "datascience";
-            case GO -> "go";
-            case QA -> "qa";
-            case DESIGN -> "design";
-        };
     }
 }

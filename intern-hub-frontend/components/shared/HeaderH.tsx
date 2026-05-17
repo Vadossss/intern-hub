@@ -28,7 +28,8 @@ const NAV_ITEMS = [
       { label: "Идеи для пет-проектов", href: "/prep/pet-projects" },
     ],
   },
-  { label: "Компании", href: "/companies" },
+  { label: "Компании", href: "/employers" },
+  { label: "Блог", href: "/blog" },
 ];
 
 export default function Header() {

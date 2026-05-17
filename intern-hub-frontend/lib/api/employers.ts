@@ -14,6 +14,8 @@ export interface PublicEmployerProfile {
   contactName?: string;
   email?: string;
   phone?: string;
+  aggregated?: boolean;
+  accredited?: boolean;
   verified?: boolean;
   verificationStatus?: string;
   createdAt?: string;

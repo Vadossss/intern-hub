@@ -52,7 +52,7 @@ export function EmployerProfileSection({
   }
 
   const logo = (
-    <div className="relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl bg-[#edf3ea] text-[#48644d]">
+    <div className="relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-[#edf3ea] text-[#48644d]">
       {avatarSrc ? (
         <img
           src={avatarSrc}

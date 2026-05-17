@@ -18,6 +18,7 @@ public class AuthMeResponseDto {
     private String firstName;
     private String lastName;
     private String companyName;
+    private String avatarUrl;
     private String role;
     private AccountStatus status;
     private Boolean verified;
@@ -27,14 +28,34 @@ public class AuthMeResponseDto {
     private LocalDateTime updatedAt;
 
     public static AuthMeResponseDto fromUser(User user) {
+        return fromUser(user, null, null, null);
+    }
+
+    public static AuthMeResponseDto fromUser(
+            User user,
+            String profileFirstName,
+            String profileLastName,
+            String profileCompanyName
+    ) {
+        return fromUser(user, profileFirstName, profileLastName, profileCompanyName, null);
+    }
+
+    public static AuthMeResponseDto fromUser(
+            User user,
+            String profileFirstName,
+            String profileLastName,
+            String profileCompanyName,
+            String profileCity
+    ) {
         return AuthMeResponseDto.builder()
                 .id(user.getId())
                 .email(user.getEmail())
                 .phoneNumber(user.getPhoneNumber())
-                .city(user.getCity())
-                .firstName(user.getFirstName())
-                .lastName(user.getLastName())
-                .companyName(user.getCompanyName())
+                .city(profileCity)
+                .firstName(profileFirstName)
+                .lastName(profileLastName)
+                .companyName(profileCompanyName)
+                .avatarUrl(user.getAvatarUrl())
                 .role(user.getRole() != null ? user.getRole().getId() : null)
                 .status(user.getStatus())
                 .verified(user.getVerified())

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { memo, useDeferredValue, useMemo, useState } from "react";
 import { ChevronDown, ChevronUp, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,11 @@ interface SkillsSelectorProps {
   className?: string;
 }
 
-export function SkillsSelector({
+const COLLAPSED_SKILLS_LIMIT = 48;
+const EXPANDED_SKILLS_LIMIT = 160;
+const SEARCH_SKILLS_LIMIT = 120;
+
+export const SkillsSelector = memo(function SkillsSelector({
   skills,
   selectedSkillIds,
   onChange,
@@ -25,26 +29,62 @@ export function SkillsSelector({
 }: SkillsSelectorProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isExpanded, setIsExpanded] = useState(false);
+  const deferredSearchQuery = useDeferredValue(searchQuery);
+  const selectedSkillIdSet = useMemo(
+    () => new Set(selectedSkillIds),
+    [selectedSkillIds],
+  );
 
   const filteredSkills = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
+    const query = deferredSearchQuery.trim().toLowerCase();
 
     if (!query) return skills;
 
     return skills.filter((skill) => skill.name.toLowerCase().includes(query));
-  }, [skills, searchQuery]);
+  }, [deferredSearchQuery, skills]);
+
+  const visibleSkills = useMemo(() => {
+    const query = deferredSearchQuery.trim();
+    const limit = query
+      ? SEARCH_SKILLS_LIMIT
+      : isExpanded
+        ? EXPANDED_SKILLS_LIMIT
+        : COLLAPSED_SKILLS_LIMIT;
+
+    if (query) {
+      return filteredSkills.slice(0, limit);
+    }
+
+    const selectedSkills: SkillOption[] = [];
+    const otherSkills: SkillOption[] = [];
+
+    for (const skill of filteredSkills) {
+      if (selectedSkillIdSet.has(skill.id)) {
+        selectedSkills.push(skill);
+      } else if (otherSkills.length < limit) {
+        otherSkills.push(skill);
+      }
+    }
+
+    return [...selectedSkills, ...otherSkills].slice(0, limit);
+  }, [deferredSearchQuery, filteredSkills, isExpanded, selectedSkillIdSet]);
+
+  const hiddenSkillsCount = Math.max(
+    filteredSkills.length - visibleSkills.length,
+    0,
+  );
 
   function toggleSkill(skillId: number, checked: boolean) {
+    const nextSelectedSkillIds = new Set(selectedSkillIds);
+
     if (checked) {
-      onChange(
-        selectedSkillIds.includes(skillId)
-          ? selectedSkillIds
-          : [...selectedSkillIds, skillId],
-      );
+      nextSelectedSkillIds.add(skillId);
+      onChange(Array.from(nextSelectedSkillIds));
       return;
     }
 
-    onChange(selectedSkillIds.filter((id) => id !== skillId));
+    nextSelectedSkillIds.delete(skillId);
+    onChange(Array.from(nextSelectedSkillIds));
   }
 
   return (
@@ -78,7 +118,7 @@ export function SkillsSelector({
         )}
       >
         {filteredSkills.length > 0 ? (
-          filteredSkills.map((skill) => (
+          visibleSkills.map((skill) => (
             <label
               key={skill.id}
               className="inline-flex cursor-pointer items-center gap-2 rounded-xl border bg-white px-3 py-2 text-sm text-[#333]"
@@ -87,7 +127,7 @@ export function SkillsSelector({
                 type="checkbox"
                 name={name}
                 value={skill.id}
-                checked={selectedSkillIds.includes(skill.id)}
+                checked={selectedSkillIdSet.has(skill.id)}
                 onChange={(event) =>
                   toggleSkill(skill.id, event.target.checked)
                 }
@@ -104,6 +144,12 @@ export function SkillsSelector({
           </p>
         )}
       </div>
+      {hiddenSkillsCount > 0 ? (
+        <p className="mt-3 text-xs text-[#777]">
+          Показано {visibleSkills.length} из {filteredSkills.length}. Введите
+          текст в поиск, чтобы быстро найти нужный навык.
+        </p>
+      ) : null}
       {skills.length > 0 && !searchQuery ? (
         <Button
           type="button"
@@ -121,4 +167,4 @@ export function SkillsSelector({
       ) : null}
     </div>
   );
-}
+});

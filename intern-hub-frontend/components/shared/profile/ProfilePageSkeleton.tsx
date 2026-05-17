@@ -10,12 +10,6 @@ export function ProfilePageSkeleton({ roleLabel }: { roleLabel: string }) {
       <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <div className="grid gap-6 lg:grid-cols-[260px_1fr] lg:items-start">
           <div className="space-y-4 lg:sticky lg:top-24">
-            <div className="rounded-2xl border border-[#161616]/10 bg-white/85 p-5 shadow-sm">
-              <Skeleton className="h-3 w-32" />
-              <Skeleton className="mt-4 h-8 w-44" />
-              <Skeleton className="mt-4 h-7 w-28 rounded-lg" />
-            </div>
-
             <div className="grid gap-2 rounded-2xl border border-[#161616]/10 bg-white/85 p-2 shadow-sm">
               {Array.from({ length: menuItems }).map((_, index) => (
                 <Skeleton key={index} className="h-11 rounded-xl" />
@@ -33,7 +27,7 @@ export function ProfilePageSkeleton({ roleLabel }: { roleLabel: string }) {
                 <CardHeader>
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div className="flex items-start gap-4">
-                      <Skeleton className="h-16 w-16 rounded-2xl" />
+                      <Skeleton className="h-16 w-16 rounded-full" />
                       <div>
                         <Skeleton className="h-7 w-56" />
                         <Skeleton className="mt-3 h-4 w-72 max-w-full" />

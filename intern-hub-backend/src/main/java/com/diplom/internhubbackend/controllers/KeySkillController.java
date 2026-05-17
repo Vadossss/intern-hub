@@ -1,6 +1,6 @@
 package com.diplom.internhubbackend.controllers;
 
-import com.diplom.internhubbackend.dto.KeySkillDto;
+import com.diplom.internhubbackend.dto.projection.KeySkillProjection;
 import com.diplom.internhubbackend.models.KeySkillRequest;
 import com.diplom.internhubbackend.services.KeySkillService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -25,7 +25,7 @@ public class KeySkillController {
     }
 
     @GetMapping()
-    public Set<KeySkillDto> getAllKeySkills() {
+    public Set<KeySkillProjection> getAllKeySkills() {
         return keySkillService.getAllKeySkills();
     }
 }

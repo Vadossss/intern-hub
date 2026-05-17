@@ -16,8 +16,11 @@ export enum Position {
 }
 
 export enum VacancyStatus {
-  ACTIVE = "ACTIVE",
-  MODERATED = "MODERATED",
+  DRAFT = "DRAFT",
+  PENDING = "PENDING",
+  APPROVED = "APPROVED",
+  REJECTED = "REJECTED",
+  REVISION_REQUIRED = "REVISION_REQUIRED",
   ARCHIVED = "ARCHIVED",
 }
 
@@ -85,12 +88,6 @@ export interface WorkFormatType {
   name: string;
 }
 
-export interface Stack {
-  id: string;
-  name: string;
-  searchQuery: string;
-}
-
 export interface KeySkill {
   id: number;
   name: string;
@@ -119,7 +116,8 @@ export interface VacancyResponseDto {
   id: number;
   publicId: string;
   title: string;
-  stack: string;
+  directionId?: string;
+  direction?: string;
   description: string;
   city: string;
   status: VacancyStatus;
@@ -132,6 +130,8 @@ export interface VacancyResponseDto {
   employer?: Employer;
   skills?: KeySkill[];
   contacts?: VacancyContact[];
+  viewCount?: number;
+  todayViewCount?: number;
 }
 
 export interface PageResponse<T> {
@@ -147,6 +147,7 @@ export interface PageResponse<T> {
 export interface SearchVacanciesParams {
   source?: VacancySource[];
   position?: Position;
+  direction?: string[];
   companyName?: string;
   city?: string;
   salaryMin?: number;
@@ -164,7 +165,7 @@ export interface SearchVacanciesParams {
 
 export interface NewVacancyDto {
   title: string;
-  stack: string;
+  direction: string;
   description: string;
   salary?: Salary;
   city: string;

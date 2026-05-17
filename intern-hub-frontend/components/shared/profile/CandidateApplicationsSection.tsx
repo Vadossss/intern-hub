@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight, Clock3 } from "lucide-react";
+import { Clock3, MapPin } from "lucide-react";
 
 import {
   employerHref,
   formatDate,
+  formatMoney,
   statusLabel,
   vacancyHref,
 } from "@/components/shared/profile/utils";
@@ -14,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { CandidateApplicationHistory } from "@/lib/api/profile";
+import { Georama } from "next/font/google";
 
 type ApplicationsView = "active" | "archive";
 
@@ -156,52 +158,69 @@ function ApplicationCard({
   archived: boolean;
 }) {
   const employerName = application.employer?.companyName || "Работодатель";
+  const employerUrl = application.employer?.id
+    ? `/employers/${application.employer.id}`
+    : employerHref(employerName);
+  const badges = applicationBadgeLabels(application);
 
   return (
     <div className="rounded-2xl border bg-white p-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 mb-1 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <Link href={vacancyHref(application.vacancyPublicId)}>
-            <p className="inline-flex items-center gap-2 font-medium text-[#3f5f4a] hover:underline">
+            <p className="font-medium text-[#3f5f4a] hover:underline">
               {application.vacancyTitle}
-              <ArrowUpRight className="h-4 w-4" />
             </p>
           </Link>
           <Link
-            href={employerHref(employerName)}
-            className="mt-1 inline-flex items-center gap-1 text-sm text-[#626262] hover:underline"
+            href={employerUrl}
+            className="mt-1 inline-flex text-sm text-[#626262] hover:underline"
           >
             {employerName}
-            <ArrowUpRight className="h-4 w-4" />
           </Link>
         </div>
         <Badge
           variant="outline"
           className={
-            archived ? "rounded-lg bg-[#f7f7f3] text-[#777]" : "rounded-lg bg-white"
+            archived
+              ? "rounded-lg bg-[#f7f7f3] text-[#777]"
+              : "rounded-lg bg-white"
           }
         >
           {statusLabel(application.status)}
         </Badge>
       </div>
-      <p className="mt-3 flex items-center gap-2 text-sm text-[#777]">
-        <Clock3 className="h-4 w-4" />
+      <div className="rounded-lg bg-white text-[#626262] flex items-center text-sm">
+        <Clock3 className="mr-1 h-3.5 w-3.5" />
         Отклик от {formatDate(application.appliedAt)}
-      </p>
+      </div>
       <div className="mt-4 flex flex-wrap gap-2">
-        <Button asChild variant="outline" size="sm">
-          <Link href={vacancyHref(application.vacancyPublicId)}>
-            Вакансия
-            <ArrowUpRight className="h-4 w-4" />
-          </Link>
-        </Button>
-        <Button asChild variant="outline" size="sm">
-          <Link href={employerHref(employerName)}>
-            Работодатель
-            <ArrowUpRight className="h-4 w-4" />
-          </Link>
-        </Button>
+        <Badge
+          variant="outline"
+          className="rounded-lg bg-[#f7f7f3] text-[#4c4c4c]"
+        >
+          <MapPin />
+          {application.city}
+        </Badge>
+        {badges.map((badge, index) => (
+          <Badge
+            key={`${badge}-${index}`}
+            variant="outline"
+            className="rounded-lg bg-[#f7f7f3] text-[#4c4c4c]"
+          >
+            {badge}
+          </Badge>
+        ))}
       </div>
     </div>
   );
+}
+
+function applicationBadgeLabels(application: CandidateApplicationHistory) {
+  return [
+    application.direction,
+    application.experience?.name,
+    application.workFormat?.name,
+    application.employment?.name,
+  ].filter((value): value is string => Boolean(value));
 }

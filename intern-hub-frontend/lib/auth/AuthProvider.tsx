@@ -17,6 +17,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const router = useRouter();
   const { setIsAuthenticated, setUser } = useAuthStore();
   const [isChecking, setIsChecking] = useState(true);
+  const [checkedPathname, setCheckedPathname] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -32,6 +33,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     async function checkAuth() {
       try {
+        setIsChecking(true);
         const user = await getCurrentUserWithRefresh();
         if (!isMounted) return;
 
@@ -42,7 +44,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         clearAuth();
       } finally {
-        if (isMounted) setIsChecking(false);
+        if (isMounted) {
+          setCheckedPathname(pathname);
+          setIsChecking(false);
+        }
       }
     }
 
@@ -55,13 +60,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
   }, [pathname, router, setIsAuthenticated, setUser]);
 
-  if (isChecking) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Spinner />
-      </div>
-    );
-  }
+  // if (isChecking || checkedPathname !== pathname) {
+  //   return (
+  //     <div className="flex min-h-screen items-center justify-center">
+  //       <Spinner />
+  //     </div>
+  //   );
+  // }
 
   return <>{children}</>;
 }

@@ -16,8 +16,6 @@ public interface UserRepository extends JpaRepository<User, Integer> {
     boolean existsByPhoneNumber(String phoneNumber);
     boolean existsByEmail(String email);
 
-    Optional<User> findUserByCompanyName(String companyName);
-
     @Query("""
             SELECT u FROM User u
             LEFT JOIN EmployerProfile p ON p.user.id = u.id
@@ -25,8 +23,8 @@ public interface UserRepository extends JpaRepository<User, Integer> {
               AND u.status = :status
               AND (
                 :query IS NULL
-                OR LOWER(COALESCE(p.companyName, u.companyName, '')) LIKE :query
-                OR LOWER(COALESCE(p.city, u.city, '')) LIKE :query
+                OR LOWER(COALESCE(p.companyName, '')) LIKE :query
+                OR LOWER(COALESCE(p.city, '')) LIKE :query
                 OR LOWER(COALESCE(p.about, '')) LIKE :query
                 OR LOWER(COALESCE(p.website, '')) LIKE :query
               )

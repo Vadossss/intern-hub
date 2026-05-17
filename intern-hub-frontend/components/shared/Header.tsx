@@ -22,8 +22,8 @@ export function Header() {
   async function logout() {
     try {
       await logoutRequest();
-    } catch (error) {
-      console.error("Logout failed:", error);
+    } catch {
+      // Local session is cleared anyway: logout must stay safe for expired cookies.
     }
 
     setIsAuthenticated(false);
@@ -40,17 +40,34 @@ export function Header() {
           </Link>
 
           <nav className="hidden items-center gap-8 md:flex">
+            {user?.role === "ROLE_EMPLOYER" ? (
+              <Link
+                href="/candidates"
+                className="text-foreground transition-colors hover:text-primary"
+              >
+                Соискатели
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/vacancies"
+                  className="text-foreground transition-colors hover:text-primary"
+                >
+                  Вакансии
+                </Link>
+                <Link
+                  href="/employers"
+                  className="text-foreground transition-colors hover:text-primary"
+                >
+                  Компании
+                </Link>
+              </>
+            )}
             <Link
-              href="/vacancies"
+              href="/blog"
               className="text-foreground transition-colors hover:text-primary"
             >
-              Вакансии
-            </Link>
-            <Link
-              href="/"
-              className="text-foreground transition-colors hover:text-primary"
-            >
-              Компании
+              Блог
             </Link>
             <Link
               href="/"
@@ -87,11 +104,6 @@ export function Header() {
                       Профиль
                     </Link>
                   </DropdownMenuItem>
-                  {user?.role === "ROLE_ADMIN" ? (
-                    <DropdownMenuItem className="cursor-pointer" asChild>
-                      <Link href="/admin">Админ панель</Link>
-                    </DropdownMenuItem>
-                  ) : null}
                   <DropdownMenuItem
                     className="cursor-pointer text-red-700 focus:text-red-700"
                     onClick={logout}

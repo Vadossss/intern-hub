@@ -1,6 +1,9 @@
 package com.diplom.internhubbackend.mapper;
 
 import com.diplom.internhubbackend.dto.VacancyContactDto;
+import com.diplom.internhubbackend.dto.hh.EmployerDto;
+import com.diplom.internhubbackend.dto.projection.VacancyListProjection;
+import com.diplom.internhubbackend.dto.projection.VacancyProjection;
 import com.diplom.internhubbackend.models.*;
 import com.diplom.internhubbackend.dto.KeySkillDto;
 import com.diplom.internhubbackend.dto.NewVacancyDto;
@@ -15,6 +18,7 @@ import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -22,13 +26,13 @@ import java.util.stream.Collectors;
 @Slf4j
 @RequiredArgsConstructor
 public class VacancyMapper {
-    private final StackService stackService;
     private final KeySkillService keySkillService;
     private final WorkFormatService workFormatService;
     private final ExperienceService experienceService;
     private final EmploymentService employmentService;
     private final CurrencyService currencyService;
     private final VacancySourceService vacancySourceService;
+    private final VacancyDirectionService vacancyDirectionService;
     private final UserMapper userMapper;
 
 
@@ -46,7 +50,8 @@ public class VacancyMapper {
         dto.setWorkFormat(vacancy.getWorkFormat());
         dto.setCity(vacancy.getCity());
         dto.setEmployer(userMapper.toDto(vacancy.getEmployer()));
-        dto.setStack(vacancy.getStack() != null ? vacancy.getStack().getName() : null);
+        dto.setDirectionId(vacancy.getDirection() != null ? vacancy.getDirection().getId() : null);
+        dto.setDirection(vacancy.getDirection() != null ? vacancy.getDirection().getName() : null);
         dto.setStatus(vacancy.getStatus());
         dto.setContacts(
                 vacancy.getContacts().stream()
@@ -70,25 +75,136 @@ public class VacancyMapper {
                 .collect(Collectors.toList());
     }
 
+    public VacancyResponseDto toListDto(
+            VacancyListProjection vacancy,
+            Map<Integer, EmployerProfile> employerProfilesByUserId
+    ) {
+        VacancyResponseDto dto = new VacancyResponseDto();
+        dto.setId(vacancy.id());
+        dto.setPublicId(vacancy.publicId());
+        dto.setTitle(vacancy.title());
+        dto.setSalaryFrom(vacancy.salaryFrom());
+        dto.setSalaryTo(vacancy.salaryTo());
+        dto.setCurrency(vacancy.currency());
+        dto.setEmployment(vacancy.employment());
+        dto.setExperience(vacancy.experience());
+        dto.setWorkFormat(vacancy.workFormat());
+        dto.setCity(vacancy.city());
+        dto.setDirectionId(vacancy.directionId());
+        dto.setDirection(vacancy.direction());
+        dto.setStatus(vacancy.status());
+        dto.setContacts(Collections.emptyList());
+        dto.setSkills(Collections.emptySet());
+        dto.setEmployer(toEmployerDto(vacancy, employerProfilesByUserId));
+
+        return dto;
+    }
+
+    public List<VacancyResponseDto> toListDto(
+            List<VacancyListProjection> vacancies,
+            Map<Integer, EmployerProfile> employerProfilesByUserId
+    ) {
+        return vacancies.stream()
+                .map(vacancy -> toListDto(vacancy, employerProfilesByUserId))
+                .collect(Collectors.toList());
+    }
+
+    public VacancyResponseDto toDto(
+            VacancyProjection vacancy,
+            Set<KeySkillDto> skills,
+            List<VacancyContactDto> contacts
+    ) {
+        VacancyResponseDto dto = new VacancyResponseDto();
+        dto.setId(vacancy.id());
+        dto.setPublicId(vacancy.publicId());
+        dto.setTitle(vacancy.title());
+        dto.setSalaryFrom(vacancy.salaryFrom());
+        dto.setSalaryTo(vacancy.salaryTo());
+        dto.setCurrency(vacancy.currency());
+        dto.setDescription(vacancy.description());
+        dto.setEmployment(vacancy.employment());
+        dto.setExperience(vacancy.experience());
+        dto.setWorkFormat(vacancy.workFormat());
+        dto.setCity(vacancy.city());
+        dto.setDirectionId(vacancy.directionId());
+        dto.setDirection(vacancy.direction());
+        dto.setStatus(vacancy.status());
+        dto.setSkills(skills == null ? Collections.emptySet() : skills);
+        dto.setContacts(contacts == null ? Collections.emptyList() : contacts);
+        dto.setEmployer(toEmployerDto(vacancy));
+
+        return dto;
+    }
+
+    private EmployerDto toEmployerDto(
+            VacancyListProjection vacancy,
+            Map<Integer, EmployerProfile> employerProfilesByUserId
+    ) {
+        if (vacancy.employerId() == null) {
+            return null;
+        }
+
+        EmployerProfile profile = employerProfilesByUserId.get(vacancy.employerId());
+
+        return EmployerDto.builder()
+                .id(vacancy.employerId())
+                .city(profile != null ? profile.getCity() : null)
+                .companyName(profile != null ? profile.getCompanyName() : null)
+                .avatarUrl(profile != null && profile.getAvatarUrl() != null
+                        ? profile.getAvatarUrl()
+                        : vacancy.employerAvatarUrl())
+                .isAggregated(profile != null ? profile.getAggregated() : null)
+                .accredited(profile != null ? profile.getAccredited() : null)
+                .verified(profile != null && profile.getVerified() != null
+                        ? profile.getVerified()
+                        : vacancy.employerVerified())
+                .verificationStatus(vacancy.employerVerificationStatus())
+                .verifiedAt(vacancy.employerVerifiedAt())
+                .createdAt(vacancy.employerCreatedAt())
+                .updatedAt(vacancy.employerUpdatedAt())
+                .build();
+    }
+
+    private EmployerDto toEmployerDto(VacancyProjection vacancy) {
+        if (vacancy.employerId() == null) {
+            return null;
+        }
+
+        return EmployerDto.builder()
+                .id(vacancy.employerId())
+                .city(vacancy.employerCity())
+                .companyName(vacancy.employerCompanyName())
+                .avatarUrl(vacancy.employerAvatarUrl())
+                .isAggregated(vacancy.employerAggregated())
+                .accredited(vacancy.employerAccredited())
+                .verified(vacancy.employerVerified())
+                .verificationStatus(vacancy.employerVerificationStatus())
+                .verifiedAt(vacancy.employerVerifiedAt())
+                .createdAt(vacancy.employerCreatedAt())
+                .updatedAt(vacancy.employerUpdatedAt())
+                .build();
+    }
+
     public Vacancy fromDto(NewVacancyDto vacancyDto) {
         return createVacancy(vacancyDto);
     }
 
     private Vacancy createVacancy(final NewVacancyDto vacancyDto) {
-        Set<KeySkill> keySkills = keySkillService.
-                getAllKeySkillsById(new HashSet<>(vacancyDto.getSkills()));
+        Set<KeySkill> keySkills = vacancyDto.getSkills() == null
+                ? Collections.emptySet()
+                : keySkillService.getAllKeySkillsById(new HashSet<>(vacancyDto.getSkills()));
         Experience experience = experienceService.getExperienceById(vacancyDto.getExperience());
         Employment employment = employmentService.getEmploymentById(vacancyDto.getEmployment());
         Currency currency = currencyService.getCurrencyById(vacancyDto.getSalary().getCurrency());
         WorkFormat workFormat = workFormatService.getWorkFormatById(vacancyDto.getWorkFormat());
-        Stack stack = stackService.getStackById(vacancyDto.getStack());
+        VacancyDirection direction = vacancyDirectionService.getOrCreate(vacancyDto.getDirection());
         VacancySource source = vacancySourceService.getVacancySourceByCode(VacancySourceCode.IH.name());
 
         return Vacancy
                 .builder()
                 .title(vacancyDto.getTitle())
                 .city(vacancyDto.getCity())
-                .stack(stack)
+                .direction(direction)
                 .source(source)
                 .salaryFrom(vacancyDto.getSalary().getFrom())
                 .salaryTo(vacancyDto.getSalary().getTo())
@@ -101,9 +217,5 @@ public class VacancyMapper {
                 .createdAt(LocalDateTime.now())
                 .expiresAt(LocalDateTime.now().plusDays(source.getTtlDays()))
                 .build();
-
-//        return new Vacancy(vacancyDto.getTitle(), stack, vacancyDto.getSalary().getFrom(), vacancyDto.getSalary().getTo(),
-//                vacancyDto.getCity(), currency, vacancyDto.getDescription(), vacancyDto.getLink(), employment,
-//                experience, workFormat, keySkills, LocalDateTime.now());
     }
 }

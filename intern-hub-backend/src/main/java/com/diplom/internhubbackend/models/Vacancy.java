@@ -32,9 +32,11 @@ public class Vacancy {
     private String publicId;
 
     private String title;
+
     @ManyToOne
-    @JoinColumn(name = "stack_id")
-    private Stack stack;
+    @JoinColumn(name = "direction_id")
+    private VacancyDirection direction;
+
     private String city;
 
     private Long salaryFrom;
@@ -58,7 +60,7 @@ public class Vacancy {
     @Enumerated(EnumType.STRING)
     @Builder.Default
     @Column(nullable = false)
-    private VacancyStatus status = VacancyStatus.PENDING;
+    private VacancyStatus status = VacancyStatus.APPROVED;
 
     @ManyToOne
     @JoinColumn(name = "employer_id")
@@ -78,7 +80,7 @@ public class Vacancy {
 
     @EqualsAndHashCode.Exclude
     @ToString.Exclude
-    @ManyToMany(fetch = FetchType.EAGER)
+    @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
             name = "vacancy_skill",
             joinColumns = @JoinColumn(name = "vacancy_id"),

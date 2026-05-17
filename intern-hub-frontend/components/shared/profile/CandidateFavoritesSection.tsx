@@ -2,10 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight, Building2, Heart } from "lucide-react";
+import { Building2, Heart } from "lucide-react";
 import { toast } from "sonner";
 
-import { statusLabel, vacancyHref } from "@/components/shared/profile/utils";
+import {
+  employerHref,
+  formatMoney,
+  vacancyHref,
+} from "@/components/shared/profile/utils";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -14,6 +18,7 @@ import {
   removeCandidateFavorite,
 } from "@/lib/api/profile";
 import { cn } from "@/lib/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export function CandidateFavoritesSection({
   favorites,
@@ -50,6 +55,8 @@ export function CandidateFavoritesSection({
     }
   }
 
+  console.log(favorites);
+
   return (
     <Card className="rounded-2xl border-[#161616]/10 bg-white/90">
       <CardHeader>
@@ -60,6 +67,11 @@ export function CandidateFavoritesSection({
           favorites.map((favorite) => {
             const isFavorite = favoriteState[favorite.publicId] ?? true;
             const employerId = favorite.employer?.id;
+            const employerName = favorite.employer?.companyName;
+            const employerUrl = employerId
+              ? `/employers/${employerId}`
+              : employerHref(employerName);
+            const badges = favoriteBadgeLabels(favorite);
 
             return (
               <div
@@ -70,37 +82,40 @@ export function CandidateFavoritesSection({
                   <div className="min-w-0">
                     <Link
                       href={vacancyHref(favorite.publicId)}
-                      className="inline-flex items-center gap-1 break-words font-semibold text-[#171717] transition hover:text-[#48644d] hover:underline"
+                      className="break-words text-lg font-semibold text-[#171717] transition hover:text-[#48644d] hover:underline"
                     >
                       {favorite.title}
-                      <ArrowUpRight className="h-4 w-4 shrink-0" />
                     </Link>
 
                     {employerId ? (
                       <Link
-                        href={`/employers/${employerId}`}
+                        href={employerUrl}
+                        className="mt-1 flex w-fit items-center gap-1 text-md font-medium text-[#48644d] transition"
+                      >
+                        <Avatar>
+                          <AvatarImage
+                            src={favorite.employer?.avatarUrl}
+                          ></AvatarImage>
+                          <AvatarFallback>
+                            {employerName?.slice(0, 1)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="hover:underline">
+                          {employerName ?? "Компания не указана"}
+                        </span>
+                      </Link>
+                    ) : (
+                      <Link
+                        href={employerUrl}
                         className="mt-1 flex w-fit items-center gap-1 text-sm font-medium text-[#48644d] transition hover:underline"
                       >
                         <Building2 className="h-4 w-4 text-[#8a8a8a]" />
-                        {favorite.employer?.companyName ??
-                          "Компания не указана"}
+                        {employerName ?? "Компания не указана"}
                       </Link>
-                    ) : (
-                      <p className="mt-1 flex items-center gap-1 text-sm text-[#626262]">
-                        <Building2 className="h-4 w-4 text-[#8a8a8a]" />
-                        {favorite.employer?.companyName ??
-                          "Компания не указана"}
-                      </p>
                     )}
                   </div>
 
                   <div className="flex shrink-0 items-center gap-2">
-                    <Badge
-                      variant="outline"
-                      className="rounded-lg bg-[#f7f7f3]"
-                    >
-                      {statusLabel(favorite.status)}
-                    </Badge>
                     <button
                       type="button"
                       disabled={pendingId === favorite.publicId}
@@ -127,15 +142,19 @@ export function CandidateFavoritesSection({
                   </div>
                 </div>
 
-                <div className="mt-4 flex flex-wrap gap-2 text-sm text-[#626262]">
-                  {favorite.city ? <span>{favorite.city}</span> : null}
-                  {favorite.workFormat?.name ? (
-                    <span>{favorite.workFormat.name}</span>
-                  ) : null}
-                  {favorite.employment?.name ? (
-                    <span>{favorite.employment.name}</span>
-                  ) : null}
-                </div>
+                {badges.length > 0 ? (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {badges.map((badge, index) => (
+                      <Badge
+                        key={`${badge}-${index}`}
+                        variant="outline"
+                        className="rounded-lg bg-[#f7f7f3] text-[#4c4c4c]"
+                      >
+                        {badge}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             );
           })
@@ -147,4 +166,17 @@ export function CandidateFavoritesSection({
       </CardContent>
     </Card>
   );
+}
+
+function favoriteBadgeLabels(favorite: CandidateFavoriteVacancy) {
+  return [
+    favorite.direction,
+    favorite.city,
+    favorite.salaryFrom || favorite.salaryTo
+      ? formatMoney(favorite.salaryFrom, favorite.salaryTo)
+      : null,
+    favorite.experience?.name,
+    favorite.workFormat?.name,
+    favorite.employment?.name,
+  ].filter((value): value is string => Boolean(value));
 }

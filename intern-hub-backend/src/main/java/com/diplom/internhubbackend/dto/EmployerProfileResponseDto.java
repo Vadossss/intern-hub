@@ -18,6 +18,8 @@ public class EmployerProfileResponseDto {
     private String phone;
     private String about;
     private String avatarUrl;
+    private Boolean aggregated;
+    private Boolean accredited;
     private Boolean verified;
     private VerificationStatus verificationStatus;
     private LocalDateTime createdAt;

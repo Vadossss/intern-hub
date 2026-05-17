@@ -7,6 +7,7 @@ import java.util.List;
 public record HhVacancyDetailsResponse(
         String id,
         String description,
-        @JsonProperty("key_skills") List<HhKeySkill> keySkills
+        @JsonProperty("key_skills") List<HhKeySkill> keySkills,
+        @JsonProperty("professional_roles") List<HhNamedEntity> professionalRoles
 ) {
 }

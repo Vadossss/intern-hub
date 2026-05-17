@@ -5,6 +5,8 @@ import "./globals.css";
 import { Header } from "@/components/shared/Header";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/lib/auth/AuthProvider";
+import Footer from "@/components/shared/Footer";
+import Script from "next/script";
 
 const nunito = Nunito({
   subsets: ["cyrillic"],
@@ -37,9 +39,44 @@ export default function RootLayout({
       <body
         className={`${nunito.className} ${geistSans.variable} antialiased bg-gradient-to-br from-violet-50 via-purple-50 to-indigo-50`}
       >
+        <Script id="yandex-metrika" strategy="afterInteractive">
+          {`
+            (function(m,e,t,r,i,k,a){
+              m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+              m[i].l=1*new Date();
+              for (var j = 0; j < document.scripts.length; j++) {
+                if (document.scripts[j].src === r) { return; }
+              }
+              k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+            })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=109168682', 'ym');
+
+            ym(109168682, 'init', {
+              ssr:true,
+              webvisor:true,
+              clickmap:true,
+              ecommerce:"dataLayer",
+              referrer: document.referrer,
+              url: location.href,
+              accurateTrackBounce:true,
+              trackLinks:true
+            });
+          `}
+        </Script>
+
+        <noscript>
+          <div>
+            <img
+              src="https://mc.yandex.ru/watch/109168682"
+              style={{ position: "absolute", left: "-9999px" }}
+              alt=""
+            />
+          </div>
+        </noscript>
+
         <AuthProvider>
           <Header />
           {children}
+          <Footer />
         </AuthProvider>
         <Toaster position="bottom-right" richColors />
       </body>

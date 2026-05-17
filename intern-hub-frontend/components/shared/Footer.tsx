@@ -7,7 +7,7 @@ const FOOTER_LINKS = {
     { label: "Frontend", href: "/vacancies?tech=frontend" },
     { label: "DevOps", href: "/vacancies?tech=devops" },
     { label: "Data Science", href: "/vacancies?tech=data" },
-    { label: "Компании", href: "/companies" },
+    { label: "Компании", href: "/employers" },
   ],
   Обучение: [
     { label: "Вопросы с собеседований", href: "/prep/questions" },
@@ -19,6 +19,7 @@ const FOOTER_LINKS = {
     { label: "Для работодателей", href: "/employers" },
     { label: "Разместить вакансию", href: "/register?role=employer" },
     { label: "Как это работает", href: "/how-it-works" },
+    { label: "Блог", href: "/blog" },
     { label: "О проекте", href: "/about" },
   ],
 };

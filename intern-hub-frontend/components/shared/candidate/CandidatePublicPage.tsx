@@ -7,8 +7,10 @@ import {
   ArrowLeft,
   Briefcase,
   Cake,
+  Eye,
   ExternalLink,
   FileText,
+  Flag,
   Mail,
   MapPin,
   Monitor,
@@ -18,6 +20,8 @@ import {
 } from "lucide-react";
 
 import { RichTextContent } from "@/components/shared/RichText";
+import { ComplaintDialog } from "@/components/shared/complaints";
+import { ResumeExtendedDetails } from "@/components/shared/profile/ResumeExtendedDetails";
 import {
   CandidatePageSkeleton,
   ContactLink,
@@ -46,6 +50,10 @@ export function CandidatePublicPage() {
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [complaintResume, setComplaintResume] = useState<{
+    id: number;
+    label: string;
+  } | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -95,6 +103,7 @@ export function CandidatePublicPage() {
     [candidate?.resumes],
   );
   const primaryResume = activeResumes[0];
+  const candidateCity = primaryResume?.city || candidate?.city;
 
   if (loading) {
     return <CandidatePageSkeleton />;
@@ -169,13 +178,16 @@ export function CandidatePublicPage() {
 
                 <div className="mt-4 flex flex-wrap gap-2 text-sm text-[#555]">
                   <InfoPill icon={<MapPin className="h-4 w-4" />}>
-                    {primaryResume?.city || "Город не указан"}
+                    {candidateCity || "Город не указан"}
                   </InfoPill>
                   <InfoPill icon={<Cake className="h-4 w-4" />}>
                     {formatBirthday(candidate.birthday)}
                   </InfoPill>
                   <InfoPill icon={<Wallet className="h-4 w-4" />}>
                     {formatExpectedSalary(primaryResume)}
+                  </InfoPill>
+                  <InfoPill icon={<Eye className="h-4 w-4" />}>
+                    {primaryResume?.viewCount ?? 0}
                   </InfoPill>
                 </div>
               </div>
@@ -191,7 +203,7 @@ export function CandidatePublicPage() {
               <DarkInfo
                 icon={<MapPin className="h-4 w-4" />}
                 label="Город"
-                value={primaryResume?.city || "Не указан"}
+                value={candidateCity || "Не указан"}
               />
               <DarkInfo
                 icon={<Monitor className="h-4 w-4" />}
@@ -266,6 +278,27 @@ export function CandidatePublicPage() {
                               {resume.experienceName}
                             </Badge>
                           ) : null}
+                          <Badge
+                            variant="outline"
+                            className="rounded-full bg-white"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                            {resume.viewCount ?? 0}
+                          </Badge>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="h-8 rounded-full border-[#161616]/10 bg-white px-3 text-xs font-bold text-[#5f4545] hover:bg-[#f7eeee]"
+                            onClick={() =>
+                              setComplaintResume({
+                                id: resume.id,
+                                label: resume.profession || "Резюме",
+                              })
+                            }
+                          >
+                            <Flag className="h-3.5 w-3.5" />
+                            Пожаловаться
+                          </Button>
                         </div>
                       </div>
 
@@ -274,6 +307,8 @@ export function CandidatePublicPage() {
                         fallback="Описание резюме пока не заполнено."
                         className="mt-4 text-[15px]"
                       />
+
+                      <ResumeExtendedDetails resume={resume} className="mt-4" />
 
                       <div className="mt-4 flex flex-wrap gap-2">
                         {resume.skills?.length ? (
@@ -330,6 +365,17 @@ export function CandidatePublicPage() {
           </aside>
         </section>
       </div>
+      <ComplaintDialog
+        open={Boolean(complaintResume)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setComplaintResume(null);
+          }
+        }}
+        targetType="CANDIDATE_RESUME"
+        targetId={complaintResume ? String(complaintResume.id) : ""}
+        targetLabel={complaintResume?.label ?? "резюме"}
+      />
     </main>
   );
 }

@@ -1,5 +1,6 @@
 package com.diplom.internhubbackend.repositories;
 
+import com.diplom.internhubbackend.dto.projection.KeySkillProjection;
 import com.diplom.internhubbackend.models.KeySkill;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -12,6 +13,8 @@ public interface KeySkillRepository extends JpaRepository<KeySkill, Integer> {
 
     @Query("select k from KeySkill k where LOWER(k.name) = LOWER(:name)")
     Optional<KeySkill> findByName(String name);
+
+    List<KeySkillProjection> findAllProjectedBy();
 
     List<KeySkill> findAllByNameIn(Set<String> names);
 }

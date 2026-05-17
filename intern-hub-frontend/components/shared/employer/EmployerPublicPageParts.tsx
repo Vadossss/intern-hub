@@ -1,6 +1,40 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
+
+export function EmployerBreadcrumbs({
+  current,
+}: {
+  current?: string;
+}) {
+  return (
+    <nav
+      aria-label="Хлебные крошки"
+      className="flex flex-wrap items-center gap-2 text-sm font-semibold text-[#666]"
+    >
+      <Link href="/" className="transition hover:text-[#171717]">
+        Главная
+      </Link>
+      <span className="text-[#aaa]">/</span>
+      {current ? (
+        <Link href="/employers" className="transition hover:text-[#171717]">
+          Компании
+        </Link>
+      ) : (
+        <span className="text-[#171717]">Компании</span>
+      )}
+      {current ? (
+        <>
+          <span className="text-[#aaa]">/</span>
+          <span className="max-w-[18rem] truncate text-[#171717] sm:max-w-[28rem]">
+            {current}
+          </span>
+        </>
+      ) : null}
+    </nav>
+  );
+}
 
 export function EmployerPageSkeleton() {
   return (
@@ -27,40 +61,6 @@ export function InfoPill({
       <span className="text-[#777]">{icon}</span>
       {children}
     </span>
-  );
-}
-
-export function ContactRow({
-  icon,
-  label,
-  value,
-  href,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: string;
-  href?: string;
-}) {
-  const content = (
-    <div className="flex items-start gap-3 rounded-xl border border-[#161616]/10 bg-white p-3 text-[#171717]">
-      <div className="mt-0.5 rounded-lg bg-[#edf3ea] p-2 text-[#3f5f4a]">
-        {icon}
-      </div>
-      <div className="min-w-0">
-        <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#777]">
-          {label}
-        </p>
-        <p className="mt-1 break-words text-sm font-semibold">{value}</p>
-      </div>
-    </div>
-  );
-
-  return href ? (
-    <a href={href} className="block transition hover:opacity-85">
-      {content}
-    </a>
-  ) : (
-    content
   );
 }
 

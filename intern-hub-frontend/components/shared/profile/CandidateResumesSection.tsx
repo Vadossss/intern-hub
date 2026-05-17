@@ -1,27 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import {
-  Archive,
-  BriefcaseBusiness,
-  Clock3,
-  FilePlus2,
-  MapPin,
-  Pencil,
-  RotateCcw,
-  Trash2,
-  Wallet,
-} from "lucide-react";
+import { FilePlus2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { RichTextContent, RichTextEditor } from "@/components/shared/RichText";
+import { RichTextEditor } from "@/components/shared/RichText";
+import { CandidateResumeCard } from "@/components/shared/profile/CandidateResumeCard";
+import { CandidateResumePreviewDialog } from "@/components/shared/profile/CandidateResumePreviewDialog";
+import { CandidateResumeStatsDialog } from "@/components/shared/profile/CandidateResumeStatsDialog";
 import { SkillsSelector } from "@/components/shared/SkillsSelector";
 import {
   DictionarySelect,
   FieldError,
   ResumeConfirmDialog,
-  ResumeMeta,
 } from "@/components/shared/profile/CandidateResumesSectionParts";
 import type {
   ResumeConfirmAction,
@@ -36,13 +28,30 @@ import {
   hasFormErrors,
   validateResumePayload,
 } from "@/components/shared/profile/CandidateResumesSection.utils";
-import { Badge } from "@/components/ui/badge";
+import {
+  ResumeEducationEditor,
+  type ResumeEducationEditorRef,
+} from "@/components/shared/profile/ResumeEducationEditor";
+import {
+  ResumeLanguagesEditor,
+  type ResumeLanguagesEditorRef,
+} from "@/components/shared/profile/ResumeLanguagesEditor";
+import {
+  ResumeWorkExperienceEditor,
+  type ResumeWorkExperienceEditorRef,
+} from "@/components/shared/profile/ResumeWorkExperienceEditor";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import type { VacancyDictionaries } from "@/lib/api/dictionaries";
-import type { CandidateResume, CandidateResumePayload } from "@/lib/api/profile";
-import { formatDate, formatMoney, numberValue, textValue } from "@/components/shared/profile/utils";
+import type { VacancyFormDictionaries } from "@/lib/api/dictionaries";
+import type {
+  CandidateResume,
+  CandidateResumeEducation,
+  CandidateResumeLanguage,
+  CandidateResumePayload,
+  CandidateResumeWorkExperience,
+} from "@/lib/api/profile";
+import { numberValue, textValue } from "@/components/shared/profile/utils";
 
 export function CandidateResumesSection({
   resumes,
@@ -55,7 +64,7 @@ export function CandidateResumesSection({
   onDelete,
 }: {
   resumes: CandidateResume[];
-  dictionaries: VacancyDictionaries | null;
+  dictionaries: VacancyFormDictionaries | null;
   isSaving: boolean;
   onCreate: (payload: CandidateResumePayload) => Promise<CandidateResume>;
   onUpdate: (
@@ -71,10 +80,17 @@ export function CandidateResumesSection({
   );
   const [mode, setMode] = useState<ResumeMode>("view");
   const [selectedSkillIds, setSelectedSkillIds] = useState<number[]>([]);
+  const languagesEditorRef = useRef<ResumeLanguagesEditorRef>(null);
+  const educationEditorRef = useRef<ResumeEducationEditorRef>(null);
+  const workExperienceEditorRef = useRef<ResumeWorkExperienceEditorRef>(null);
   const [formErrors, setFormErrors] = useState<ResumeFormErrors>({});
   const [confirmAction, setConfirmAction] =
     useState<ResumeConfirmAction | null>(null);
   const [pendingResume, setPendingResume] = useState<CandidateResume | null>(
+    null,
+  );
+  const [statsResume, setStatsResume] = useState<CandidateResume | null>(null);
+  const [previewResume, setPreviewResume] = useState<CandidateResume | null>(
     null,
   );
 
@@ -132,7 +148,6 @@ export function CandidateResumesSection({
     const formData = new FormData(event.currentTarget);
     const payload: CandidateResumePayload = {
       profession: textValue(formData.get("profession")),
-      city: textValue(formData.get("city")),
       expectedSalaryFrom: numberValue(formData.get("expectedSalaryFrom")),
       expectedSalaryTo: numberValue(formData.get("expectedSalaryTo")),
       employmentId: textValue(formData.get("employmentId")),
@@ -140,6 +155,11 @@ export function CandidateResumesSection({
       experienceId: textValue(formData.get("experienceId")),
       about: textValue(formData.get("about")),
       skillIds: selectedSkillIds,
+      languages: sanitizeLanguages(languagesEditorRef.current?.getItems() ?? []),
+      education: sanitizeEducation(educationEditorRef.current?.getItems() ?? []),
+      workExperience: sanitizeWorkExperience(
+        workExperienceEditorRef.current?.getItems() ?? [],
+      ),
     };
 
     const nextErrors = validateResumePayload(payload);
@@ -248,37 +268,6 @@ export function CandidateResumesSection({
         </div>
       </CardHeader>
       <CardContent className="grid gap-5">
-        <div className="flex flex-wrap gap-2">
-          {resumes.map((resume) => (
-            <button
-              key={resume.id}
-              type="button"
-              className={
-                resume.id === activeResume?.id
-                  ? "rounded-xl border border-[#171717] bg-[#171717] px-4 py-2 text-left text-sm font-semibold text-white"
-                  : "rounded-xl border border-[#161616]/10 bg-[#f7f7f3] px-4 py-2 text-left text-sm font-semibold text-[#333] hover:bg-white"
-              }
-              onClick={() => {
-                setActiveResumeId(resume.id);
-                setFormErrors({});
-                setMode("view");
-              }}
-            >
-              <span className="flex items-center gap-2">
-                <span>{resume.profession || "Резюме"}</span>
-                {resume.archived ? (
-                  <span className="rounded-lg bg-white/15 px-2 py-0.5 text-xs">
-                    Архив
-                  </span>
-                ) : null}
-              </span>
-            </button>
-          ))}
-          <span className="inline-flex items-center rounded-xl border border-[#161616]/10 px-3 py-2 text-sm text-[#777]">
-            {resumes.length}/5
-          </span>
-        </div>
-
         {mode === "create" || mode === "edit" ? (
           <form
             key={`${mode}-${formResume?.id ?? "new"}`}
@@ -298,11 +287,6 @@ export function CandidateResumesSection({
                 />
                 <FieldError message={formErrors.profession} />
               </div>
-              <Input
-                name="city"
-                defaultValue={formResume?.city ?? ""}
-                placeholder="Город"
-              />
               <DictionarySelect
                 name="experienceId"
                 defaultValue={formResume?.experienceId}
@@ -362,6 +346,21 @@ export function CandidateResumesSection({
             />
             <FieldError message={formErrors.skillIds} />
 
+            <ResumeLanguagesEditor
+              ref={languagesEditorRef}
+              initialItems={formResume?.languages ?? []}
+              languages={dictionaries?.languages ?? []}
+            />
+            <ResumeEducationEditor
+              ref={educationEditorRef}
+              initialItems={formResume?.education ?? []}
+            />
+            <ResumeWorkExperienceEditor
+              ref={workExperienceEditorRef}
+              initialItems={formResume?.workExperience ?? []}
+              workFormats={dictionaries?.workFormats ?? []}
+            />
+
             <div className="flex flex-wrap gap-2">
               <Button disabled={isSaving} className="rounded-xl bg-[#171717] text-white">
                 {isSaving ? "Сохранение..." : "Сохранить резюме"}
@@ -379,123 +378,23 @@ export function CandidateResumesSection({
               </Button>
             </div>
           </form>
-        ) : activeResume ? (
-          <div className="rounded-2xl border border-[#161616]/10 bg-[#f7f7f3] p-5">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <h2 className="text-2xl font-extrabold text-[#171717]">
-                {activeResume.profession || "Резюме"}
-                </h2>
-                <p className="mt-2 flex items-center gap-2 text-sm text-[#777]">
-                  <Clock3 className="h-4 w-4" />
-                  Обновлено: {formatDate(activeResume.updatedAt ?? activeResume.createdAt)}
-                </p>
-                <Badge
-                  variant="outline"
-                  className="mt-3 rounded-lg bg-white"
-                >
-                  {activeResume.archived ? "В архиве" : "Активное резюме"}
-                </Badge>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="rounded-xl bg-white"
-                  onClick={() => startEdit(activeResume)}
-                >
-                  <Pencil className="h-4 w-4" />
-                  Редактировать
-                </Button>
-                {activeResume.archived ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="rounded-xl bg-white"
-                    disabled={isSaving}
-                    onClick={() => void handleRestore(activeResume)}
-                  >
-                    <RotateCcw className="h-4 w-4" />
-                    Вернуть
-                  </Button>
-                ) : (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="rounded-xl bg-white"
-                    disabled={isSaving}
-                    onClick={() => openConfirm("archive", activeResume)}
-                  >
-                    <Archive className="h-4 w-4" />
-                    В архив
-                  </Button>
-                )}
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="rounded-xl border-red-200 bg-white text-red-700 hover:bg-red-50 hover:text-red-800"
-                  disabled={isSaving}
-                  onClick={() => openConfirm("delete", activeResume)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Удалить
-                </Button>
-              </div>
-            </div>
-
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-              <ResumeMeta
-                icon={<MapPin className="h-4 w-4" />}
-                label="Город"
-                value={activeResume.city || "Не указан"}
+        ) : resumes.length ? (
+          <div className="grid gap-3">
+            {resumes.map((resume) => (
+              <CandidateResumeCard
+                key={resume.id}
+                resume={resume}
+                isSaving={isSaving}
+                onArchive={(item) => openConfirm("archive", item)}
+                onDelete={(item) => openConfirm("delete", item)}
+                onEdit={startEdit}
+                onPreview={setPreviewResume}
+                onRestore={(item) => void handleRestore(item)}
+                onStats={setStatsResume}
               />
-              <ResumeMeta
-                icon={<Wallet className="h-4 w-4" />}
-                label="Зарплата"
-                value={formatMoney(
-                  activeResume.expectedSalaryFrom,
-                  activeResume.expectedSalaryTo,
-                )}
-              />
-              <ResumeMeta
-                icon={<BriefcaseBusiness className="h-4 w-4" />}
-                label="Занятость"
-                value={activeResume.employmentName || "Не указана"}
-              />
-              <ResumeMeta
-                icon={<BriefcaseBusiness className="h-4 w-4" />}
-                label="Формат"
-                value={activeResume.workFormatName || "Не указан"}
-              />
-              <ResumeMeta
-                icon={<Clock3 className="h-4 w-4" />}
-                label="Опыт"
-                value={activeResume.experienceName || "Не указан"}
-              />
-            </div>
-
-            <RichTextContent
-              value={activeResume.about}
-              fallback="Описание резюме пока не заполнено."
-              className="mt-5"
-            />
-
-            <div className="mt-5 flex flex-wrap gap-2">
-              {activeResume.skills?.length ? (
-                activeResume.skills.map((skill) => (
-                  <Badge
-                    key={skill.id}
-                    variant="outline"
-                    className="rounded-lg bg-white"
-                  >
-                    {skill.name}
-                  </Badge>
-                ))
-              ) : (
-                <span className="text-sm text-[#777]">
-                  Навыки пока не добавлены.
-                </span>
-              )}
+            ))}
+            <div className="rounded-2xl border border-dashed border-[#161616]/15 bg-[#f8f7f2] px-4 py-3 text-sm text-[#626262]">
+              Резюме: {resumes.length}/5
             </div>
           </div>
         ) : (
@@ -515,6 +414,79 @@ export function CandidateResumesSection({
           if (!open) closeConfirm();
         }}
       />
+      <CandidateResumeStatsDialog
+        open={Boolean(statsResume)}
+        resume={statsResume}
+        onOpenChange={(open) => {
+          if (!open) setStatsResume(null);
+        }}
+      />
+      <CandidateResumePreviewDialog
+        open={Boolean(previewResume)}
+        resume={previewResume}
+        onOpenChange={(open) => {
+          if (!open) setPreviewResume(null);
+        }}
+      />
     </>
   );
+}
+
+function sanitizeLanguages(items: CandidateResumeLanguage[]) {
+  return items
+    .map((item) => ({
+      id: item.id,
+      languageId: item.languageId?.trim(),
+      level: item.level?.trim(),
+    }))
+    .filter((item) => item.languageId || item.level);
+}
+
+function sanitizeEducation(items: CandidateResumeEducation[]) {
+  return items
+    .map((item) => ({
+      id: item.id,
+      institution: item.institution?.trim(),
+      specialty: item.specialty?.trim(),
+      educationLevel: item.educationLevel?.trim(),
+      startDate: item.startDate || undefined,
+      endDate: item.endDate || undefined,
+      currentlyStudying: Boolean(item.currentlyStudying),
+    }))
+    .filter(
+      (item) =>
+        item.institution ||
+        item.specialty ||
+        item.educationLevel ||
+        item.startDate ||
+        item.endDate ||
+        item.currentlyStudying,
+    );
+}
+
+function sanitizeWorkExperience(items: CandidateResumeWorkExperience[]) {
+  return items
+    .map((item) => {
+      const hasEndDate = Boolean(item.endDate);
+
+      return {
+        id: item.id,
+        company: item.company?.trim(),
+        position: item.position?.trim(),
+        workFormatId: item.workFormatId?.trim(),
+        startDate: item.startDate || undefined,
+        endDate: hasEndDate ? item.endDate : undefined,
+        currentlyWorking: Boolean(item.currentlyWorking) || !hasEndDate,
+        projectUrl: item.projectUrl?.trim() || undefined,
+      };
+    })
+    .filter(
+      (item) =>
+        item.company ||
+        item.position ||
+        item.workFormatId ||
+        item.startDate ||
+        item.endDate ||
+        item.projectUrl,
+    );
 }

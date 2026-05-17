@@ -1,12 +1,10 @@
 "use client";
 
-import { useParams } from "next/navigation";
 import { Direction } from "@/components/shared/DirectionSelector";
-import { VacanciesSection } from "@/components/shared/VacanciesSection";
-// import { mockVacancies } from "@/components/shared/mockData";
+import { useParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 
 const directionNames: Record<Direction, string> = {
   java: "Java",
@@ -54,13 +52,6 @@ export default function VacanciesPage() {
           </p>
         </div>
       </div>
-
-      {/* <div className="py-12 bg-gray-50">
-        <VacanciesSection
-          vacancies={mockVacancies}
-          selectedDirection={direction}
-        />
-      </div> */}
     </div>
   );
 }

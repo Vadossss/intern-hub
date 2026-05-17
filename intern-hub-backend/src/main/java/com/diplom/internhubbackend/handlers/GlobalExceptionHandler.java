@@ -4,6 +4,7 @@ import com.diplom.internhubbackend.exception.*;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -13,6 +14,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
     @ExceptionHandler(VacancyNotFoundException.class)
     public ResponseEntity<Object> handleVacancyExists(VacancyNotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
+    }
+
+    @ExceptionHandler(ExcludedWordException.class)
+    public ResponseEntity<Object> handleExcludedWordException(ExcludedWordException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
     }
 
     @ExceptionHandler(EmailAlreadyExistsException.class)
@@ -30,6 +36,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
     }
 
+    @ExceptionHandler(PasswordIncorrectException.class)
+    public ResponseEntity<Object> handlePasswordIncorrect(PasswordIncorrectException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ex.getMessage());
+    }
+
     @ExceptionHandler(RefreshTokenException.class)
     public ResponseEntity<Object> handleRefreshTokenException(RefreshTokenException ex) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ex.getMessage());
@@ -37,6 +48,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
     @ExceptionHandler(UserBlockedException.class)
     public ResponseEntity<Object> handleUserBlockedException(UserBlockedException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ex.getMessage());
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Object> handleAccessDeniedException(AccessDeniedException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ex.getMessage());
     }
 

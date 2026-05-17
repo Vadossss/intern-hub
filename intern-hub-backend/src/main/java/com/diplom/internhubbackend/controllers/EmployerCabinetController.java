@@ -6,8 +6,10 @@ import com.diplom.internhubbackend.services.CandidateProfileService;
 import com.diplom.internhubbackend.services.EmployerCabinetService;
 import com.diplom.internhubbackend.services.EmployerProfileService;
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -129,18 +131,16 @@ public class EmployerCabinetController {
     @Operation(summary = "Поиск кандидатов")
     @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYER', 'ROLE_ADMIN')")
     @GetMapping("/candidates")
-    public PageResponse<CandidateProfileResponseDto> searchCandidates(
+    public PageResponse<CandidateResumeSearchResponseDto> searchCandidates(
             @RequestParam(required = false) String query,
             @RequestParam(required = false) String city,
-            @RequestParam(required = false, name = "open_to_work") Boolean openToWork,
             @RequestParam(required = false, name = "skill_ids") Set<Integer> skillIds,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        Page<CandidateProfileResponseDto> result = employerCabinetService.searchCandidates(
+        Page<CandidateResumeSearchResponseDto> result = employerCabinetService.searchCandidates(
                 query,
                 city,
-                openToWork,
                 skillIds,
                 page,
                 size
@@ -157,7 +157,26 @@ public class EmployerCabinetController {
     @Operation(summary = "Получить профиль кандидата по user_id")
     @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYER', 'ROLE_ADMIN')")
     @GetMapping("/candidates/{user_id}/profile")
-    public CandidateProfileResponseDto getCandidateProfile(@PathVariable(name = "user_id") Integer userId) {
-        return candidateProfileService.getProfileByUserId(userId);
+    public CandidateProfileResponseDto getCandidateProfile(
+            @AuthenticationPrincipal CustomUserDetails customUserDetails,
+            @PathVariable(name = "user_id") Integer userId,
+            HttpServletRequest request
+    ) {
+        CandidateProfileResponseDto profile = candidateProfileService.getProfileByUserId(userId);
+        employerCabinetService.recordCandidateProfileView(customUserDetails.getUser(), profile, request);
+
+        return profile;
+    }
+
+    @Operation(summary = "Р—Р°С„РёРєСЃРёСЂРѕРІР°С‚СЊ РїСЂРѕСЃРјРѕС‚СЂ СЂРµР·СЋРјРµ")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYER', 'ROLE_ADMIN')")
+    @PostMapping("/candidates/resumes/{resume_id}/view")
+    public void recordCandidateResumeView(
+            @AuthenticationPrincipal CustomUserDetails customUserDetails,
+            @PathVariable(name = "resume_id") Long resumeId,
+            HttpServletRequest request
+    ) {
+        employerCabinetService.recordCandidateResumeView(customUserDetails.getUser(), resumeId, request);
     }
 }

@@ -5,6 +5,7 @@ import com.diplom.internhubbackend.dto.CandidateProfileResponseDto;
 import com.diplom.internhubbackend.dto.CandidateProfileUpdateDto;
 import com.diplom.internhubbackend.dto.CandidateResumeResponseDto;
 import com.diplom.internhubbackend.dto.CandidateResumeUpsertDto;
+import com.diplom.internhubbackend.dto.CandidateResumeViewStatsDto;
 import com.diplom.internhubbackend.dto.PageResponse;
 import com.diplom.internhubbackend.security.config.CustomUserDetails;
 import com.diplom.internhubbackend.services.CandidateProfileService;
@@ -110,6 +111,16 @@ public class UserProfileController {
         candidateResumeService.deleteResume(customUserDetails.getUser(), resumeId);
     }
 
+    @PreAuthorize("hasAnyAuthority('ROLE_USER', 'ROLE_ADMIN')")
+    @GetMapping("/resumes/{resume_id}/view-stats")
+    public CandidateResumeViewStatsDto getResumeViewStats(
+            @AuthenticationPrincipal CustomUserDetails customUserDetails,
+            @PathVariable(name = "resume_id") Long resumeId,
+            @RequestParam(defaultValue = "30") int days
+    ) {
+        return candidateResumeService.getResumeViewStats(customUserDetails.getUser(), resumeId, days);
+    }
+
     @Operation(summary = "Получить историю откликов текущего пользователя")
     @PreAuthorize("hasAnyAuthority('ROLE_USER', 'ROLE_ADMIN')")
     @GetMapping("/applications/history")
@@ -130,4 +141,5 @@ public class UserProfileController {
                 results.getTotalElements()
         );
     }
+
 }

@@ -5,6 +5,7 @@ import { ArrowUpRight, BriefcaseBusiness, UserRound } from "lucide-react";
 
 import { RichTextContent } from "@/components/shared/RichText";
 import { InfoCard } from "@/components/shared/profile/InfoCard";
+import { ResumeExtendedDetails } from "@/components/shared/profile/ResumeExtendedDetails";
 import {
   formatBirthday,
   formatMoney,
@@ -69,6 +70,10 @@ export function CandidateDialog({
                 value={candidate.phoneNumber || "Не указан"}
               />
               <InfoCard
+                title="Город"
+                value={candidate.city || "Не указан"}
+              />
+              <InfoCard
                 title="День рождения"
                 value={formatBirthday(candidate.birthday)}
               />
@@ -128,6 +133,7 @@ export function CandidateDialog({
                       fallback="Описание резюме пока не заполнено."
                       className="mt-3"
                     />
+                    <ResumeExtendedDetails resume={resume} className="mt-4" />
                   </div>
                 ))}
               </div>

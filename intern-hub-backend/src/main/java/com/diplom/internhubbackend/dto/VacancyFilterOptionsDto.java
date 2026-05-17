@@ -5,7 +5,8 @@ import java.util.List;
 public record VacancyFilterOptionsDto(
         List<String> cities,
         List<String> companies,
-        List<FilterOptionDto> sources
+        List<FilterOptionDto> sources,
+        List<FilterOptionDto> directions
 ) {
     public record FilterOptionDto(String id, String name) {
     }

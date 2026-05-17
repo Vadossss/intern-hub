@@ -1,0 +1,1 @@
+export { ComplaintDialog } from "./ComplaintDialog";

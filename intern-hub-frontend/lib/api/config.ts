@@ -4,13 +4,15 @@ export const API_CONFIG = {
 } as const;
 
 export const API_ENDPOINTS = {
-  stack: "/api/stack",
   currency: "/api/currency",
   employment: "/api/employment",
   experience: "/api/experience",
   workFormat: "/api/format",
+  languages: "/api/languages",
   vacancies: "/api/vacancies",
   vacancyFilters: "/api/vacancies/filters",
+  vacancyDirections: "/api/vacancies/directions",
+  citySuggestions: "/api/cities/suggestions",
   tasks: "/api/tasks",
   questions: "/api/questions",
   skills: "/api/skill",
@@ -35,6 +37,10 @@ export const API_ENDPOINTS = {
   employerVacancies: "/api/employer/me/vacancies",
   employerApplications: "/api/employer/me/applications",
   employerCandidates: "/api/employer/me/candidates",
+  moderationVacancies: "/api/moderation/vacancies",
+  moderationUsers: "/api/moderation/users",
+  vacancyExcludedWords: "/api/admin/vacancy-excluded-words",
+  complaints: "/api/complaints",
   blogArticles: "/api/blog/articles",
   blogImages: "/api/blog/articles/images",
 } as const;

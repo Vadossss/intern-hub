@@ -17,7 +17,8 @@ public class VacancyResponseDto {
     private Integer id;
     private String publicId;
     private String title;
-    private String stack;
+    private String directionId;
+    private String direction;
     private String description;
     private String city;
     @Enumerated(EnumType.STRING)
@@ -31,4 +32,6 @@ public class VacancyResponseDto {
     private EmployerDto employer;
     private Set<KeySkillDto> skills;
     private List<VacancyContactDto> contacts;
+    private Long viewCount;
+    private Long todayViewCount;
 }

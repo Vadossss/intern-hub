@@ -14,8 +14,11 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 public class EmployerProfile {
+    public static final int START_SEQ = 10000;
+
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @SequenceGenerator(name = "employer_profile_seq", sequenceName = "employer_profile_seq", allocationSize = 1, initialValue = START_SEQ)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "employer_profile_seq")
     private Long id;
 
     @OneToOne(fetch = FetchType.LAZY)
@@ -36,6 +39,13 @@ public class EmployerProfile {
     private String about;
 
     private String avatarUrl;
+
+    @Builder.Default
+    private Boolean aggregated = false;
+
+    private Boolean accredited;
+
+    private Boolean verified;
 
     @Column(nullable = false, updatable = false)
     @Builder.Default

@@ -13,6 +13,7 @@ import type {
 export interface GetVacanciesParams {
   source?: string[];
   position?: string;
+  direction?: string[];
   companyName?: string;
   employerId?: string;
   city?: string;
@@ -51,6 +52,20 @@ export async function getVacancies(
       string | number | boolean | string[] | undefined
     >,
   });
+}
+
+export async function getRecommendedVacancies(
+  params?: GetVacanciesParams,
+): Promise<VacanciesResponse> {
+  return apiClient.get<VacanciesResponse>(
+    `${API_ENDPOINTS.vacancies}/recommendations`,
+    {
+      params: params as Record<
+        string,
+        string | number | boolean | string[] | undefined
+      >,
+    },
+  );
 }
 
 export async function getVacancyById(id: string): Promise<VacancyResponseDto> {

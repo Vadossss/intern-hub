@@ -30,18 +30,9 @@ public class User {
 
     private String password;
 
-    private String city;
-
     @ManyToOne
     @JoinColumn(name = "role_id")
     private Role role;
-
-    private String firstName;
-    private String lastName;
-
-    private String companyName;
-
-    private Boolean isAggregated;
 
     @Enumerated(EnumType.STRING)
     private AccountStatus status =  AccountStatus.ACTIVE;

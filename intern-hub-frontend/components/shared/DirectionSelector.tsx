@@ -1,7 +1,7 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
-import { useStacks } from "@/lib/hooks";
+import { useVacancyDirections } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 
 export type Direction =
@@ -44,7 +44,7 @@ export const DirectionSelector: React.FC<Props> = ({
   className,
   showAllOption = false,
 }) => {
-  const { stacks, loading, error, refetch } = useStacks();
+  const { directions: vacancyDirections, loading } = useVacancyDirections();
 
   if (loading) {
     return <div className="p-4">Загрузка стеков...</div>;
@@ -74,18 +74,18 @@ export const DirectionSelector: React.FC<Props> = ({
             Все направления
           </Badge>
         )}
-        {stacks.map((stack) => (
+        {vacancyDirections.map((direction) => (
           <Badge
-            key={stack.id}
-            variant={selectedDirection === stack.id ? "default" : "outline"}
+            key={direction.id}
+            variant={selectedDirection === direction.id ? "default" : "outline"}
             className={cn(
               "px-4 py-2 text-base cursor-pointer transition-all hover:scale-105 flex items-center gap-2",
-              selectedDirection === stack.id &&
+              selectedDirection === direction.id &&
                 "bg-primary text-primary-foreground"
             )}
-            onClick={() => onDirectionChange(stack.id)}
+            onClick={() => onDirectionChange(direction.id)}
           >
-            <span>{stack.name}</span>
+            <span>{direction.name}</span>
           </Badge>
         ))}
       </div>

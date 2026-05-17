@@ -7,6 +7,7 @@ import com.diplom.internhubbackend.mapper.VacancyMapper;
 import com.diplom.internhubbackend.security.config.CustomUserDetails;
 import com.diplom.internhubbackend.services.VacancyService;
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -51,8 +52,16 @@ public class VacancyController {
 
     @Operation(summary = "Получение вакансии по id")
     @GetMapping("/{vacancy_id}")
-    public ResponseEntity<Object> getVacancy(@PathVariable(name = "vacancy_id") String vacancyId) {
-        return ResponseEntity.ok(vacancyMapper.toDto(vacancyService.getVacancy(vacancyId)));
+    public ResponseEntity<Object> getVacancy(
+            @AuthenticationPrincipal CustomUserDetails customUserDetails,
+            @PathVariable(name = "vacancy_id") String vacancyId,
+            HttpServletRequest request
+    ) {
+        return ResponseEntity.ok(vacancyService.getVacancyProjection(
+                vacancyId,
+                customUserDetails == null ? null : customUserDetails.getUser(),
+                request
+        ));
     }
 
     @Operation(summary = "Архивирование вакансии")
@@ -64,6 +73,17 @@ public class VacancyController {
             @PathVariable(name = "vacancy_id") String vacancyId
     ) {
         vacancyService.archiveVacancy(customUserDetails.getUser(), vacancyId);
+    }
+
+    @Operation(summary = "Восстановление вакансии из архива")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAuthority('ROLE_EMPLOYER')")
+    @PatchMapping("/{vacancy_id}/restore")
+    public void restoreVacancy(
+            @AuthenticationPrincipal CustomUserDetails customUserDetails,
+            @PathVariable(name = "vacancy_id") String vacancyId
+    ) {
+        vacancyService.restoreVacancy(customUserDetails.getUser(), vacancyId);
     }
 
     @Operation(summary = "Получение избранных вакансий пользователя")
@@ -91,11 +111,74 @@ public class VacancyController {
         return ResponseEntity.ok(vacancyService.getActiveFilterOptions());
     }
 
+    @Operation(summary = "Получение направлений вакансий")
+    @GetMapping("/directions")
+    public ResponseEntity<List<VacancyFilterOptionsDto.FilterOptionDto>> getVacancyDirections() {
+        return ResponseEntity.ok(vacancyService.getVacancyDirections());
+    }
+
+    @Operation(summary = "Получение рекомендованных вакансий по активным резюме соискателя")
+    @PreAuthorize("hasAuthority('ROLE_USER')")
+    @GetMapping("/recommendations")
+    public ResponseEntity<PageResponse<VacancyResponseDto>> getRecommendedVacancies(
+            @AuthenticationPrincipal CustomUserDetails customUserDetails,
+            @RequestParam(required = false) List<VacancySourceCode> source,
+            @RequestParam(required = false) PositionsEnum position,
+            @RequestParam(required = false) List<String> direction,
+            @RequestParam(required = false) String companyName,
+            @RequestParam(required = false) String employerId,
+            @RequestParam(required = false) String city,
+            @RequestParam(required = false) Long salaryMin,
+            @RequestParam(required = false) Long salaryMax,
+            @RequestParam(required = false) String searchText,
+            @RequestParam(required = false) List<WorkFormatEnum> workFormats,
+            @RequestParam(required = false) List<EmploymentEnum> employment,
+            @RequestParam(required = false) List<ExperienceEnum> experience,
+            @RequestParam(required = false, defaultValue = "0") Integer page,
+            @RequestParam(required = false, defaultValue = "20") Integer size,
+            @RequestParam(required = false, defaultValue = "createdAt") String sortBy,
+            @RequestParam(required = false, defaultValue = "desc") String sortDirection
+    ) {
+        FilterParamsRequest filterParams = new FilterParamsRequest();
+        filterParams.setSource(source);
+        filterParams.setPosition(position);
+        filterParams.setDirection(direction);
+        filterParams.setCity(city);
+        filterParams.setCompanyName(companyName);
+        filterParams.setEmployerId(employerId);
+        filterParams.setEmployment(employment);
+        filterParams.setExperience(experience);
+        filterParams.setSalaryMin(salaryMin);
+        filterParams.setSalaryMax(salaryMax);
+        filterParams.setSearchText(searchText);
+        filterParams.setWorkFormats(workFormats);
+        filterParams.setPage(normalizePage(page));
+        filterParams.setSize(normalizeSize(size));
+        filterParams.setSortBy(sortBy);
+        filterParams.setSortDirection(sortDirection);
+
+        Page<VacancyResponseDto> results =
+                vacancyService.getRecommendedVacancies(
+                        customUserDetails.getUser(),
+                        filterParamsMapper.toDto(filterParams)
+                );
+
+        return ResponseEntity.ok(
+                PageResponse.of(
+                        results.getContent(),
+                        results.getNumber(),
+                        results.getSize(),
+                        results.getTotalElements()
+                )
+        );
+    }
+
     @Operation(summary = "Расширенный поиск вакансий")
     @GetMapping
     public ResponseEntity<PageResponse<VacancyResponseDto>> searchVacancies(
             @RequestParam(required = false) List<VacancySourceCode> source,
             @RequestParam(required = false) PositionsEnum position,
+            @RequestParam(required = false) List<String> direction,
             @RequestParam(required = false) String companyName,
             @RequestParam(required = false) String employerId,
             @RequestParam(required = false) String city,
@@ -113,6 +196,7 @@ public class VacancyController {
         FilterParamsRequest filterParams = new FilterParamsRequest();
         filterParams.setSource(source);
         filterParams.setPosition(position);
+        filterParams.setDirection(direction);
         filterParams.setCity(city);
         filterParams.setCompanyName(companyName);
         filterParams.setEmployerId(employerId);

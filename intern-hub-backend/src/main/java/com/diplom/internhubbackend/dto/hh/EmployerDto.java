@@ -17,6 +17,7 @@ public class EmployerDto {
     private String avatarUrl;
     private Role role;
     private Boolean isAggregated;
+    private Boolean accredited;
     private Boolean verified;
     private VerificationStatus verificationStatus;
     private LocalDateTime verifiedAt;

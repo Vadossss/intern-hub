@@ -9,8 +9,9 @@ import org.springframework.context.annotation.Configuration;
 public class CacheConfig {
     @Bean
     public CacheManager cacheManager() {
-        return new ConcurrentMapCacheManager("role", "stacks", "workFormat",
+        return new ConcurrentMapCacheManager("role", "workFormat",
                 "keySkills", "experience", "employment", "vacancySource", "currency",
-                "vacancy", "user");
+                "vacancy", "vacancy_full", "user", "languages", "language",
+                "vacancy_recommendations_default", "directions");
     }
 }

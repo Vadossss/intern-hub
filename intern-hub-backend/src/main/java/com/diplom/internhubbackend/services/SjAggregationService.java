@@ -1,23 +1,27 @@
 package com.diplom.internhubbackend.services;
 
+import com.diplom.internhubbackend.dto.aggregation.AggregatedEmployerData;
+import com.diplom.internhubbackend.dto.sj.SjCatalogueItem;
+import com.diplom.internhubbackend.dto.sj.SjClientDetailsResponse;
 import com.diplom.internhubbackend.dto.sj.SjVacancyItem;
 import com.diplom.internhubbackend.dto.sj.SjVacancyListResponse;
 import com.diplom.internhubbackend.enums.ContactMethod;
-import com.diplom.internhubbackend.enums.UserRole;
-import com.diplom.internhubbackend.models.Role;
-import com.diplom.internhubbackend.models.Stack;
 import com.diplom.internhubbackend.models.User;
 import com.diplom.internhubbackend.models.Vacancy;
 import com.diplom.internhubbackend.models.VacancyContact;
+import com.diplom.internhubbackend.models.VacancyDirection;
 import com.diplom.internhubbackend.models.VacancySource;
-import com.diplom.internhubbackend.repositories.UserRepository;
 import com.diplom.internhubbackend.repositories.VacancyRepository;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.util.retry.Retry;
 
@@ -26,60 +30,61 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
 public class SjAggregationService {
-    private static final int SEARCH_IN_TITLE = 1;
-    private static final int SEARCH_IN_FULL_TEXT = 10;
-
-    private static final String SEARCH_ALL_WORDS = "and";
-    private static final String SEARCH_ANY_WORD = "or";
-    private static final String SEARCH_EXACT_PHRASE = "particular";
-    private static final String SEARCH_EXCLUDE_WORDS = "nein";
-
-    private static final Map<String, String> SJ_STACK_ALIASES = Map.ofEntries(
-            Map.entry("android", "android"),
-            Map.entry("backend", "backend"),
-            Map.entry("c#", "csharp"),
-            Map.entry("csharp", "csharp"),
-            Map.entry(".net", "csharp"),
-            Map.entry("dotnet", "csharp"),
-            Map.entry("asp.net", "csharp"),
-            Map.entry("aspnet", "csharp"),
-            Map.entry("datascience", "datascience"),
-            Map.entry("data science", "datascience"),
-            Map.entry("design", "design"),
-            Map.entry("devops", "devops"),
-            Map.entry("frontend", "frontend"),
-            Map.entry("front-end", "frontend"),
-            Map.entry("front end", "frontend"),
-            Map.entry("go", "go"),
-            Map.entry("golang", "go"),
-            Map.entry("ios", "ios"),
-            Map.entry("java", "java"),
-            Map.entry("javascript", "javascript"),
-            Map.entry("product", "product"),
-            Map.entry("product manager", "product"),
-            Map.entry("python", "python"),
-            Map.entry("qa", "qa"),
-            Map.entry("quality assurance", "qa"),
-            Map.entry("security", "security"),
-            Map.entry("infosec", "security")
+    private static final Map<Integer, String> SJ_CATALOGUE_DIRECTION_IDS = buildSjCatalogueDirectionIds();
+    private static final Set<Integer> BROAD_SJ_CATALOGUE_KEYS = Set.of(42, 503, 53, 603, 40);
+    private static final List<String> DIRECTION_PRIORITY = List.of(
+            VacancyDirectionService.MANAGEMENT,
+            VacancyDirectionService.SECURITY,
+            VacancyDirectionService.DATA_AI,
+            VacancyDirectionService.DEVOPS,
+            VacancyDirectionService.QA,
+            VacancyDirectionService.ANALYTICS,
+            VacancyDirectionService.DESIGN,
+            VacancyDirectionService.DEVELOPMENT
     );
 
-    private static final Map<String, SjSearchPreset> SJ_SEARCH_PRESETS = buildSjSearchPresets();
+    private record SjCatalogueDirection(Integer catalogueKey, String catalogueTitle, String directionId) {}
 
-    private record SjKeywordClause(int srws, String skwc, String keys) {}
+    private static Map<Integer, String> buildSjCatalogueDirectionIds() {
+        Map<Integer, String> catalogueDirections = new LinkedHashMap<>();
 
-    private record SjSearchPreset(String keyword, List<SjKeywordClause> keywords) {}
+        addDirection(catalogueDirections, VacancyDirectionService.DEVELOPMENT,
+                36, 40, 42, 47, 48, 604, 503, 603, 53, 41);
+        addDirection(catalogueDirections, VacancyDirectionService.DESIGN,
+                43, 59, 35, 64, 66, 68, 637);
+        addDirection(catalogueDirections, VacancyDirectionService.MANAGEMENT,
+                613, 605, 630);
+        addDirection(catalogueDirections, VacancyDirectionService.QA, 56);
+        addDirection(catalogueDirections, VacancyDirectionService.DEVOPS,
+                628, 629, 37, 49, 50, 51);
+        addDirection(catalogueDirections, VacancyDirectionService.ANALYTICS,
+                38, 45, 239, 244, 254);
+        addDirection(catalogueDirections, VacancyDirectionService.DATA_AI,
+                651, 627, 650);
+        addDirection(catalogueDirections, VacancyDirectionService.SECURITY, 546);
+
+        return Collections.unmodifiableMap(catalogueDirections);
+    }
+
+    private static void addDirection(Map<Integer, String> target, String directionId, Integer... catalogueKeys) {
+        for (Integer catalogueKey : catalogueKeys) {
+            target.put(catalogueKey, directionId);
+        }
+    }
 
     private final WebClient superJobWebClient;
     private final VacancyRepository vacancyRepository;
@@ -88,8 +93,9 @@ public class SjAggregationService {
     private final ExperienceService experienceService;
     private final EmploymentService employmentService;
     private final CurrencyService currencyService;
-    private final UserRepository userRepository;
-    private final UserRoleService userRoleService;
+    private final EmployerProfileService employerProfileService;
+    private final VacancyDirectionService vacancyDirectionService;
+    private final VacancyExcludedWordService vacancyExcludedWordService;
 
     @Value("${superjob.api.key:}")
     private String superJobApiKey;
@@ -102,8 +108,9 @@ public class SjAggregationService {
             ExperienceService experienceService,
             EmploymentService employmentService,
             CurrencyService currencyService,
-            UserRepository userRepository,
-            UserRoleService userRoleService
+            EmployerProfileService employerProfileService,
+            VacancyDirectionService vacancyDirectionService,
+            VacancyExcludedWordService vacancyExcludedWordService
     ) {
         this.superJobWebClient = superJobWebClient;
         this.vacancyRepository = vacancyRepository;
@@ -112,11 +119,13 @@ public class SjAggregationService {
         this.experienceService = experienceService;
         this.employmentService = employmentService;
         this.currencyService = currencyService;
-        this.userRepository = userRepository;
-        this.userRoleService = userRoleService;
+        this.employerProfileService = employerProfileService;
+        this.vacancyDirectionService = vacancyDirectionService;
+        this.vacancyExcludedWordService = vacancyExcludedWordService;
     }
 
-    public void fetchAndSave(Stack stack) {
+    @CacheEvict(value = "vacancy_recommendations_default", allEntries = true)
+    public void fetchAndSave() {
         if (superJobApiKey == null || superJobApiKey.isBlank()) {
             log.warn("SuperJob aggregation skipped: superjob.api.key is empty");
             return;
@@ -128,32 +137,63 @@ public class SjAggregationService {
             return;
         }
 
-        int page = 0;
-        final int perPage = 100;
+        List<SjCatalogueDirection> catalogueDirections = resolveCatalogueDirections();
+        if (catalogueDirections.isEmpty()) {
+            log.warn("SuperJob aggregation skipped: no IT-related catalogue positions found");
+            return;
+        }
 
-        while (true) {
-            SjVacancyListResponse response = fetchVacancies(stack, page, perPage);
-            if (response == null || response.objects() == null || response.objects().isEmpty()) {
-                break;
+        Map<String, VacancyDirection> directionsById = vacancyDirectionService.getDefaultDirectionsById();
+        List<String> excludedWords = vacancyExcludedWordService.getActiveWords();
+        final int perPage = 40;
+
+        for (SjCatalogueDirection catalogueDirection : catalogueDirections) {
+            VacancyDirection direction = directionsById.get(catalogueDirection.directionId());
+            if (direction == null) {
+                continue;
             }
 
-            log.info("SuperJob stack '{}' page {}: {} vacancies", stack.getName(), page, response.objects().size());
-
-            for (SjVacancyItem item : response.objects()) {
-                if (item == null || item.id() == null) {
-                    continue;
+            int page = 0;
+            while (true) {
+                SjVacancyListResponse response = fetchVacancies(catalogueDirection, page, perPage);
+                if (response == null || response.objects() == null || response.objects().isEmpty()) {
+                    break;
                 }
-                try {
-                    saveVacancy(item, vacancySource, stack).join();
-                } catch (Exception ex) {
-                    log.warn("Failed to save SuperJob vacancy {}", item != null ? item.id() : null, ex);
-                }
-            }
 
-            if (!Boolean.TRUE.equals(response.more())) {
-                break;
+                log.info(
+                        "SuperJob catalogue '{}' ({}) page {}: {} vacancies",
+                        catalogueDirection.catalogueTitle(),
+                        direction.getName(),
+                        page,
+                        response.objects().size()
+                );
+
+                for (SjVacancyItem item : response.objects()) {
+                    if (item == null || item.id() == null || hasExcludedWords(item, excludedWords)) {
+                        continue;
+                    }
+
+                    VacancyDirection resolvedDirection = resolveVacancyDirection(
+                            item,
+                            catalogueDirection,
+                            directionsById
+                    );
+                    if (resolvedDirection == null) {
+                        continue;
+                    }
+
+                    try {
+                        saveVacancy(item, vacancySource, resolvedDirection).join();
+                    } catch (Exception ex) {
+                        log.warn("Failed to save SuperJob vacancy {}", item != null ? item.id() : null, ex);
+                    }
+                }
+
+                if (!Boolean.TRUE.equals(response.more())) {
+                    break;
+                }
+                page++;
             }
-            page++;
         }
     }
 
@@ -161,7 +201,7 @@ public class SjAggregationService {
     public CompletableFuture<Void> saveVacancy(
             @NonNull SjVacancyItem sjVacancyItem,
             @NonNull VacancySource vacancySource,
-            @NonNull Stack fallbackStack
+            @NonNull VacancyDirection direction
     ) {
         String externalId = String.valueOf(sjVacancyItem.id());
         if ("null".equals(externalId)) {
@@ -185,7 +225,7 @@ public class SjAggregationService {
                         : "Unknown"
         );
         vacancy.setDescription(nonBlankOrDefault(buildDescription(sjVacancyItem), sjVacancyItem.profession()));
-        vacancy.setStack(fallbackStack);
+        vacancy.setDirection(direction);
         Integer ttlDays = vacancySource.getTtlDays() == null ? 30 : vacancySource.getTtlDays();
         vacancy.setExpiresAt(LocalDateTime.now().plusDays(ttlDays));
 
@@ -211,7 +251,7 @@ public class SjAggregationService {
         String currencyId = normalizeCurrency(sjVacancyItem.currency());
         vacancy.setCurrency(currencyId == null ? null : currencyService.getCurrencyById(currencyId));
 
-        User employer = resolveOrCreateEmployer(sjVacancyItem.firmName());
+        User employer = employerProfileService.resolveAggregatedEmployer(buildEmployerData(sjVacancyItem));
         vacancy.setEmployer(employer);
 
         vacancy.setCreatedAt(resolveCreatedAt(sjVacancyItem));
@@ -234,27 +274,12 @@ public class SjAggregationService {
         return CompletableFuture.completedFuture(null);
     }
 
-    private SjVacancyListResponse fetchVacancies(Stack stack, int page, int perPage) {
-        SjSearchPreset searchPreset = resolveSearchPreset(stack);
-
+    private SjVacancyListResponse fetchVacancies(SjCatalogueDirection catalogueDirection, int page, int perPage) {
         try {
             return superJobWebClient.get()
                     .uri(uriBuilder -> uriBuilder
                             .path("/vacancies/")
-                            .queryParam("keyword", searchPreset.keyword())
-                            .queryParam("keywords_count", searchPreset.keywords().size())
-                            .queryParamIfPresent("keywords[0][srws]", getKeywordSrws(searchPreset, 0))
-                            .queryParamIfPresent("keywords[0][skwc]", getKeywordSkwc(searchPreset, 0))
-                            .queryParamIfPresent("keywords[0][keys]", getKeywordKeys(searchPreset, 0))
-                            .queryParamIfPresent("keywords[1][srws]", getKeywordSrws(searchPreset, 1))
-                            .queryParamIfPresent("keywords[1][skwc]", getKeywordSkwc(searchPreset, 1))
-                            .queryParamIfPresent("keywords[1][keys]", getKeywordKeys(searchPreset, 1))
-                            .queryParamIfPresent("keywords[2][srws]", getKeywordSrws(searchPreset, 2))
-                            .queryParamIfPresent("keywords[2][skwc]", getKeywordSkwc(searchPreset, 2))
-                            .queryParamIfPresent("keywords[2][keys]", getKeywordKeys(searchPreset, 2))
-                            .queryParamIfPresent("keywords[3][srws]", getKeywordSrws(searchPreset, 3))
-                            .queryParamIfPresent("keywords[3][skwc]", getKeywordSkwc(searchPreset, 3))
-                            .queryParamIfPresent("keywords[3][keys]", getKeywordKeys(searchPreset, 3))
+                            .queryParam("catalogues", catalogueDirection.catalogueKey())
                             .queryParam("page", page)
                             .queryParam("count", perPage)
                             .build())
@@ -262,201 +287,170 @@ public class SjAggregationService {
                     .retrieve()
                     .bodyToMono(SjVacancyListResponse.class)
                     .timeout(Duration.ofSeconds(10))
-                    .retryWhen(Retry.fixedDelay(2, Duration.ofSeconds(1)))
+                    .retryWhen(Retry.fixedDelay(2, Duration.ofSeconds(1)).filter(this::isRetryableSuperJobError))
                     .block();
         } catch (Exception ex) {
-            log.warn("Failed to fetch SuperJob vacancies for stack '{}' page {}", stack.getName(), page, ex);
+            log.warn(
+                    "Failed to fetch SuperJob vacancies for catalogue '{}' page {}",
+                    catalogueDirection.catalogueTitle(),
+                    page,
+                    ex
+            );
             return null;
         }
     }
 
-    private static Map<String, SjSearchPreset> buildSjSearchPresets() {
-        Map<String, SjSearchPreset> presets = new HashMap<>();
-
-        presets.put("android", preset(
-                "android developer",
-                keywordClause(SEARCH_IN_TITLE, SEARCH_ANY_WORD, "android"),
-                keywordClause(SEARCH_IN_FULL_TEXT, SEARCH_ANY_WORD, "developer engineer")
-        ));
-        presets.put("backend", preset(
-                "backend developer",
-                keywordClause(SEARCH_IN_TITLE, SEARCH_ALL_WORDS, "backend developer"),
-                keywordClause(SEARCH_IN_FULL_TEXT, SEARCH_ANY_WORD, "developer engineer")
-        ));
-        presets.put("csharp", preset(
-                "c# developer",
-                keywordClause(SEARCH_IN_FULL_TEXT, SEARCH_ANY_WORD, "c# csharp .net asp.net aspnet"),
-                keywordClause(SEARCH_IN_FULL_TEXT, SEARCH_ANY_WORD, "developer engineer")
-        ));
-        presets.put("datascience", preset(
-                "data science",
-                keywordClause(SEARCH_IN_FULL_TEXT, SEARCH_ANY_WORD, "data data science analytics ml machine learning ai python r"),
-                keywordClause(SEARCH_IN_FULL_TEXT, SEARCH_ANY_WORD, "analyst scientist engineer developer")
-        ));
-        presets.put("design", preset(
-                "ui ux designer",
-                keywordClause(SEARCH_IN_FULL_TEXT, SEARCH_ANY_WORD, "design designer ui ux user interface web design graphic product"),
-                keywordClause(SEARCH_IN_FULL_TEXT, SEARCH_ANY_WORD, "designer specialist artist")
-        ));
-        presets.put("devops", preset(
-                "devops engineer",
-                keywordClause(SEARCH_IN_TITLE, SEARCH_ALL_WORDS, "devops engineer"),
-                keywordClause(SEARCH_IN_FULL_TEXT, SEARCH_ANY_WORD, "engineer")
-        ));
-        presets.put("frontend", preset(
-                "frontend developer",
-                keywordClause(SEARCH_IN_TITLE, SEARCH_ANY_WORD, "frontend front-end front end"),
-                keywordClause(SEARCH_IN_FULL_TEXT, SEARCH_ANY_WORD, "developer engineer")
-        ));
-        presets.put("go", preset(
-                "golang developer",
-                keywordClause(SEARCH_IN_FULL_TEXT, SEARCH_ANY_WORD, "golang go"),
-                keywordClause(SEARCH_IN_FULL_TEXT, SEARCH_ANY_WORD, "developer engineer")
-        ));
-        presets.put("ios", preset(
-                "ios developer",
-                keywordClause(SEARCH_IN_TITLE, SEARCH_ANY_WORD, "ios"),
-                keywordClause(SEARCH_IN_FULL_TEXT, SEARCH_ANY_WORD, "developer engineer")
-        ));
-        presets.put("java", preset(
-                "java developer",
-                keywordClause(SEARCH_IN_FULL_TEXT, SEARCH_ANY_WORD, "java java backend spring spring* hibernate"),
-                keywordClause(SEARCH_IN_FULL_TEXT, SEARCH_ANY_WORD, "developer engineer")
-        ));
-        presets.put("javascript", preset(
-                "frontend javascript",
-                keywordClause(SEARCH_IN_FULL_TEXT, SEARCH_ANY_WORD, "frontend front-end front end react* vue* angular next.js nest.js"),
-                keywordClause(SEARCH_IN_FULL_TEXT, SEARCH_ANY_WORD, "developer engineer"),
-                keywordClause(SEARCH_IN_FULL_TEXT, SEARCH_EXCLUDE_WORDS, "middle senior")
-        ));
-        presets.put("product", preset(
-                "product manager it",
-                keywordClause(SEARCH_IN_TITLE, SEARCH_EXACT_PHRASE, "product manager"),
-                keywordClause(SEARCH_IN_FULL_TEXT, SEARCH_ANY_WORD, "it")
-        ));
-        presets.put("python", preset(
-                "python developer",
-                keywordClause(SEARCH_IN_FULL_TEXT, SEARCH_ANY_WORD, "python django flask fastapi"),
-                keywordClause(SEARCH_IN_FULL_TEXT, SEARCH_ANY_WORD, "developer engineer")
-        ));
-        presets.put("qa", preset(
-                "qa engineer",
-                keywordClause(SEARCH_IN_FULL_TEXT, SEARCH_ANY_WORD, "qa test* quality assurance"),
-                keywordClause(SEARCH_IN_FULL_TEXT, SEARCH_ANY_WORD, "engineer specialist developer")
-        ));
-        presets.put("security", preset(
-                "security engineer",
-                keywordClause(SEARCH_IN_TITLE, SEARCH_ANY_WORD, "security"),
-                keywordClause(SEARCH_IN_FULL_TEXT, SEARCH_ANY_WORD, "engineer")
-        ));
-
-        return Map.copyOf(presets);
+    private List<SjCatalogueDirection> resolveCatalogueDirections() {
+        return fetchCatalogues().stream()
+                .filter(this::isTargetParentCatalogue)
+                .flatMap(parent -> safeList(parent.positions()).stream())
+                .map(this::toCatalogueDirection)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .collect(Collectors.toMap(
+                        SjCatalogueDirection::catalogueKey,
+                        direction -> direction,
+                        (left, right) -> left
+                ))
+                .values()
+                .stream()
+                .toList();
     }
 
-    private SjSearchPreset resolveSearchPreset(Stack stack) {
-        String stackKey = resolveStackKey(stack);
-        if (stackKey != null) {
-            SjSearchPreset preset = SJ_SEARCH_PRESETS.get(stackKey);
-            if (preset != null) {
-                return preset;
+    private List<SjCatalogueItem> fetchCatalogues() {
+        try {
+            return superJobWebClient.get()
+                    .uri("/catalogues/")
+                    .header("X-Api-App-Id", superJobApiKey)
+                    .retrieve()
+                    .bodyToMono(new ParameterizedTypeReference<List<SjCatalogueItem>>() {})
+                    .timeout(Duration.ofSeconds(10))
+                    .retryWhen(Retry.fixedDelay(2, Duration.ofSeconds(1)).filter(this::isRetryableSuperJobError))
+                    .blockOptional()
+                    .orElse(Collections.emptyList());
+        } catch (Exception ex) {
+            log.warn("Failed to fetch SuperJob catalogues", ex);
+            return Collections.emptyList();
+        }
+    }
+
+    private boolean isTargetParentCatalogue(SjCatalogueItem catalogue) {
+        if (catalogue == null) {
+            return false;
+        }
+
+        String title = normalizedText(catalogue.title(), catalogue.titleRus());
+        return title.contains("it")
+                || title.contains("интернет")
+                || title.contains("телеком")
+                || title.contains("дизайн")
+                || title.contains("маркетинг");
+    }
+
+    private Optional<SjCatalogueDirection> toCatalogueDirection(SjCatalogueItem position) {
+        if (position == null || position.key() == null) {
+            return Optional.empty();
+        }
+
+        String directionId = SJ_CATALOGUE_DIRECTION_IDS.get(position.key());
+        if (directionId == null) {
+            return Optional.empty();
+        }
+
+        return Optional.of(new SjCatalogueDirection(
+                position.key(),
+                nonBlankOrDefault(position.title(), nonBlankOrDefault(position.titleRus(), String.valueOf(position.key()))),
+                directionId
+        ));
+    }
+
+    private VacancyDirection resolveVacancyDirection(
+            SjVacancyItem item,
+            SjCatalogueDirection fallbackCatalogueDirection,
+            Map<String, VacancyDirection> directionsById
+    ) {
+        String directionId = resolveDirectionByCatalogueKeys(item, false)
+                .or(() -> resolveDirectionByCatalogueKeys(item, true))
+                .orElse(fallbackCatalogueDirection.directionId());
+
+        return directionsById.get(directionId);
+    }
+
+    private Optional<String> resolveDirectionByCatalogueKeys(SjVacancyItem item, boolean useBroadKeys) {
+        Map<String, Integer> directionCounts = new LinkedHashMap<>();
+
+        for (Integer catalogueKey : collectVacancyCatalogueKeys(item)) {
+            String directionId = SJ_CATALOGUE_DIRECTION_IDS.get(catalogueKey);
+            if (directionId == null || BROAD_SJ_CATALOGUE_KEYS.contains(catalogueKey) != useBroadKeys) {
+                continue;
+            }
+
+            directionCounts.merge(directionId, 1, Integer::sum);
+        }
+
+        return selectDirectionByCountAndPriority(directionCounts);
+    }
+
+    private List<Integer> collectVacancyCatalogueKeys(SjVacancyItem item) {
+        if (item == null || item.catalogues() == null) {
+            return Collections.emptyList();
+        }
+
+        return item.catalogues().stream()
+                .flatMap(catalogue -> safeList(catalogue.positions()).stream())
+                .map(SjCatalogueItem::key)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+    }
+
+    private Optional<String> selectDirectionByCountAndPriority(Map<String, Integer> directionCounts) {
+        String selectedDirection = null;
+        int selectedCount = -1;
+        int selectedPriority = Integer.MAX_VALUE;
+
+        for (Map.Entry<String, Integer> entry : directionCounts.entrySet()) {
+            int count = entry.getValue();
+            int priority = directionPriority(entry.getKey());
+
+            if (count > selectedCount || (count == selectedCount && priority < selectedPriority)) {
+                selectedDirection = entry.getKey();
+                selectedCount = count;
+                selectedPriority = priority;
             }
         }
 
-        String fallbackKeyword = nonBlankOrDefault(
-                stack != null ? stack.getSearchQuery() : null,
-                nonBlankOrDefault(stack != null ? stack.getName() : null, "developer")
-        );
-        return preset(fallbackKeyword, keywordClause(SEARCH_IN_FULL_TEXT, SEARCH_ANY_WORD, fallbackKeyword));
+        return Optional.ofNullable(selectedDirection);
     }
 
-    private String resolveStackKey(Stack stack) {
-        if (stack == null) {
-            return null;
-        }
-
-        String byId = canonicalStackKey(stack.getId());
-        if (byId != null) {
-            return byId;
-        }
-
-        return canonicalStackKey(stack.getName());
+    private int directionPriority(String directionId) {
+        int priority = DIRECTION_PRIORITY.indexOf(directionId);
+        return priority >= 0 ? priority : Integer.MAX_VALUE;
     }
 
-    private String canonicalStackKey(String rawKey) {
-        if (rawKey == null || rawKey.isBlank()) {
-            return null;
-        }
-
-        String normalized = rawKey.trim().toLowerCase(Locale.ROOT);
-        String exact = SJ_STACK_ALIASES.get(normalized);
-        if (exact != null) {
-            return exact;
-        }
-
-        String compact = normalized
-                .replace("_", " ")
-                .replace("-", " ")
-                .replaceAll("\\s+", " ")
-                .trim();
-        String compactAlias = SJ_STACK_ALIASES.get(compact);
-        if (compactAlias != null) {
-            return compactAlias;
-        }
-
-        String withoutSpaces = compact.replace(" ", "");
-        return SJ_STACK_ALIASES.get(withoutSpaces);
+    private boolean hasExcludedWords(SjVacancyItem item, List<String> excludedWords) {
+        return containsAny(normalizedText(item.profession()), excludedWords);
     }
 
-    private static SjSearchPreset preset(String keyword, SjKeywordClause... keywords) {
-        return new SjSearchPreset(keyword, List.of(keywords));
-    }
-
-    private static SjKeywordClause keywordClause(int srws, String skwc, String keys) {
-        return new SjKeywordClause(srws, skwc, keys);
-    }
-
-    private Optional<Integer> getKeywordSrws(SjSearchPreset preset, int index) {
-        if (index >= preset.keywords().size()) {
-            return Optional.empty();
-        }
-        return Optional.of(preset.keywords().get(index).srws());
-    }
-
-    private Optional<String> getKeywordSkwc(SjSearchPreset preset, int index) {
-        if (index >= preset.keywords().size()) {
-            return Optional.empty();
-        }
-        return Optional.ofNullable(preset.keywords().get(index).skwc());
-    }
-
-    private Optional<String> getKeywordKeys(SjSearchPreset preset, int index) {
-        if (index >= preset.keywords().size()) {
-            return Optional.empty();
-        }
-        return Optional.ofNullable(preset.keywords().get(index).keys());
-    }
-
-    private User resolveOrCreateEmployer(String companyNameRaw) {
-        String companyName = nonBlankOrDefault(companyNameRaw, null);
-        if (companyName == null) {
-            return null;
+    private boolean containsAny(String text, List<String> fragments) {
+        if (text == null || text.isBlank()) {
+            return false;
         }
 
-        return userRepository.findUserByCompanyName(companyName).orElseGet(() -> {
-            Role companyRole = userRoleService.findRoleById(UserRole.ROLE_EMPLOYER.name());
-            if (companyRole == null) {
-                return null;
-            }
+        return fragments.stream()
+                .map(fragment -> fragment.toLowerCase(Locale.ROOT))
+                .anyMatch(text::contains);
+    }
 
-            User user = User.builder()
-                    .companyName(companyName)
-                    .isAggregated(true)
-                    .verified(true)
-                    .role(companyRole)
-                    .build();
+    private List<SjCatalogueItem> safeList(List<SjCatalogueItem> values) {
+        return values == null ? Collections.emptyList() : values;
+    }
 
-            return userRepository.save(user);
-        });
+    private String normalizedText(String... values) {
+        return java.util.Arrays.stream(values)
+                .filter(Objects::nonNull)
+                .map(value -> value.toLowerCase(Locale.ROOT))
+                .collect(Collectors.joining(" "));
     }
 
     private String mapWorkFormatId(SjVacancyItem item) {
@@ -495,7 +489,7 @@ public class SjAggregationService {
 
         return switch (rawId) {
             case 6 -> "full";
-            case 10, 13 -> "part";
+            case 10, 12, 13 -> "part";
             default -> null;
         };
     }
@@ -505,11 +499,15 @@ public class SjAggregationService {
             return null;
         }
 
-        String normalized = rawCurrency.trim().toUpperCase(Locale.ROOT);
-        if ("RUR".equals(normalized)) {
-            return "RUB";
+        if (rawCurrency.equals("rub")) {
+            return "RUR";
         }
-        return normalized;
+        else if (rawCurrency.equals("uzs")) {
+            return "UZS";
+        }
+        else {
+            return null;
+        }
     }
 
     private Long normalizeMoney(Long value) {
@@ -547,5 +545,71 @@ public class SjAggregationService {
             return defaultValue;
         }
         return value.trim();
+    }
+
+    private AggregatedEmployerData buildEmployerData(SjVacancyItem item) {
+        if (item == null) {
+            return null;
+        }
+
+        SjClientDetailsResponse client = fetchClientDetails(item.idClient());
+        String companyName = nonBlankOrDefault(
+                client != null ? client.title() : null,
+                nonBlankOrDefault(item.firmName(), null)
+        );
+        if (companyName == null) {
+            return null;
+        }
+
+        String externalId = item.idClient() != null && item.idClient() > 0
+                ? String.valueOf(item.idClient())
+                : companyName.toLowerCase(Locale.ROOT);
+        String city = item.town() != null ? nonBlankOrDefault(item.town().title(), null) : null;
+
+        return new AggregatedEmployerData(
+                "SJ",
+                externalId,
+                companyName,
+                nonBlankOrDefault(client != null ? client.description() : null, item.firmActivity()),
+                nonBlankOrDefault(client != null ? client.clientLogo() : null, item.clientLogo()),
+                null,
+                nonBlankOrDefault(client != null ? client.link() : null, item.link()),
+                city,
+                client != null && client.blocked() != null ? !client.blocked() : null,
+                null
+        );
+    }
+
+    private SjClientDetailsResponse fetchClientDetails(Long clientId) {
+        if (clientId == null || clientId <= 0) {
+            return null;
+        }
+
+        try {
+            return superJobWebClient.get()
+                    .uri("/clients/{id}/", clientId)
+                    .header("X-Api-App-Id", superJobApiKey)
+                    .retrieve()
+                    .bodyToMono(SjClientDetailsResponse.class)
+                    .timeout(Duration.ofSeconds(8))
+                    .retryWhen(Retry.fixedDelay(2, Duration.ofSeconds(1)).filter(this::isRetryableSuperJobError))
+                    .block();
+        } catch (Exception ex) {
+            log.warn("Failed to fetch SuperJob client details {}", clientId, ex);
+            return null;
+        }
+    }
+
+    private boolean isRetryableSuperJobError(Throwable error) {
+        if (error instanceof WebClientRequestException) {
+            return true;
+        }
+
+        if (error instanceof WebClientResponseException responseException) {
+            return responseException.getStatusCode().is5xxServerError()
+                    || responseException.getStatusCode().value() == 429;
+        }
+
+        return false;
     }
 }

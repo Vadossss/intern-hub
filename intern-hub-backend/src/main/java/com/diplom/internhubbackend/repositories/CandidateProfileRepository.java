@@ -1,6 +1,7 @@
 package com.diplom.internhubbackend.repositories;
 
 import com.diplom.internhubbackend.enums.AccountStatus;
+import com.diplom.internhubbackend.dto.projection.CandidateProfileSummaryProjection;
 import com.diplom.internhubbackend.models.CandidateProfile;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -16,7 +17,18 @@ public interface CandidateProfileRepository extends JpaRepository<CandidateProfi
 
     @Query(
             value = """
-                    SELECT cp FROM CandidateProfile cp
+                    SELECT new com.diplom.internhubbackend.dto.projection.CandidateProfileSummaryProjection(
+                        cp.id,
+                        u.id,
+                        u.email,
+                        u.phoneNumber,
+                        cp.firstName,
+                        cp.lastName,
+                        cp.birthday,
+                        u.avatarUrl,
+                        cp.openToWork
+                    )
+                    FROM CandidateProfile cp
                     JOIN cp.user u
                     WHERE u.role.id = 'ROLE_USER'
                       AND u.status = :status
@@ -32,18 +44,13 @@ public interface CandidateProfileRepository extends JpaRepository<CandidateProfi
                       )
                       AND (
                             :cityPattern IS NULL
-                            OR EXISTS (
-                                SELECT cityResume.id
-                                FROM CandidateResume cityResume
-                                WHERE cityResume.candidateProfile = cp
-                                  AND (cityResume.archived IS NULL OR cityResume.archived = false)
-                                  AND LOWER(cityResume.city) LIKE :cityPattern
-                            )
+                            OR LOWER(cp.city) LIKE :cityPattern
                       )
                       AND (
                             :searchPattern IS NULL
                             OR LOWER(cp.firstName) LIKE :searchPattern
                             OR LOWER(cp.lastName) LIKE :searchPattern
+                            OR LOWER(cp.city) LIKE :searchPattern
                             OR LOWER(u.email) LIKE :searchPattern
                             OR LOWER(u.phoneNumber) LIKE :searchPattern
                             OR EXISTS (
@@ -53,7 +60,6 @@ public interface CandidateProfileRepository extends JpaRepository<CandidateProfi
                                   AND (resume.archived IS NULL OR resume.archived = false)
                                   AND (
                                         LOWER(resume.profession) LIKE :searchPattern
-                                        OR LOWER(resume.city) LIKE :searchPattern
                                         OR LOWER(resume.about) LIKE :searchPattern
                                   )
                             )
@@ -96,18 +102,13 @@ public interface CandidateProfileRepository extends JpaRepository<CandidateProfi
                       )
                       AND (
                             :cityPattern IS NULL
-                            OR EXISTS (
-                                SELECT cityResume.id
-                                FROM CandidateResume cityResume
-                                WHERE cityResume.candidateProfile = cp
-                                  AND (cityResume.archived IS NULL OR cityResume.archived = false)
-                                  AND LOWER(cityResume.city) LIKE :cityPattern
-                            )
+                            OR LOWER(cp.city) LIKE :cityPattern
                       )
                       AND (
                             :searchPattern IS NULL
                             OR LOWER(cp.firstName) LIKE :searchPattern
                             OR LOWER(cp.lastName) LIKE :searchPattern
+                            OR LOWER(cp.city) LIKE :searchPattern
                             OR LOWER(u.email) LIKE :searchPattern
                             OR LOWER(u.phoneNumber) LIKE :searchPattern
                             OR EXISTS (
@@ -117,7 +118,6 @@ public interface CandidateProfileRepository extends JpaRepository<CandidateProfi
                                   AND (resume.archived IS NULL OR resume.archived = false)
                                   AND (
                                         LOWER(resume.profession) LIKE :searchPattern
-                                        OR LOWER(resume.city) LIKE :searchPattern
                                         OR LOWER(resume.about) LIKE :searchPattern
                                   )
                             )
@@ -143,7 +143,7 @@ public interface CandidateProfileRepository extends JpaRepository<CandidateProfi
                       )
                     """
     )
-    Page<CandidateProfile> searchCandidates(
+    Page<CandidateProfileSummaryProjection> searchCandidates(
             @Param("searchPattern") String searchPattern,
             @Param("cityPattern") String cityPattern,
             @Param("openToWork") Boolean openToWork,
