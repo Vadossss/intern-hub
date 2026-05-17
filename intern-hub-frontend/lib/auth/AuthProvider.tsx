@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 import type { ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
-import { Spinner } from "@/components/ui/spinner";
 import { getCurrentUserWithRefresh } from "../api/auth";
 import { useAuth as useAuthStore } from "./context";
 
@@ -15,9 +14,12 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { setIsAuthenticated, setUser } = useAuthStore();
-  const [isChecking, setIsChecking] = useState(true);
-  const [checkedPathname, setCheckedPathname] = useState<string | null>(null);
+  const pathnameRef = useRef(pathname);
+  const { setIsAuthenticated, setIsCheckingAuth, setUser } = useAuthStore();
+
+  useEffect(() => {
+    pathnameRef.current = pathname;
+  }, [pathname]);
 
   useEffect(() => {
     let isMounted = true;
@@ -25,15 +27,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
     function clearAuth() {
       setUser(null);
       setIsAuthenticated(false);
+      setIsCheckingAuth(false);
 
-      if (pathname.startsWith("/profile")) {
+      if (pathnameRef.current.startsWith("/profile")) {
         router.replace("/auth");
       }
     }
 
-    async function checkAuth() {
+    async function checkAuthOnce() {
       try {
-        setIsChecking(true);
+        setIsCheckingAuth(true);
         const user = await getCurrentUserWithRefresh();
         if (!isMounted) return;
 
@@ -45,28 +48,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
         clearAuth();
       } finally {
         if (isMounted) {
-          setCheckedPathname(pathname);
-          setIsChecking(false);
+          setIsCheckingAuth(false);
         }
       }
     }
 
     window.addEventListener("intern-hub:auth-expired", clearAuth);
-    checkAuth();
+    checkAuthOnce();
 
     return () => {
       isMounted = false;
       window.removeEventListener("intern-hub:auth-expired", clearAuth);
     };
-  }, [pathname, router, setIsAuthenticated, setUser]);
-
-  // if (isChecking || checkedPathname !== pathname) {
-  //   return (
-  //     <div className="flex min-h-screen items-center justify-center">
-  //       <Spinner />
-  //     </div>
-  //   );
-  // }
+  }, [router, setIsAuthenticated, setIsCheckingAuth, setUser]);
 
   return <>{children}</>;
 }
