@@ -10,5 +10,6 @@
     <include relativeToChangelogFile="true" file="task/create-vacancy-search-indexes.xml"/>
     <include relativeToChangelogFile="true" file="task/create-view-tracking.xml"/>
     <include relativeToChangelogFile="true" file="task/create-russian-cities.xml"/>
+    <include relativeToChangelogFile="true" file="task/create-chat-system.xml"/>
 
 </databaseChangeLog>
