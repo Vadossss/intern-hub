@@ -22,14 +22,18 @@ export interface User {
 
 interface AuthState {
   isAuthenticated: boolean;
+  isCheckingAuth: boolean;
   setIsAuthenticated: (isAuthenticated: boolean) => void;
+  setIsCheckingAuth: (isCheckingAuth: boolean) => void;
   user: User | null;
   setUser: (user: User | null) => void;
 }
 
 export const useAuth = create<AuthState>((set) => ({
   isAuthenticated: false,
+  isCheckingAuth: true,
   setIsAuthenticated: (isAuthenticated) => set({ isAuthenticated }),
+  setIsCheckingAuth: (isCheckingAuth) => set({ isCheckingAuth }),
   user: null,
   setUser: (user) => set({ user }),
 }));

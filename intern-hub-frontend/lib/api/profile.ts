@@ -197,6 +197,7 @@ export interface CandidateApplicationHistory {
   archived?: boolean;
   appliedAt: string;
   updatedAt: string;
+  chatId?: string | null;
 }
 
 export interface CandidateFavoriteVacancy {
@@ -336,6 +337,7 @@ export interface EmployerApplication {
   chosenContactMethod?: string;
   createdAt: string;
   updatedAt: string;
+  chatId?: string | null;
 }
 
 export interface EmployerCandidateSearchParams {

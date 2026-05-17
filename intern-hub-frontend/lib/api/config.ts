@@ -39,8 +39,12 @@ export const API_ENDPOINTS = {
   employerCandidates: "/api/employer/me/candidates",
   moderationVacancies: "/api/moderation/vacancies",
   moderationUsers: "/api/moderation/users",
+  adminEmployers: "/api/admin/employers",
+  adminVacancies: "/api/admin/vacancies",
   vacancyExcludedWords: "/api/admin/vacancy-excluded-words",
+  vacancySources: "/api/admin/vacancy-sources",
   complaints: "/api/complaints",
+  chats: "/api/chats",
   blogArticles: "/api/blog/articles",
   blogImages: "/api/blog/articles/images",
 } as const;

@@ -2,6 +2,7 @@ import type { PageResponse, VacancyResponseDto } from "@/app/types/api";
 
 import { apiClient } from "./client";
 import { API_ENDPOINTS } from "./config";
+import type { VacancyPayload } from "./profile";
 
 export interface VacancyExcludedWord {
   id: number;
@@ -12,6 +13,54 @@ export interface VacancyExcludedWord {
 export interface VacancyExcludedWordPayload {
   word: string;
   active: boolean;
+}
+
+export interface VacancySource {
+  id: number;
+  code: string;
+  name: string;
+  active: boolean;
+  visible: boolean;
+  baseUrl: string;
+  ttlDays: number;
+  vacanciesCount: number;
+}
+
+export interface VacancySourcePayload {
+  code?: string;
+  name?: string;
+  active?: boolean;
+  visible?: boolean;
+  baseUrl?: string;
+  ttlDays?: number;
+}
+
+export interface AdminVacancyPayload extends VacancyPayload {
+  employerId: number;
+  sourceCode: string;
+  externalId?: string;
+  aggregated?: boolean;
+}
+
+export interface AdminEmployerOption {
+  id: number;
+  email?: string;
+  companyName?: string;
+  city?: string;
+  status?: string;
+  avatarUrl?: string;
+}
+
+export interface AdminEmployerCreatePayload {
+  email?: string;
+  password?: string;
+  companyName: string;
+  city?: string;
+  website?: string;
+  about?: string;
+  verified?: boolean;
+  accredited?: boolean;
+  avatar?: File;
 }
 
 export type AdminUserRole = "ROLE_USER" | "ROLE_EMPLOYER" | "ROLE_ADMIN";
@@ -112,8 +161,77 @@ export function rejectModerationVacancy(publicId: string): Promise<void> {
   );
 }
 
+export function createAdminVacancy(
+  payload: AdminVacancyPayload,
+): Promise<VacancyResponseDto> {
+  return apiClient.post<VacancyResponseDto>(
+    API_ENDPOINTS.adminVacancies,
+    payload,
+  );
+}
+
+export function searchAdminEmployers(
+  query: string,
+  page = 0,
+  size = 40,
+): Promise<PageResponse<AdminEmployerOption>> {
+  return apiClient.get<PageResponse<AdminEmployerOption>>(
+    API_ENDPOINTS.adminEmployers,
+    { params: { query, page, size } },
+  );
+}
+
+export function createAdminEmployer(
+  payload: AdminEmployerCreatePayload,
+): Promise<AdminEmployerOption> {
+  const formData = new FormData();
+  formData.append("companyName", payload.companyName);
+
+  if (payload.email) formData.append("email", payload.email);
+  if (payload.password) formData.append("password", payload.password);
+  if (payload.city) formData.append("city", payload.city);
+  if (payload.website) formData.append("website", payload.website);
+  if (payload.about) formData.append("about", payload.about);
+  if (typeof payload.verified === "boolean") {
+    formData.append("verified", String(payload.verified));
+  }
+  if (typeof payload.accredited === "boolean") {
+    formData.append("accredited", String(payload.accredited));
+  }
+  if (payload.avatar) formData.append("avatar", payload.avatar);
+
+  return apiClient.postForm<AdminEmployerOption>(
+    API_ENDPOINTS.adminEmployers,
+    formData,
+  );
+}
+
 export function getVacancyExcludedWords(): Promise<VacancyExcludedWord[]> {
   return apiClient.get<VacancyExcludedWord[]>(API_ENDPOINTS.vacancyExcludedWords);
+}
+
+export function getVacancySources(): Promise<VacancySource[]> {
+  return apiClient.get<VacancySource[]>(API_ENDPOINTS.vacancySources);
+}
+
+export function createVacancySource(
+  payload: VacancySourcePayload,
+): Promise<VacancySource> {
+  return apiClient.post<VacancySource>(API_ENDPOINTS.vacancySources, payload);
+}
+
+export function updateVacancySource(
+  sourceId: number,
+  payload: VacancySourcePayload,
+): Promise<VacancySource> {
+  return apiClient.patch<VacancySource>(
+    `${API_ENDPOINTS.vacancySources}/${sourceId}`,
+    payload,
+  );
+}
+
+export function deleteVacancySource(sourceId: number): Promise<void> {
+  return apiClient.delete<void>(`${API_ENDPOINTS.vacancySources}/${sourceId}`);
 }
 
 export function getComplaintGroups(): Promise<ComplaintGroup[]> {

@@ -22,7 +22,10 @@ export type EmployerSection =
 export type AdminSection =
   | "overview"
   | "vacancies"
+  | "manual-vacancy"
+  | "employers"
   | "excluded-words"
+  | "sources"
   | "complaints"
   | "users"
   | "blog"

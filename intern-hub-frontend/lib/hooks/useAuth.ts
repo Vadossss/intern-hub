@@ -24,7 +24,12 @@ interface UseAuthResult {
 
 export function useAuth(): UseAuthResult {
   const router = useRouter();
-  const { isAuthenticated, setIsAuthenticated, setUser } = useAuthStore();
+  const {
+    isAuthenticated,
+    setIsAuthenticated,
+    setIsCheckingAuth,
+    setUser,
+  } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
@@ -39,16 +44,18 @@ export function useAuth(): UseAuthResult {
 
         setUser(user);
         setIsAuthenticated(true);
+        setIsCheckingAuth(false);
         router.push("/profile");
       } catch (err) {
         setError(new Error(getAuthErrorMessage(err, "login")));
         setIsAuthenticated(false);
+        setIsCheckingAuth(false);
         setUser(null);
       } finally {
         setLoading(false);
       }
     },
-    [router, setIsAuthenticated, setUser],
+    [router, setIsAuthenticated, setIsCheckingAuth, setUser],
   );
 
   const performRegister = useCallback(
@@ -62,16 +69,18 @@ export function useAuth(): UseAuthResult {
 
         setUser(user);
         setIsAuthenticated(true);
+        setIsCheckingAuth(false);
         router.push("/profile");
       } catch (err) {
         setError(new Error(getAuthErrorMessage(err, "register")));
         setIsAuthenticated(false);
+        setIsCheckingAuth(false);
         setUser(null);
       } finally {
         setLoading(false);
       }
     },
-    [router, setIsAuthenticated, setUser],
+    [router, setIsAuthenticated, setIsCheckingAuth, setUser],
   );
 
   const clearError = useCallback(() => {
