@@ -10,4 +10,8 @@ public interface VacancySourceRepository extends JpaRepository<VacancySource, Sh
     Optional<VacancySource> findByCode(String code);
 
     List<VacancySource> findAllByCodeIn(List<String> codes);
+
+    List<VacancySource> findAllByOrderByNameAsc();
+
+    boolean existsByCode(String code);
 }

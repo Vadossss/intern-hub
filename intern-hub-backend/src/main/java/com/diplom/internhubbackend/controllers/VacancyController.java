@@ -122,7 +122,7 @@ public class VacancyController {
     @GetMapping("/recommendations")
     public ResponseEntity<PageResponse<VacancyResponseDto>> getRecommendedVacancies(
             @AuthenticationPrincipal CustomUserDetails customUserDetails,
-            @RequestParam(required = false) List<VacancySourceCode> source,
+            @RequestParam(required = false) List<String> source,
             @RequestParam(required = false) PositionsEnum position,
             @RequestParam(required = false) List<String> direction,
             @RequestParam(required = false) String companyName,
@@ -176,7 +176,7 @@ public class VacancyController {
     @Operation(summary = "Расширенный поиск вакансий")
     @GetMapping
     public ResponseEntity<PageResponse<VacancyResponseDto>> searchVacancies(
-            @RequestParam(required = false) List<VacancySourceCode> source,
+            @RequestParam(required = false) List<String> source,
             @RequestParam(required = false) PositionsEnum position,
             @RequestParam(required = false) List<String> direction,
             @RequestParam(required = false) String companyName,

@@ -11,6 +11,7 @@ import com.diplom.internhubbackend.models.*;
 import com.diplom.internhubbackend.models.Currency;
 import com.diplom.internhubbackend.repositories.CandidateResumeRepository;
 import com.diplom.internhubbackend.repositories.EmployerProfileRepository;
+import com.diplom.internhubbackend.repositories.UserRepository;
 import com.diplom.internhubbackend.repositories.VacancyRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -53,6 +54,7 @@ public class VacancyService {
     private final VacancyMapper vacancyMapper;
     private final EmployerProfileRepository employerProfileRepository;
     private final CandidateResumeRepository candidateResumeRepository;
+    private final UserRepository userRepository;
     private final VacancyDirectionService vacancyDirectionService;
     private final ViewTrackingService viewTrackingService;
 
@@ -691,9 +693,14 @@ public class VacancyService {
     ) {
         List<Predicate> predicates = new ArrayList<>();
         predicates.add(cb.equal(root.get("employer").get("status"), AccountStatus.ACTIVE));
+        Join<Vacancy, VacancySource> sourceJoin = root.join("source", JoinType.LEFT);
+        predicates.add(cb.or(
+                cb.isNull(root.get("source")),
+                cb.isTrue(sourceJoin.get("isVisible"))
+        ));
 
         if (params.getSource() != null && !params.getSource().isEmpty()) {
-            predicates.add(root.get("source").in(params.getSource()));
+            predicates.add(sourceJoin.in(params.getSource()));
         }
 
         if (hasText(params.getCity())) {
@@ -852,6 +859,54 @@ public class VacancyService {
     }
 
     @Transactional
+    @CacheEvict(value = {"vacancy_recommendations_default", "directions"}, allEntries = true)
+    public VacancyResponseDto createAdminVacancy(AdminVacancyCreateDto request) {
+        if (request == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Vacancy payload is required");
+        }
+
+        if (request.getEmployerId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Employer id is required");
+        }
+
+        User employer = userRepository.findById(request.getEmployerId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Employer not found"));
+
+        VacancySource source = vacancySourceService.getVacancySourceByCode(normalizeSourceCode(request.getSourceCode()));
+        if (source == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Vacancy source not found");
+        }
+
+        Vacancy vacancy = vacancyMapper.fromDto(request, source);
+        vacancy.setEmployer(employer);
+        vacancy.setStatus(VacancyStatus.APPROVED);
+        vacancy.setIsAggregated(Boolean.TRUE.equals(request.getAggregated()));
+        vacancy.setExternalId(normalizeOptionalText(request.getExternalId()));
+        vacancy.setUpdatedAt(LocalDateTime.now());
+        vacancy.setExpiresAt(LocalDateTime.now().plusDays(source.getTtlDays()));
+
+        Vacancy finalVacancy = vacancy;
+        List<VacancyContactDto> contactRequests =
+                request.getContactsList() == null ? Collections.emptyList() : request.getContactsList();
+        vacancy.setContacts(contactRequests.stream()
+                .filter(contact -> contact.chosenContactMethod() != null)
+                .map(contact -> VacancyContact
+                        .builder()
+                        .vacancy(finalVacancy)
+                        .method(contact.chosenContactMethod())
+                        .value(contact.contactValue())
+                        .hint(contact.hint())
+                        .build()
+                )
+                .collect(Collectors.toList()));
+
+        vacancy = vacancyRepository.save(vacancy);
+        vacancy.setPublicId(source.getCode().toLowerCase(Locale.ROOT) + "_" + vacancy.getId());
+
+        return getEmployerVacancyListDto(employer.getId(), vacancy.getPublicId());
+    }
+
+    @Transactional
     @CacheEvict(value = "vacancy_recommendations_default", allEntries = true)
     public ResponseEntity<Object> createVacancy(User user, NewVacancyDto newVacancy){
         validateSingleInternalContact(newVacancy);
@@ -905,6 +960,18 @@ public class VacancyService {
                     "Only one internal apply contact is allowed"
             );
         }
+    }
+
+    private String normalizeSourceCode(String sourceCode) {
+        if (!hasText(sourceCode)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Vacancy source is required");
+        }
+
+        return sourceCode.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private String normalizeOptionalText(String value) {
+        return hasText(value) ? value.trim() : null;
     }
 
     public void fetchAndSaveSJ() {

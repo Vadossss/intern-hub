@@ -183,17 +183,38 @@ public interface VacancyRepository extends JpaRepository<Vacancy, Integer> {
             @Param("externalIds") List<String> externalIds
     );
 
+    default int updateExpiresAtByIds(
+            List<Integer> ids,
+            LocalDateTime expiresAt,
+            LocalDateTime updatedAt
+    ) {
+        return updateExpiresAtByIds(
+                ids,
+                expiresAt,
+                updatedAt,
+                VacancyStatus.ARCHIVED,
+                VacancyStatus.APPROVED
+        );
+    }
+
     @Transactional
     @Modifying(clearAutomatically = true)
     @Query("""
         UPDATE Vacancy v
-        SET v.expiresAt = :expiresAt, v.updatedAt = :updatedAt
+        SET v.expiresAt = :expiresAt,
+            v.updatedAt = :updatedAt,
+            v.status = CASE
+                WHEN v.status = :archivedStatus THEN :approvedStatus
+                ELSE v.status
+            END
         WHERE v.id IN :ids
         """)
     int updateExpiresAtByIds(
             @Param("ids") List<Integer> ids,
             @Param("expiresAt") LocalDateTime expiresAt,
-            @Param("updatedAt") LocalDateTime updatedAt
+            @Param("updatedAt") LocalDateTime updatedAt,
+            @Param("archivedStatus") VacancyStatus archivedStatus,
+            @Param("approvedStatus") VacancyStatus approvedStatus
     );
 
     Optional<Vacancy> findByPublicIdAndEmployerId(String publicId, Integer employerId);
@@ -204,7 +225,7 @@ public interface VacancyRepository extends JpaRepository<Vacancy, Integer> {
         SELECT v FROM Vacancy v
         JOIN FavoriteVacancy fv on fv.vacancy = v
         JOIN v.employer e
-        WHERE fv.user = :user and v.status = 'APPROVED' and e.status = 'ACTIVE'
+        WHERE fv.user = :user and v.status in ('APPROVED', 'ARCHIVED') and e.status = 'ACTIVE'
         """)
     Optional<List<Vacancy>> findAllFavoriteVacancies(User user);
 
@@ -240,6 +261,8 @@ public interface VacancyRepository extends JpaRepository<Vacancy, Integer> {
     List<Vacancy> findAllByStatus(VacancyStatus status);
 
     Page<Vacancy> findBySource_CodeAndIsAggregatedTrue(String sourceCode, Pageable pageable);
+
+    long countBySource_Id(Short sourceId);
 
     Page<Vacancy> findBySource_CodeAndIsAggregatedTrueAndDirection_IdIgnoreCase(
             String sourceCode,
@@ -331,8 +354,10 @@ public interface VacancyRepository extends JpaRepository<Vacancy, Integer> {
     @Query("""
         SELECT DISTINCT v.city FROM Vacancy v
         JOIN v.employer e
+        LEFT JOIN v.source s
         WHERE v.status in :statuses
           and e.status = 'ACTIVE'
+          and (s is null or s.isVisible = true)
           and v.city is not null
           and trim(v.city) <> ''
         ORDER BY v.city
@@ -342,9 +367,11 @@ public interface VacancyRepository extends JpaRepository<Vacancy, Integer> {
     @Query("""
         SELECT DISTINCT ep.companyName FROM Vacancy v
         JOIN v.employer e
+        LEFT JOIN v.source s
         LEFT JOIN EmployerProfile ep ON ep.user = e
         WHERE v.status in :statuses
           and e.status = 'ACTIVE'
+          and (s is null or s.isVisible = true)
           and ep.companyName is not null
           and trim(ep.companyName) <> ''
         ORDER BY ep.companyName
@@ -357,6 +384,7 @@ public interface VacancyRepository extends JpaRepository<Vacancy, Integer> {
         WHERE v.status in :statuses
           and e.status = 'ACTIVE'
           and v.source is not null
+          and v.source.isVisible = true
         ORDER BY v.source.name
         """)
     List<VacancySource> findActiveVacancySources(@Param("statuses") List<VacancyStatus> statuses);
@@ -364,8 +392,10 @@ public interface VacancyRepository extends JpaRepository<Vacancy, Integer> {
     @Query("""
         SELECT DISTINCT v.direction FROM Vacancy v
         JOIN v.employer e
+        LEFT JOIN v.source s
         WHERE v.status in :statuses
           and e.status = 'ACTIVE'
+          and (s is null or s.isVisible = true)
           and v.direction is not null
         ORDER BY v.direction.name
         """)

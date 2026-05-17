@@ -186,19 +186,28 @@ public class VacancyMapper {
     }
 
     public Vacancy fromDto(NewVacancyDto vacancyDto) {
-        return createVacancy(vacancyDto);
+        VacancySource source = vacancySourceService.getVacancySourceByCode(VacancySourceCode.IH.name());
+        return createVacancy(vacancyDto, source);
     }
 
-    private Vacancy createVacancy(final NewVacancyDto vacancyDto) {
+    public Vacancy fromDto(NewVacancyDto vacancyDto, VacancySource source) {
+        return createVacancy(vacancyDto, source);
+    }
+
+    private Vacancy createVacancy(final NewVacancyDto vacancyDto, VacancySource source) {
         Set<KeySkill> keySkills = vacancyDto.getSkills() == null
                 ? Collections.emptySet()
                 : keySkillService.getAllKeySkillsById(new HashSet<>(vacancyDto.getSkills()));
         Experience experience = experienceService.getExperienceById(vacancyDto.getExperience());
         Employment employment = employmentService.getEmploymentById(vacancyDto.getEmployment());
-        Currency currency = currencyService.getCurrencyById(vacancyDto.getSalary().getCurrency());
+        NewVacancyDto.Salary salary = vacancyDto.getSalary();
+        Currency currency = currencyService.getCurrencyById(
+                salary == null || salary.getCurrency() == null || salary.getCurrency().isBlank()
+                        ? "RUR"
+                        : salary.getCurrency()
+        );
         WorkFormat workFormat = workFormatService.getWorkFormatById(vacancyDto.getWorkFormat());
         VacancyDirection direction = vacancyDirectionService.getOrCreate(vacancyDto.getDirection());
-        VacancySource source = vacancySourceService.getVacancySourceByCode(VacancySourceCode.IH.name());
 
         return Vacancy
                 .builder()
@@ -206,8 +215,8 @@ public class VacancyMapper {
                 .city(vacancyDto.getCity())
                 .direction(direction)
                 .source(source)
-                .salaryFrom(vacancyDto.getSalary().getFrom())
-                .salaryTo(vacancyDto.getSalary().getTo())
+                .salaryFrom(salary == null ? null : salary.getFrom())
+                .salaryTo(salary == null ? null : salary.getTo())
                 .currency(currency)
                 .description(vacancyDto.getDescription())
                 .employment(employment)
