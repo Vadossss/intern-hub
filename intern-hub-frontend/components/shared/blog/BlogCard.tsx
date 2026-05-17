@@ -25,7 +25,7 @@ export function BlogCard({
   return (
     <article className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-[#161616]/10 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-[#3f5f4a]/30 hover:shadow-[0_14px_36px_rgba(20,20,20,0.08)]">
       <Link href={`/blog/${article.id}`} className="flex h-full flex-col">
-        <div className="aspect-[16/9] bg-[#f7f7f4]">
+        <div className="h-52 w-full shrink-0 overflow-hidden bg-[#f7f7f4]">
           {coverUrl ? (
             <img
               src={coverUrl}

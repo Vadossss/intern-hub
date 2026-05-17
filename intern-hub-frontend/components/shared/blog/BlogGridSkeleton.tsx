@@ -10,7 +10,7 @@ export function BlogGridSkeleton() {
           key={index}
           className="overflow-hidden rounded-2xl border border-[#161616]/10 bg-white"
         >
-          <Skeleton className="aspect-[16/9] rounded-none bg-[#e6e2d8]" />
+          <Skeleton className="h-52 rounded-none bg-[#e6e2d8]" />
           <div className="space-y-4 p-5">
             <Skeleton className="h-4 w-1/2 rounded-full bg-[#e6e2d8]" />
             <Skeleton className="h-7 w-4/5 rounded-full bg-[#e6e2d8]" />

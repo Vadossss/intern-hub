@@ -7,7 +7,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -191,66 +190,50 @@ export function BlogContent() {
           <span className="text-[#171717]">Блог</span>
         </nav>
 
-        <section className="rounded-2xl border border-[#161616]/10 bg-white p-5 shadow-sm sm:p-6">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#777]">
-                Блог
-              </p>
-              <h1 className="mt-2 text-3xl font-black leading-tight text-[#111] sm:text-4xl">
-                Статьи Intern Hub
-              </h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-[#606060]">
-                Материалы о поиске работы, стажировках, резюме и найме в IT.
-              </p>
-            </div>
+        <section className="space-y-3">
+          <h1 className="text-3xl font-black leading-tight text-[#111]">
+            Блог
+          </h1>
 
-            <div className="flex flex-wrap gap-2">
-              <Badge
-                variant="outline"
-                className="rounded-full border-[#161616]/15 bg-[#f7f7f4] px-4 py-2 text-sm font-semibold text-[#555]"
-              >
-                {pageInfo.totalElements} статей
-              </Badge>
+          <div className="rounded-2xl border border-[#161616]/10 bg-white/90 p-3 shadow-sm">
+            <form
+              onSubmit={applySearch}
+              className="flex flex-col gap-2 sm:flex-row sm:items-center"
+            >
+              <div className="relative min-w-0 flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#777]" />
+                <Input
+                  value={searchValue}
+                  onChange={(event) => setSearchValue(event.target.value)}
+                  className="h-10 rounded-xl border-[#161616]/10 bg-white pl-9 text-sm font-medium"
+                  placeholder="Поиск по названию, описанию или тексту"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2 sm:flex">
+                <Button className="h-10 rounded-xl bg-[#171717] px-4 text-white">
+                  Найти
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-10 rounded-xl bg-white px-4"
+                  onClick={resetSearch}
+                >
+                  Сбросить
+                </Button>
+              </div>
               {isAdmin ? (
                 <Button
-                  className="rounded-xl bg-[#171717] text-white"
+                  type="button"
+                  className="h-10 rounded-xl bg-[#171717] px-4 text-white"
                   onClick={openCreateForm}
                 >
                   <Plus className="mr-2 h-4 w-4" />
                   Новая статья
                 </Button>
               ) : null}
-            </div>
+            </form>
           </div>
-
-          <form
-            onSubmit={applySearch}
-            className="mt-6 flex flex-col gap-3 rounded-2xl border border-[#161616]/10 bg-[#f8f7f2] p-3 sm:flex-row"
-          >
-            <div className="relative min-w-0 flex-1">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#777]" />
-              <Input
-                value={searchValue}
-                onChange={(event) => setSearchValue(event.target.value)}
-                className="h-12 rounded-xl border-[#161616]/10 bg-white pl-11 text-sm font-medium"
-                placeholder="Поиск по названию, описанию или тексту"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-2 sm:flex">
-              <Button className="h-12 rounded-xl bg-[#171717] px-5 text-white">
-                Найти
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className="h-12 rounded-xl bg-white px-5"
-                onClick={resetSearch}
-              >
-                Сбросить
-              </Button>
-            </div>
-          </form>
         </section>
 
         {loading ? (
