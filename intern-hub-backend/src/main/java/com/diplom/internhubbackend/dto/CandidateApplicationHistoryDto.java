@@ -24,6 +24,7 @@ public record CandidateApplicationHistoryDto(
         String status,
         Boolean archived,
         LocalDateTime appliedAt,
-        LocalDateTime updatedAt
+        LocalDateTime updatedAt,
+        String chatId
 ) {
 }

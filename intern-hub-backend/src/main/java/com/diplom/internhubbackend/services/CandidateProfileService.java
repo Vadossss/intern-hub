@@ -42,6 +42,7 @@ public class CandidateProfileService {
     private final FileStorageService fileStorageService;
     private final UserMapper userMapper;
     private final CandidateResumeReadService candidateResumeReadService;
+    private final ChatService chatService;
 
     @Transactional
     public CandidateProfileResponseDto uploadProfilePhoto(User user, MultipartFile file) {
@@ -160,7 +161,8 @@ public class CandidateProfileService {
                             application.getStatus().name(),
                             application.getStatus() != VacancyApplicationStatus.PENDING,
                             application.getCreatedAt(),
-                            application.getUpdatedAt()
+                            application.getUpdatedAt(),
+                            chatService.findChatIdForApplication(application.getId())
                     );
                 });
     }
