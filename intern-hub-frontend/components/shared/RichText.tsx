@@ -13,6 +13,7 @@ import {
   ListOrdered,
   MessageSquareText,
   Quote,
+  RemoveFormatting,
   Table2,
   Underline,
 } from "lucide-react";
@@ -242,13 +243,50 @@ export function RichTextEditor({
     }
 
     editor.focus();
+    const currentBlock = getCurrentEditableBlock(editor);
     const currentHeading = getClosestBlockTag(editor);
-    const nextBlock = currentHeading === `h${level}` ? "p" : `h${level}`;
+    const headingTag = `h${level}` as "h2" | "h3" | "h4";
+    const nextBlock: "p" | "h2" | "h3" | "h4" =
+      currentHeading === headingTag ? "p" : headingTag;
 
-    document.execCommand("formatBlock", false, nextBlock);
+    if (currentBlock) {
+      const nextElement = replaceBlockTag(currentBlock, nextBlock);
+      placeCaretAtEnd(nextElement);
+    } else {
+      const selectedText = getSelectedText(editor);
 
-    if (nextBlock !== "p" && getClosestBlockTag(editor) !== nextBlock) {
-      document.execCommand("formatBlock", false, `<${nextBlock}>`);
+      insertHtml(
+        `<${nextBlock}>${selectedText ? escapeHtml(selectedText) : "<br />"}</${nextBlock}>`,
+      );
+      return;
+    }
+
+    syncValue();
+    updateActiveCommands();
+  }
+
+  function clearFormatting() {
+    const editor = editorRef.current;
+
+    if (!editor) {
+      return;
+    }
+
+    editor.focus();
+    const currentBlock = getCurrentEditableBlock(editor);
+    document.execCommand("removeFormat");
+
+    if (document.queryCommandState("insertUnorderedList")) {
+      document.execCommand("insertUnorderedList");
+    }
+
+    if (document.queryCommandState("insertOrderedList")) {
+      document.execCommand("insertOrderedList");
+    }
+
+    if (currentBlock?.isConnected && /^H[2-4]$/.test(currentBlock.tagName)) {
+      const nextElement = replaceBlockTag(currentBlock, "p");
+      placeCaretAtEnd(nextElement);
     }
 
     syncValue();
@@ -288,7 +326,7 @@ export function RichTextEditor({
 
   return (
     <div className={cn("rounded-2xl border border-[#161616]/10 bg-white", className)}>
-      <div className="sticky top-0 z-20 flex flex-wrap gap-1 rounded-t-2xl border-b border-[#161616]/10 bg-white/95 p-2 shadow-sm backdrop-blur">
+      <div className="sticky top-16 z-40 flex flex-wrap gap-1 rounded-t-2xl border-b border-[#161616]/10 bg-white/95 p-2 shadow-sm backdrop-blur">
         <ToolbarButton
           label="Жирный"
           active={activeCommands.bold}
@@ -309,6 +347,9 @@ export function RichTextEditor({
           onClick={() => runCommand("underline")}
         >
           <Underline className="h-4 w-4" />
+        </ToolbarButton>
+        <ToolbarButton label="Очистить форматирование" onClick={clearFormatting}>
+          <RemoveFormatting className="h-4 w-4" />
         </ToolbarButton>
         <ToolbarButton
           label="Список"
@@ -697,6 +738,49 @@ function getClosestBlockTag(editor: HTMLDivElement) {
   }
 
   return null;
+}
+
+function getCurrentEditableBlock(editor: HTMLDivElement) {
+  const selection = document.getSelection();
+  let node = selection?.anchorNode ?? null;
+
+  while (node && node !== editor) {
+    if (
+      node instanceof HTMLElement &&
+      /^(P|DIV|H2|H3|H4|BLOCKQUOTE)$/.test(node.tagName)
+    ) {
+      return node;
+    }
+
+    node = node.parentNode;
+  }
+
+  return null;
+}
+
+function replaceBlockTag(block: HTMLElement, tagName: "p" | "h2" | "h3" | "h4") {
+  const replacement = block.ownerDocument.createElement(tagName);
+
+  while (block.firstChild) {
+    replacement.append(block.firstChild);
+  }
+
+  block.replaceWith(replacement);
+  return replacement;
+}
+
+function placeCaretAtEnd(element: HTMLElement) {
+  const selection = element.ownerDocument.getSelection();
+
+  if (!selection) {
+    return;
+  }
+
+  const range = element.ownerDocument.createRange();
+  range.selectNodeContents(element);
+  range.collapse(false);
+  selection.removeAllRanges();
+  selection.addRange(range);
 }
 
 function readActiveHeading(editor: HTMLDivElement): HeadingLevel {

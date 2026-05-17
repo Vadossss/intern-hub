@@ -11,8 +11,6 @@ type CodeViewerProps = {
   title?: string;
 };
 
-// Простая подсветка синтаксиса для JSX/TSX — не заменяет полноценный парсер,
-// но даёт аккуратный результат для демонстрационных целей.
 function escapeHtml(str: string) {
   return str
     .replace(/&/g, "&amp;")
@@ -25,38 +23,32 @@ function escapeHtml(str: string) {
 function highlightJSX(raw: string) {
   const escaped = escapeHtml(raw);
 
-  // Комментарии
   let out = escaped.replace(
     /(&lt;!--[\s\S]*?--&gt;|\/\*[^]*?\*\/|\/\/.*?$)/gm,
     (m) => {
       return `<span class=\"token-comment\">${m}</span>`;
-    }
+    },
   );
 
-  // Строки
-  out = out.replace(/(\".*?\"|'.*?'|`.*?`)/gms, (m) => {
+  out = out.replace(/(\"[^"]*\"|'[^']*'|`[\s\S]*?`)/gm, (m) => {
     return `<span class=\"token-string\">${m}</span>`;
   });
 
-  // JSX теги — имя тега
   out = out.replace(/(&lt;\/?)([A-Za-z0-9_.$:-]+)/g, (_m, p1, p2) => {
     return `${p1}<span class=\"token-tag\">${p2}</span>`;
   });
 
-  // атрибуты
   out = out.replace(/([A-Za-z_:][-A-Za-z0-9_:.]*)(=)/g, (_m, p1, p2) => {
     return `<span class=\"token-attr\">${p1}</span>${p2}`;
   });
 
-  // Ключевые слова JS/TS
   out = out.replace(
     /\b(const|let|var|function|return|if|else|for|while|import|from|export|default|class|extends|new|async|await|try|catch|switch|case|break|continue|throw)\b/g,
     (m) => {
       return `<span class=\"token-keyword\">${m}</span>`;
-    }
+    },
   );
 
-  // Числа
   out = out.replace(/\b(0x[0-9a-fA-F]+|\d+(?:\.\d+)?)\b/g, (m) => {
     return `<span class=\"token-number\">${m}</span>`;
   });
@@ -82,7 +74,6 @@ export default function CodeViewer({
       setCopied(true);
       setTimeout(() => setCopied(false), 1400);
     } catch (e) {
-      // fallback: ничего не делаем
       console.error("Copy failed", e);
     }
   };
@@ -144,7 +135,6 @@ export default function CodeViewer({
                   )}
 
                   <div className="flex-1 leading-5">
-                    {/* Подсвеченный HTML вставляем как HTML */}
                     <div
                       className="token-container"
                       style={{ whiteSpace: "pre" }}
@@ -155,7 +145,6 @@ export default function CodeViewer({
               </code>
             </pre>
 
-            {/* Локальные стили подсветки — используем tailwind-совместимые классы + небольшие правила */}
             <style jsx>{`
               .token-comment {
                 color: #6b7280;
