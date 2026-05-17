@@ -1,24 +1,41 @@
 package com.diplom.internhubbackend.models;
 
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.relational.core.mapping.Table;
+import lombok.Setter;
 
-@Data
+import java.util.UUID;
+
+@Getter
+@Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-@Document(collection = "chat_notification")
+@Entity
+@Table(name = "chat_notification")
 public class ChatNotification {
+    @Id
+    @Column(length = 36)
     private String id;
+
+    @Column(name = "sender_id")
     private String senderId;
+
+    @Column(name = "sender_name")
     private String senderName;
+
+    @PrePersist
+    void prePersist() {
+        if (id == null) {
+            id = UUID.randomUUID().toString();
+        }
+    }
 }

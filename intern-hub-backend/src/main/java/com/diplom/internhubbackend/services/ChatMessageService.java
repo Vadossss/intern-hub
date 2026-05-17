@@ -4,10 +4,6 @@ import com.diplom.internhubbackend.exception.ResourceNotFoundException;
 import com.diplom.internhubbackend.models.ChatMessage;
 import com.diplom.internhubbackend.repositories.ChatMessageRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.mongodb.core.MongoOperations;
-import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.Update;
-import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -19,8 +15,6 @@ public class ChatMessageService {
     private ChatMessageRepository repository;
     @Autowired 
     private ChatRoomService chatRoomService;
-    @Autowired
-    private MongoOperations mongoOperations;
 
     public ChatMessage save(ChatMessage chatMessage) {
         chatMessage.setStatus(ChatMessage.MessageStatus.RECEIVED);
@@ -58,11 +52,12 @@ public class ChatMessageService {
     }
 
     public void updateStatuses(String senderId, String recipientId, ChatMessage.MessageStatus status) {
-        Query query = new Query(
-                Criteria
-                        .where("senderId").is(senderId)
-                        .and("recipientId").is(recipientId));
-        Update update = Update.update("status", status);
-        mongoOperations.updateMulti(query, update, ChatMessage.class);
+        repository.findAll().stream()
+                .filter(message -> senderId.equals(message.getSenderId()))
+                .filter(message -> recipientId.equals(message.getRecipientId()))
+                .forEach(message -> {
+                    message.setStatus(status);
+                    repository.save(message);
+                });
     }
 }
