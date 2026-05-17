@@ -1,6 +1,5 @@
 package com.diplom.internhubbackend.schedulers;
 
-import com.diplom.internhubbackend.services.StackService;
 import com.diplom.internhubbackend.services.VacancyService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,13 +12,15 @@ import org.springframework.stereotype.Component;
 public class AggregationScheduler {
 
     private final VacancyService vacancyService;
-    private final StackService stackService;
 
-    @Scheduled(cron = "0 0 0/2 * * *")
+//    @Scheduled(cron = "0 0 0/2 * * *")
+//    @Scheduled(initialDelay = 5000)
     public void runAggregation() {
-        stackService.getAllStacks().forEach(stack -> {
-            log.info("Aggregating stack {}", stack.getName());
-            vacancyService.fetchAndSave(stack);
-        });
+        vacancyService.fetchAndSaveHH();
+    }
+
+//    @Scheduled(initialDelay = 5000)
+    public void runAggregationSJ() {
+        vacancyService.fetchAndSaveSJ();
     }
 }

@@ -6,6 +6,7 @@ import com.diplom.internhubbackend.dto.sj.SjClientDetailsResponse;
 import com.diplom.internhubbackend.dto.sj.SjVacancyItem;
 import com.diplom.internhubbackend.dto.sj.SjVacancyListResponse;
 import com.diplom.internhubbackend.enums.ContactMethod;
+import com.diplom.internhubbackend.enums.VacancyStatus;
 import com.diplom.internhubbackend.models.User;
 import com.diplom.internhubbackend.models.Vacancy;
 import com.diplom.internhubbackend.models.VacancyContact;
@@ -226,6 +227,9 @@ public class SjAggregationService {
         );
         vacancy.setDescription(nonBlankOrDefault(buildDescription(sjVacancyItem), sjVacancyItem.profession()));
         vacancy.setDirection(direction);
+        if (vacancy.getStatus() == VacancyStatus.ARCHIVED) {
+            vacancy.setStatus(VacancyStatus.APPROVED);
+        }
         Integer ttlDays = vacancySource.getTtlDays() == null ? 30 : vacancySource.getTtlDays();
         vacancy.setExpiresAt(LocalDateTime.now().plusDays(ttlDays));
 
