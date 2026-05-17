@@ -44,6 +44,16 @@ public class SecurityConfiguration {
                                 "/api/vacancies/*/application-status",
                                 "/api/employers", "/api/employers/**", "/api/candidates/**", "/api/stack",
                                 "/api-docs/**", "api/learn/**","api/question/**").permitAll()
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/currency",
+                                "/api/employment",
+                                "/api/experience",
+                                "/api/format",
+                                "/api/languages",
+                                "/api/cities/suggestions",
+                                "/api/vacancies/filters",
+                                "/api/vacancies/directions"
+                        ).permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/blog/articles", "/api/blog/articles/**").permitAll()
                         .anyRequest().authenticated()
                 )

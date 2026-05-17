@@ -88,7 +88,9 @@ class ApiClient {
       if (!response.ok) {
         const error = await this.buildApiError(response);
 
-        if (this.shouldRefreshAuth(endpoint, error.status, hasRetriedAuth)) {
+        if (
+          this.shouldRefreshAuth(endpoint, method, error.status, hasRetriedAuth)
+        ) {
           const refreshed = await this.refreshAuth();
 
           if (refreshed) {
@@ -132,10 +134,15 @@ class ApiClient {
 
   private shouldRefreshAuth(
     endpoint: string,
+    method: HttpMethod,
     status: number,
     hasRetriedAuth: boolean,
   ) {
     if (hasRetriedAuth || (status !== 401 && status !== 403)) {
+      return false;
+    }
+
+    if (method === "GET" && this.isPublicEndpoint(endpoint)) {
       return false;
     }
 
@@ -146,6 +153,24 @@ class ApiClient {
     ];
 
     return !excludedEndpoints.includes(endpoint);
+  }
+
+  private isPublicEndpoint(endpoint: string) {
+    const publicEndpoints: string[] = [
+      API_ENDPOINTS.currency,
+      API_ENDPOINTS.employment,
+      API_ENDPOINTS.experience,
+      API_ENDPOINTS.workFormat,
+      API_ENDPOINTS.languages,
+      API_ENDPOINTS.skills,
+      API_ENDPOINTS.vacancies,
+      API_ENDPOINTS.vacancyFilters,
+      API_ENDPOINTS.vacancyDirections,
+      API_ENDPOINTS.citySuggestions,
+      API_ENDPOINTS.blogArticles,
+    ];
+
+    return publicEndpoints.includes(endpoint);
   }
 
   private async refreshAuth(): Promise<boolean> {
