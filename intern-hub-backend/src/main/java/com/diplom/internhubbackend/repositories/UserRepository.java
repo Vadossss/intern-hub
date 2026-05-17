@@ -35,4 +35,19 @@ public interface UserRepository extends JpaRepository<User, Integer> {
             @Param("query") String query,
             Pageable pageable
     );
+
+    @Query("""
+            SELECT u FROM User u
+            LEFT JOIN EmployerProfile p ON p.user.id = u.id
+            WHERE u.role.id = 'ROLE_EMPLOYER'
+              AND (
+                :query IS NULL
+                OR LOWER(COALESCE(p.companyName, '')) LIKE :query
+              )
+            ORDER BY COALESCE(p.companyName, u.email)
+            """)
+    Page<User> searchAdminEmployers(
+            @Param("query") String query,
+            Pageable pageable
+    );
 }
