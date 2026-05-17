@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -29,7 +30,11 @@ public class FilterParamsMapper {
                 vacancySourceService
                         .getAllVacancySourcesByCode(filterParams.getSource()
                                 .stream()
-                                .map(Enum::name)
+                                .filter(Objects::nonNull)
+                                .map(String::trim)
+                                .filter(code -> !code.isEmpty())
+                                .map(code -> code.toUpperCase(Locale.ROOT))
+                                .distinct()
                                 .collect(Collectors.toList()));
 
         List<String> direction = filterParams.getDirection() == null || filterParams.getDirection().isEmpty() ?

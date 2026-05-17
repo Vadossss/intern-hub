@@ -13,7 +13,7 @@ import java.util.List;
 @NoArgsConstructor
 public class FilterParamsRequest {
     @Parameter(description = "Источник вакансии")
-    private List<VacancySourceCode> source;
+    private List<String> source;
 
     @Enumerated(EnumType.STRING)
     @Parameter(description = "Позиция/должность")
