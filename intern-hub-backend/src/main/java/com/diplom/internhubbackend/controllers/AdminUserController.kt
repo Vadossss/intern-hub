@@ -13,11 +13,13 @@ import com.diplom.internhubbackend.models.EmployerProfile
 import com.diplom.internhubbackend.models.User
 import com.diplom.internhubbackend.repositories.EmployerProfileRepository
 import com.diplom.internhubbackend.repositories.UserRepository
+import com.diplom.internhubbackend.services.FileStorageService
 import com.diplom.internhubbackend.services.UserModerService
 import com.diplom.internhubbackend.services.UserRoleService
 import io.swagger.v3.oas.annotations.Operation
 import org.springframework.data.domain.PageRequest
 import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.web.bind.annotation.GetMapping
@@ -25,11 +27,13 @@ import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestPart
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.web.multipart.MultipartFile
 import java.time.LocalDateTime
 import java.util.Locale
 
@@ -40,6 +44,7 @@ class AdminUserController(
     private val userRepository: UserRepository,
     private val employerProfileRepository: EmployerProfileRepository,
     private val userRoleService: UserRoleService,
+    private val fileStorageService: FileStorageService,
     private val passwordEncoder: PasswordEncoder,
 ) {
 
@@ -96,24 +101,61 @@ class AdminUserController(
     }
 
     @Transactional
-    @Operation(summary = "Создать работодателя из админки")
+    @Operation(summary = "Создать работодателя")
     @ResponseStatus(HttpStatus.CREATED)
-    @PostMapping("/api/admin/employers")
+    @PostMapping(value = ["/api/admin/employers"], consumes = [MediaType.APPLICATION_JSON_VALUE])
     fun createEmployer(
         @RequestBody request: AdminEmployerCreateRequest,
     ): AdminEmployerOptionDto {
-        val email = request.email?.trim()?.lowercase(Locale.ROOT)
-            ?.takeIf { value -> value.isNotBlank() }
-            ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Employer email is required")
-        val password = request.password?.trim()
-            ?.takeIf { value -> value.length >= 6 }
-            ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Employer password must contain at least 6 characters")
+        return createEmployer(request, null)
+    }
+
+    @Transactional
+    @Operation(summary = "Создать работодателя из админки")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PostMapping(value = ["/api/admin/employers"], consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
+    fun createEmployerWithAvatar(
+        @RequestParam(required = false) email: String?,
+        @RequestParam(required = false) password: String?,
+        @RequestParam(required = false) companyName: String?,
+        @RequestParam(required = false) city: String?,
+        @RequestParam(required = false) website: String?,
+        @RequestParam(required = false) about: String?,
+        @RequestParam(required = false) verified: Boolean?,
+        @RequestParam(required = false) accredited: Boolean?,
+        @RequestPart(required = false) avatar: MultipartFile?,
+    ): AdminEmployerOptionDto {
+        return createEmployer(
+            AdminEmployerCreateRequest(
+                email = email,
+                password = password,
+                companyName = companyName,
+                city = city,
+                website = website,
+                about = about,
+                verified = verified,
+                accredited = accredited,
+            ),
+            avatar,
+        )
+    }
+
+    private fun createEmployer(
+        request: AdminEmployerCreateRequest,
+        avatar: MultipartFile?,
+    ): AdminEmployerOptionDto {
         val companyName = request.companyName?.trim()
             ?.takeIf { value -> value.isNotBlank() }
             ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Company name is required")
+        val email = trimToNull(request.email)
+        val password = trimToNull(request.password)
 
-        if (userRepository.existsByEmail(email)) {
+        if (email != null && userRepository.existsByEmail(email)) {
             throw EmailAlreadyExistsException("Email already exists")
+        }
+
+        if (email == null && password != null) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Email is required when password is set")
         }
 
         val role = userRoleService.findRoleById(UserRole.ROLE_EMPLOYER.name)
@@ -121,7 +163,7 @@ class AdminUserController(
         val verified = request.verified ?: true
         val user = User.builder()
             .email(email)
-            .password(passwordEncoder.encode(password))
+            .password(password?.let(passwordEncoder::encode))
             .role(role)
             .status(AccountStatus.ACTIVE)
             .verified(verified)
@@ -129,15 +171,22 @@ class AdminUserController(
             .verifiedAt(if (verified) LocalDateTime.now() else null)
             .build()
         val savedUser = userRepository.save(user)
+        val avatarUrl = avatar
+            ?.takeUnless { file -> file.isEmpty }
+            ?.let { file -> fileStorageService.saveCompanyPhoto(savedUser.id, file) }
+
+        if (avatarUrl != null) {
+            savedUser.avatarUrl = avatarUrl
+        }
+
         val profile = employerProfileRepository.save(
             EmployerProfile.builder()
                 .user(savedUser)
                 .companyName(companyName)
                 .city(trimToNull(request.city))
                 .website(trimToNull(request.website))
-                .contactName(trimToNull(request.contactName))
-                .phone(trimToNull(request.phone))
                 .about(trimToNull(request.about))
+                .avatarUrl(avatarUrl)
                 .aggregated(false)
                 .verified(verified)
                 .accredited(request.accredited ?: false)
