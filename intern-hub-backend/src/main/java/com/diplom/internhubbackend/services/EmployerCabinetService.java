@@ -55,6 +55,7 @@ public class EmployerCabinetService {
     private final EmploymentService employmentService;
     private final CurrencyService currencyService;
     private final ViewTrackingService viewTrackingService;
+    private final ChatService chatService;
 
     @Transactional(readOnly = true)
     public Page<VacancyResponseDto> getMyVacancies(User employer, int page, int size) {
@@ -176,7 +177,20 @@ public class EmployerCabinetService {
         application.setUpdatedAt(LocalDateTime.now());
         applicationRepository.save(application);
 
+        if (status == VacancyApplicationStatus.ACCEPTED) {
+            chatService.createForAcceptedApplication(application);
+        }
+
         return toEmployerApplicationDto(application);
+    }
+
+    @Transactional
+    public ChatRoomResponseDto inviteCandidate(
+            User employer,
+            Long resumeId,
+            EmployerInviteCandidateRequestDto request
+    ) {
+        return chatService.inviteCandidate(employer, resumeId, request);
     }
 
     @Transactional(readOnly = true)
@@ -456,7 +470,8 @@ public class EmployerCabinetService {
                 application.getResume() == null ? null : application.getResume().getProfession(),
                 application.getChosenContactMethod() == null ? null : application.getChosenContactMethod().name(),
                 application.getCreatedAt(),
-                application.getUpdatedAt()
+                application.getUpdatedAt(),
+                chatService.findChatIdForApplication(application.getId())
         );
     }
 

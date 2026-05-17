@@ -10,6 +10,8 @@ import java.util.Optional;
 public interface EmployerSourceRepository extends JpaRepository<EmployerSource, Long> {
     Optional<EmployerSource> findBySource_CodeAndExternalId(String sourceCode, String externalId);
 
+    boolean existsBySource_Id(Short sourceId);
+
     @Query("""
             SELECT es FROM EmployerSource es
             JOIN FETCH es.employerProfile ep

@@ -16,6 +16,7 @@ public record EmployerApplicationResponseDto(
         String resumeProfession,
         String chosenContactMethod,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        LocalDateTime updatedAt,
+        String chatId
 ) {
 }

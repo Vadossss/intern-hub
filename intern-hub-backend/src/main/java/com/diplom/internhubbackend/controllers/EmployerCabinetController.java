@@ -179,4 +179,15 @@ public class EmployerCabinetController {
     ) {
         employerCabinetService.recordCandidateResumeView(customUserDetails.getUser(), resumeId, request);
     }
+
+    @Operation(summary = "Пригласить соискателя в чат по резюме")
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYER', 'ROLE_ADMIN')")
+    @PostMapping("/candidates/resumes/{resume_id}/invite")
+    public ChatRoomResponseDto inviteCandidate(
+            @AuthenticationPrincipal CustomUserDetails customUserDetails,
+            @PathVariable(name = "resume_id") Long resumeId,
+            @RequestBody EmployerInviteCandidateRequestDto request
+    ) {
+        return employerCabinetService.inviteCandidate(customUserDetails.getUser(), resumeId, request);
+    }
 }
