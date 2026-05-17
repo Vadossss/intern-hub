@@ -13,6 +13,7 @@ import {
   Flag,
   Mail,
   MapPin,
+  MessageCircle,
   Monitor,
   Sparkles,
   UserRound,
@@ -20,6 +21,7 @@ import {
 } from "lucide-react";
 
 import { RichTextContent } from "@/components/shared/RichText";
+import { ChatInviteDialog } from "@/components/shared/chat/ChatInviteDialog";
 import { ComplaintDialog } from "@/components/shared/complaints";
 import { ResumeExtendedDetails } from "@/components/shared/profile/ResumeExtendedDetails";
 import {
@@ -39,11 +41,13 @@ import {
   getCandidateById,
   type PublicCandidateProfile,
 } from "@/lib/api/candidates";
+import { useAuth } from "@/lib/auth/context";
 import { resolveAssetUrl } from "@/lib/assets";
 
 export function CandidatePublicPage() {
   const params = useParams();
   const candidateId = String(params.id ?? "");
+  const { user } = useAuth();
 
   const [candidate, setCandidate] = useState<PublicCandidateProfile | null>(
     null,
@@ -51,6 +55,10 @@ export function CandidatePublicPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [complaintResume, setComplaintResume] = useState<{
+    id: number;
+    label: string;
+  } | null>(null);
+  const [inviteResume, setInviteResume] = useState<{
     id: number;
     label: string;
   } | null>(null);
@@ -104,6 +112,8 @@ export function CandidatePublicPage() {
   );
   const primaryResume = activeResumes[0];
   const candidateCity = primaryResume?.city || candidate?.city;
+  const canInvite =
+    user?.role === "ROLE_EMPLOYER" || user?.role === "ROLE_ADMIN";
 
   if (loading) {
     return <CandidatePageSkeleton />;
@@ -285,6 +295,21 @@ export function CandidatePublicPage() {
                             <Eye className="h-3.5 w-3.5" />
                             {resume.viewCount ?? 0}
                           </Badge>
+                          {canInvite ? (
+                            <Button
+                              type="button"
+                              className="h-8 rounded-full bg-[#0b63f6] px-3 text-xs font-bold text-white hover:bg-[#0956d8]"
+                              onClick={() =>
+                                setInviteResume({
+                                  id: resume.id,
+                                  label: resume.profession || "Резюме",
+                                })
+                              }
+                            >
+                              <MessageCircle className="h-3.5 w-3.5" />
+                              Пригласить
+                            </Button>
+                          ) : null}
                           <Button
                             type="button"
                             variant="outline"
@@ -365,6 +390,18 @@ export function CandidatePublicPage() {
           </aside>
         </section>
       </div>
+      {inviteResume ? (
+        <ChatInviteDialog
+          resumeId={inviteResume.id}
+          candidateName={fullName}
+          open={Boolean(inviteResume)}
+          onOpenChange={(open) => {
+            if (!open) {
+              setInviteResume(null);
+            }
+          }}
+        />
+      ) : null}
       <ComplaintDialog
         open={Boolean(complaintResume)}
         onOpenChange={(open) => {

@@ -2,9 +2,16 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight, BriefcaseBusiness, Flag, UserRound } from "lucide-react";
+import {
+  ArrowUpRight,
+  BriefcaseBusiness,
+  Flag,
+  MessageCircle,
+  UserRound,
+} from "lucide-react";
 
 import { RichTextContent } from "@/components/shared/RichText";
+import { ChatInviteDialog } from "@/components/shared/chat/ChatInviteDialog";
 import { ComplaintDialog } from "@/components/shared/complaints";
 import { InfoCard } from "@/components/shared/profile/InfoCard";
 import { ResumeExtendedDetails } from "@/components/shared/profile/ResumeExtendedDetails";
@@ -33,6 +40,7 @@ export function CandidateResumeSearchDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const [complaintOpen, setComplaintOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
   const avatarSrc = mediaUrl(candidate?.avatarUrl);
   const resume = candidate?.resume;
   const candidateName =
@@ -171,6 +179,14 @@ export function CandidateResumeSearchDialog({
               ) : null}
               <Button
                 type="button"
+                className="bg-[#0b63f6] text-white hover:bg-[#0956d8]"
+                onClick={() => setInviteOpen(true)}
+              >
+                <MessageCircle className="h-4 w-4" />
+                Пригласить в чат
+              </Button>
+              <Button
+                type="button"
                 variant="outline"
                 className="text-[#5f4545] hover:bg-[#f7eeee]"
                 onClick={() => setComplaintOpen(true)}
@@ -190,6 +206,14 @@ export function CandidateResumeSearchDialog({
           targetType="CANDIDATE_RESUME"
           targetId={String(resume.id)}
           targetLabel={resume.profession || candidateName}
+        />
+      ) : null}
+      {resume?.id ? (
+        <ChatInviteDialog
+          resumeId={resume.id}
+          candidateName={candidateName}
+          open={inviteOpen}
+          onOpenChange={setInviteOpen}
         />
       ) : null}
     </>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   BadgeCheck,
@@ -139,7 +140,7 @@ export function EmployerPublicPage() {
             {error ?? "Не удалось получить данные работодателя."}
           </p>
           <Button asChild className="mt-6 rounded-xl bg-[#171717] text-white">
-            <a href="/employers">К компаниям</a>
+            <Link href="/employers">К компаниям</Link>
           </Button>
         </div>
       </main>
